@@ -2,10 +2,15 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>梦角传讯</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>梦角字卡传讯</title>
 <style>
-:root {
+*{
+  box-sizing: border-box;
+  margin:0;
+  padding:0;
+}
+:root{
   --color-main: #7c68ee;
   --color-bg: #ffffff;
   --color-text: #222222;
@@ -14,169 +19,67 @@
   --radius-global: 18px;
   --radius-card: 14px;
   --radius-btn: 10px;
-  --phone-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  --tab-inactive: #999999;
   --tab-active: var(--color-main);
-  --tab-inactive: #999;
 }
-* {
-  margin:0;
-  padding:0;
-  box-sizing: border-box;
-  font-family: system-ui, -apple-system, sans-serif;
+body{
+  background-color: #eee;
+  font-family: system-ui, sans-serif;
 }
-body {
-  min-height: 100vh;
-  background: #eee;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding:16px;
-}
-/* 手机外壳 */
-.phone-wrap {
+.phone-shell{
   width: 375px;
   height: 700px;
-  background: #111;
-  border-radius: 42px;
-  padding:12px;
-  box-shadow: var(--phone-shadow);
+  margin: 20px auto;
+  background: var(--color-bg);
+  border-radius: 40px;
+  border:8px solid #222;
   overflow: hidden;
-  position: relative;
-}
-.phone-screen {
-  width:100%;
-  height:100%;
-  background: var(--color-bg);
-  border-radius: 32px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-/* 顶部状态栏 */
-.status-bar {
-  height:32px;
-  padding:0 18px;
-  display:flex;
-  align-items:center;
-  justify-content: space-between;
-  font-size:13px;
-  color: var(--color-text);
-  background: var(--color-bg);
-  flex-shrink:0;
-}
-/* 主内容区域 */
-.main-container {
-  flex:1;
-  position: relative;
-  overflow:hidden;
-}
-.tab-page {
-  width:100%;
-  height:100%;
-  position:absolute;
-  top:0;
-  left:0;
-  padding:12px;
-  overflow-y:auto;
-  display:none;
-  background: var(--color-bg);
-}
-.tab-page.active {
-  display:block;
-}
-/* 底部Tab栏 */
-.tab-bar {
-  height:54px;
-  display:flex;
-  background: var(--color-bg);
-  border-top:1px solid var(--color-border);
-  flex-shrink:0;
-}
-.tab-item {
-  flex:1;
   display:flex;
   flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  color: var(--tab-inactive);
-  font-size:12px;
-  gap:3px;
-  cursor:pointer;
 }
-.tab-item.active {
-  color: var(--tab-active);
+.view-area{
+  flex:1;
+  overflow:hidden;
+  position:relative;
 }
-.tab-icon {
-  font-size:18px;
+.tab-panel{
+  width:100%;
+  height:100%;
+  display:none;
+  overflow:auto;
+}
+.tab-footer{
+  display:flex;
+  border-top:1px solid var(--color-border);
+}
+.tab-btn{
+  flex:1;
+  padding:12px 0;
+  border:none;
+  font-size:14px;
+  background:var(--color-bg);
+  color:var(--color-text);
 }
 </style>
 </head>
 <body>
-<div class="phone-wrap">
-  <div class="phone-screen">
-    <!-- 顶部状态栏 -->
-    <div class="status-bar">
-      <span id="status-time">00:00</span>
-      <span>📶 🔋</span>
-    </div>
-    <!-- 页面容器：桌面、字卡、设置 -->
-    <div class="main-container">
-      <div id="page-desktop" class="tab-page active">
-        <!-- 桌面九宫格挂载点 -->
-        <div id="desktop-root"></div>
-      </div>
-      <div id="page-cardlib" class="tab-page">
-        <!-- 字卡库挂载点 -->
-        <div id="cardlib-root"></div>
-      </div>
-      <div id="page-setting" class="tab-page">
-        <!-- 设置面板挂载点 -->
-        <div id="setting-root"></div>
-      </div>
-    </div>
-    <!-- 底部Tab -->
-    <div class="tab-bar">
-      <div class="tab-item active" data-tab="desktop">
-        <div class="tab-icon">🏠</div>
-        <span>桌面</span>
-      </div>
-      <div class="tab-item" data-tab="cardlib">
-        <div class="tab-icon">📇</div>
-        <span>字卡</span>
-      </div>
-      <div class="tab-item" data-tab="setting">
-        <div class="tab-icon">⚙️</div>
-        <span>设置</span>
-      </div>
-    </div>
+<div class="phone-shell">
+  <div class="view-area">
+    <!-- 四个面板，就是JS要找的“门” -->
+    <div id="tab-desktop" class="tab-panel"></div>
+    <div id="tab-card" class="tab-panel"></div>
+    <div id="tab-chat" class="tab-panel"></div>
+    <div id="tab-setting" class="tab-panel"></div>
+  </div>
+  <!-- 底部Tab按钮 -->
+  <div class="tab-footer">
+    <button class="tab-btn" data-tab="desktop">桌面</button>
+    <button class="tab-btn" data-tab="card">字卡</button>
+    <button class="tab-btn" data-tab="chat">聊天</button>
+    <button class="tab-btn" data-tab="setting">设置</button>
   </div>
 </div>
 
-<script type="module" src="./js/app.js"></script>
-<script>
-// Tab切换基础原生逻辑（只做显隐切换，简单写在这里，不进业务模块）
-const tabItems = document.querySelectorAll('.tab-item');
-const pages = document.querySelectorAll('.tab-page');
-tabItems.forEach(tab=>{
-  tab.onclick = ()=>{
-    const targetKey = tab.dataset.tab;
-    // 清除激活
-    tabItems.forEach(t=>t.classList.remove('active'));
-    pages.forEach(p=>p.classList.remove('active'));
-    // 激活
-    tab.classList.add('active');
-    document.getElementById(`page-${targetKey}`).classList.add('active');
-  }
-})
-// 状态栏时间刷新
-function updateTime(){
-  const d = new Date();
-  let h = String(d.getHours()).padStart(2,'0');
-  let m = String(d.getMinutes()).padStart(2,'0');
-  document.getElementById('status-time').innerText = `${h}:${m}`;
-}
-updateTime();
-setInterval(updateTime, 1000);
-</script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
