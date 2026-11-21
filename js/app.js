@@ -1,24 +1,74 @@
 import { ThemeManager } from './core/css-theme.js';
 import { Toast } from './core/toast.js';
+import { DesktopModule } from './desktop.js';
+import { CardEditorModule } from './card-editor.js';
+import { ChatModule } from './chat.js';
+import { SettingModule } from './setting.js';
 
-// 全局挂载，方便调试（上线后可以删掉）
 window.$Toast = Toast;
 window.$Theme = ThemeManager;
 
-/**
- * 应用启动入口
- */
+// Tab 切换管理
+const TabManager = {
+  tabs: [
+    { key: "desktop", selector: "#tab-desktop", module: DesktopModule },
+    { key: "card", selector: "#tab-card", module: CardEditorModule },
+    { key: "chat", selector: "#tab-chat", module: ChatModule },
+    { key: "setting", selector: "#tab-setting", module: SettingModule }
+  ],
+  activeKey: "desktop",
+
+  init() {
+    this.tabs.forEach(tabItem => {
+      tabItem.module.init(tabItem.selector);
+    });
+    this.bindTabClick();
+    this.switchTab(this.activeKey);
+  },
+
+  bindTabClick() {
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.onclick = () => {
+        const targetKey = btn.dataset.tab;
+        this.switchTab(targetKey);
+      };
+    });
+  },
+
+  switchTab(key) {
+    this.activeKey = key;
+    // 隐藏所有面板
+    this.tabs.forEach(tabItem => {
+      const el = document.querySelector(tabItem.selector);
+      if(el) el.style.display = "none";
+    });
+    // 显示当前面板
+    const activeTab = this.tabs.find(t => t.key === key);
+    if(activeTab){
+      const el = document.querySelector(activeTab.selector);
+      if(el) el.style.display = "block";
+    }
+    // Tab按钮高亮
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      if(btn.dataset.tab === key){
+        btn.style.background = "var(--color-main)";
+        btn.style.color = "#fff";
+      }else{
+        btn.style.background = "var(--color-bg)";
+        btn.style.color = "var(--color-text)";
+      }
+    });
+  }
+};
+
 async function bootstrap() {
   console.log("应用开始初始化");
-
-  // 1. 加载主题，初始化全局样式变量
   ThemeManager.load();
-
-  console.log("核心模块初始化完成");
+  TabManager.init();
+  console.log("所有模块初始化完成");
   Toast.show("初始化完成");
 }
 
-// DOM加载完毕之后启动
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", bootstrap);
 } else {
