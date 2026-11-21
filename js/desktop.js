@@ -58,9 +58,10 @@ export const DesktopModule = {
         <div style="font-size:13px;color:var(--color-text-2)">${card.desc || ""}</div>
       `;
       // 点击卡片，进入对话
-      cardDom.onclick = () => {
-        EventBus.emit("session:switch", {sessionId: card.id, card});
-      };
+     cardDom.onclick = () => {
+  EventBus.emit("card:select", card);
+  EventBus.emit("tab:switch", "chat");
+};
       this.rootEl.appendChild(cardDom);
     });
   },
