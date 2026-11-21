@@ -14,6 +14,7 @@
       --chat-bg: #121212;
       --me-bubble: #504080;
       --mj-bubble: #2c2c2c;
+      --panel-bg: #1b1b1b;
     }
     * {
       box-sizing: border-box;
@@ -155,6 +156,86 @@
     input[type="color"], input[type="range"] {
       width: 100%;
     }
+    /* 悬浮球 */
+    .float-ball{
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      background:var(--main-color);
+      position:absolute;
+      bottom:110px;
+      right:14px;
+      z-index:12;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+    }
+    /* 字卡审核面板 */
+    .audit-panel{
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,0.75);
+      z-index:11;
+      display:none;
+      padding:16px;
+      overflow-y:auto;
+    }
+    .audit-panel.open{
+      display:block;
+    }
+    .panel-wrap{
+      background:var(--panel-bg);
+      border-radius:var(--global-radius);
+      padding:16px;
+    }
+    .panel-title{
+      text-align:center;
+      margin-bottom:12px;
+      font-size:16px;
+      font-weight:500;
+    }
+    .card-input{
+      width:100%;
+      min-height:80px;
+      background:#282828;
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      padding:10px;
+      outline:none;
+      resize:vertical;
+      margin-bottom:10px;
+    }
+    .btn-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+    .btn-row button{
+      flex:1;
+    }
+    .card-item{
+      background:#282828;
+      border-radius:10px;
+      padding:10px;
+      margin-bottom:8px;
+    }
+    .card-text{
+      font-size:14px;
+      margin-bottom:6px;
+      white-space:pre-wrap;
+    }
+    .card-ctrl{
+      display:flex;
+      gap:6px;
+    }
+    .card-ctrl button{
+      font-size:12px;
+      padding:4px 8px;
+    }
     button {
       padding: 6px 12px;
       border-radius: 8px;
@@ -191,6 +272,20 @@
       <div class="input-bar">
         <input id="chat-input" placeholder="输入消息..." />
         <button id="send-btn">发送</button>
+      </div>
+    </div>
+    <!-- 悬浮球 -->
+    <div class="float-ball" id="floatBtn">卡</div>
+    <!-- 字卡审核面板 -->
+    <div class="audit-panel" id="auditPanel">
+      <div class="panel-wrap">
+        <div class="panel-title">字卡审核库</div>
+        <textarea class="card-input" id="newCardInput" placeholder="录入新的字卡内容..."></textarea>
+        <div class="btn-row">
+          <button id="addCardBtn">添加入库</button>
+          <button id="closeAuditBtn">关闭面板</button>
+        </div>
+        <div id="cardListWrap"></div>
       </div>
     </div>
     <!-- 美化抽屉 -->
@@ -263,8 +358,9 @@
       Object.entries(json).forEach(([k, v]) => this.set(k, v))
     }
   }
-  // 聊天记录key
+  // 存储Key
   const CHAT_KEY = `xy-home-v2:${window.GLOBAL_CONTEXT.activeSessionId}:chat-msgs`
+  const CARD_LIB_KEY = `xy-home-v2:card-lib`
 
   // ========== 聊天渲染函数 ==========
   function renderChat(){
@@ -291,7 +387,7 @@
       "'":'&#039;'
     })[c])
   }
-  // 全局注入气泡接口，后续字卡、占卜、小屋全部共用
+  // 全局注入气泡接口
   window.sendAuditCard = function(text, side="mj"){
     const list = Store.get(CHAT_KEY, [])
     const d = new Date()
@@ -308,6 +404,68 @@
     })
     Store.set(CHAT_KEY, list)
     renderChat()
+    EventBus.emit(EVENT.AUDIT_DATA_UPDATED, {text, side})
+  }
+
+  // ========== 字卡库模块 ==========
+  function getCardList(){
+    return Store.get(CARD_LIB_KEY, [])
+  }
+  function saveCardList(arr){
+    Store.set(CARD_LIB_KEY, arr)
+  }
+  function renderCardList(){
+    const wrap = document.getElementById("cardListWrap")
+    const cards = getCardList()
+    wrap.innerHTML = ""
+    if(cards.length === 0){
+      wrap.innerHTML = "<div style='opacity:0.6;text-align:center'>暂无字卡</div>"
+      return
+    }
+    cards.forEach((item,idx)=>{
+      const div = document.createElement("div")
+      div.className = "card-item"
+      div.innerHTML = `
+        <div class="card-text">${escapeHTML(item.content)}</div>
+        <div class="card-ctrl">
+          <button class="send-card" data-idx="${idx}">发送到聊天</button>
+          <button class="del-card" data-idx="${idx}">删除</button>
+        </div>
+      `
+      wrap.appendChild(div)
+    })
+    // 发送字卡
+    document.querySelectorAll(".send-card").forEach(btn=>{
+      btn.onclick = ()=>{
+        const i = Number(btn.dataset.idx)
+        const c = getCardList()[i]
+        window.sendAuditCard(c.content, "mj")
+        toast("已发送字卡")
+      }
+    })
+    // 删除字卡
+    document.querySelectorAll(".del-card").forEach(btn=>{
+      btn.onclick = ()=>{
+        const i = Number(btn.dataset.idx)
+        const arr = getCardList()
+        arr.splice(i,1)
+        saveCardList(arr)
+        renderCardList()
+        toast("已删除")
+      }
+    })
+  }
+  // 添加新字卡
+  document.getElementById("addCardBtn").onclick = ()=>{
+    const input = document.getElementById("newCardInput")
+    const txt = input.value.trim()
+    if(!txt) return toast("字卡内容不能为空")
+    const arr = getCardList()
+    arr.push({content:txt, createTs:Date.now()})
+    saveCardList(arr)
+    input.value = ""
+    renderCardList()
+    toast("字卡入库成功")
   }
 
   // ========== 美化配置 ==========
@@ -357,6 +515,17 @@
     window.GLOBAL_CONTEXT.config.bubbleRadius = Number(inpBR.value)
     applyConfig()
   }
+  // ========== 悬浮球 & 审核面板 ==========
+  const floatBtn = document.getElementById("floatBtn")
+  const auditPanel = document.getElementById("auditPanel")
+  const closeAuditBtn = document.getElementById("closeAuditBtn")
+  floatBtn.onclick = ()=>{
+    auditPanel.classList.add("open")
+    renderCardList()
+  }
+  closeAuditBtn.onclick = ()=>{
+    auditPanel.classList.remove("open")
+  }
   // ========== 发送消息逻辑 ==========
   const input = document.getElementById("chat-input")
   const sendBtn = document.getElementById("send-btn")
@@ -382,7 +551,7 @@
   }
   updateTime()
   setInterval(updateTime, 60000)
-  // 页面加载渲染聊天
+  // 页面加载渲染
   renderChat()
 </script>
 </body>
