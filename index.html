@@ -11,6 +11,9 @@
       --bubble-radius: 12px;
       --toast-bg: #333333;
       --toast-text: #ffffff;
+      --chat-bg: #121212;
+      --me-bubble: #504080;
+      --mj-bubble: #2c2c2c;
     }
     * {
       box-sizing: border-box;
@@ -31,8 +34,8 @@
     .phone-shell {
       width: 360px;
       height: 720px;
-      border-radius:  42px;
-      border:  10px solid #111;
+      border-radius: 42px;
+      border: 10px solid #111;
       background: #000;
       overflow: hidden;
       position: relative;
@@ -46,28 +49,99 @@
     /* 顶部状态栏 */
     .status-bar {
       height: 32px;
-      background: rgba((0,0,0,0.25);
+      background: rgba(0,0,0,0.25);
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 0 18px;
       font-size: 12px;
     }
-    /* 内容容器，所有面板放这里 */
+    /* 聊天主容器 */
     #app-container {
       height: calc(100% - 32px);
-      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--chat-bg);
     }
-    /* 美化设置弹窗 */
-    .-setting-drawer {
+    .chat-header{
+      padding:10px 14px;
+      text-align:center;
+      border-bottom:1px solid #282828;
+    }
+    .chat-name{
+      font-weight: 500;
+    }
+    .chat-msg-area{
+      flex:1;
+      padding:12px;
+      overflow-y:auto;
+    }
+    .msg-item{
+      margin-bottom:12px;
+    }
+    .msg-me{
+      display:flex;
+      justify-content:flex-end;
+    }
+    .msg-mj{
+      display:flex;
+      justify-content:flex-start;
+    }
+    .bubble{
+      max-width:75%;
+      padding: 8px 12px;
+      border-radius: var(--bubble-radius);
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+    .msg-me .bubble{
+      background: var(--me-bubble);
+    }
+    .msg-mj .bubble{
+      background: var(--mj-bubble);
+    }
+    .msg-time{
+      font-size:10px;
+      opacity:0.6;
+      margin-top: 3px;
+    }
+    .msg-me .msg-time{
+      text-align:right;
+    }
+    .input-bar{
+      display:flex;
+      gap:6px;
+      padding:10px;
+      border-top:1px solid #282828;
+    }
+    #chat-input{
+      flex:1;
+      border-radius:999px;
+      border:none;
+      padding: 8px 14px;
+      background:#282828;
+      color:#fff;
+      outline:none;
+    }
+    #send-btn{
+      border-radius:999px;
+      border:none;
+      padding: 0 14px;
+      background: var(--main-color);
+      color:#fff;
+      cursor:pointer;
+    }
+    /* 美化设置抽屉 */
+    .setting-drawer {
       position: absolute;
       inset: 0;
-      background: rgba((0,0,0,0..7);
+      background: rgba(0,0,0,0.7);
       display: none;
       padding: 20px;
       overflow-y: auto;
+      z-index: 10;
     }
-    .-setting-drawer.open {
+    .setting-drawer.open {
       display: block;
     }
     .setting-item {
@@ -82,19 +156,19 @@
       width: 100%;
     }
     button {
-      padding:  6px 12px;
-      border-radius:  8px;
+      padding: 6px 12px;
+      border-radius: 8px;
       border: none;
       cursor: pointer;
-      margin:  2px;
+      margin: 2px;
     }
     .toast {
       position: fixed;
-      bottom:  40px;
-      left:  50%;
+      bottom: 40px;
+      left: 50%;
       transform: translateX(-50%);
-      padding:  8px  16px;
-      border-radius:  8px;
+      padding: 8px 16px;
+      border-radius: 8px;
       z-index: 9999;
       background: var(--toast-bg);
       color: var(--toast-text);
@@ -110,10 +184,13 @@
       <span>信号</span>
     </div>
     <div id="app-container">
-      <!-- 后续聊天、字卡、树洞等面板渲染在这里 -->
-      <div style="padding:20px">
-        <p>基座加载成功！</p>
-        <button id="open-setting-btn">打开美化设置</button>
+      <div class="chat-header">
+        <div class="chat-name">梦角MJ</div>
+      </div>
+      <div class="chat-msg-area" id="chat-area"></div>
+      <div class="input-bar">
+        <input id="chat-input" placeholder="输入消息..." />
+        <button id="send-btn">发送</button>
       </div>
     </div>
     <!-- 美化抽屉 -->
@@ -131,13 +208,14 @@
         <input type="range" id="inp-bubble-radius" min="0" max="24" value="12">
       </div>
       <button id="close-setting">关闭</button>
+      <button id="open-setting-btn">回到聊天页</button>
     </div>
   </div>
 </div>
 <script>
   // ========== 全局上下文 ==========
   window.GLOBAL_CONTEXT = {
-    activeSessionId: null,
+    activeSessionId: "mj-001",
     config: {
       mainColor: "#8c78b9",
       globalRadius: 16,
@@ -156,7 +234,6 @@
       this.events[name].forEach(cb => cb(data))
     }
   }
-  // 预设事件
   const EVENT = {
     SESSION_CHANGED: "session-changed",
     AUDIT_DATA_UPDATED: "my-audit-data-updated"
@@ -186,7 +263,54 @@
       Object.entries(json).forEach(([k, v]) => this.set(k, v))
     }
   }
-  // 读取保存的美化配置
+  // 聊天记录key
+  const CHAT_KEY = `xy-home-v2:${window.GLOBAL_CONTEXT.activeSessionId}:chat-msgs`
+
+  // ========== 聊天渲染函数 ==========
+  function renderChat(){
+    const list = Store.get(CHAT_KEY, [])
+    const wrap = document.getElementById("chat-area")
+    wrap.innerHTML = ""
+    list.forEach(msg=>{
+      const div = document.createElement("div")
+      div.className = `msg-item ${ msg.side === "me" ? "msg-me" : "msg-mj"}`
+      div.innerHTML = `
+        <div class="bubble">${escapeHTML(msg.text)}</div>
+        <div class="msg-time">${msg.timeStr}</div>
+      `
+      wrap.appendChild(div)
+    })
+    wrap.scrollTop = wrap.scrollHeight
+  }
+  function escapeHTML(str){
+    return str.replace(/[&<>"']/g, c=> ({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#039;'
+    })[c])
+  }
+  // 全局注入气泡接口，后续字卡、占卜、小屋全部共用
+  window.sendAuditCard = function(text, side="mj"){
+    const list = Store.get(CHAT_KEY, [])
+    const d = new Date()
+    const h = String(d.getHours()).padStart(2,"0")
+    const m = String(d.getMinutes()).padStart(2,"0")
+    const s = String(d.getSeconds()).padStart(2,"0")
+    const timeStr = `${h}:${m}:${s}`
+    list.push({
+      side,
+      text,
+      timeStr,
+      ts: d.getTime(),
+      injected: 1
+    })
+    Store.set(CHAT_KEY, list)
+    renderChat()
+  }
+
+  // ========== 美化配置 ==========
   const savedConfig = Store.get("app-config", null)
   if (savedConfig) {
     window.GLOBAL_CONTEXT.config = savedConfig
@@ -199,7 +323,7 @@
     Store.set("app-config", cfg)
   }
   applyConfig()
-  // ========== 简单 Toast ==========
+  // ========== Toast ==========
   function toast(text) {
     const el = document.createElement("div")
     el.className = "toast"
@@ -214,7 +338,6 @@
   const inpColor = document.getElementById("inp-main-color")
   const inpGR = document.getElementById("inp-global-radius")
   const inpBR = document.getElementById("inp-bubble-radius")
-  // 初始化输入框值
   inpColor.value = window.GLOBAL_CONTEXT.config.mainColor
   inpGR.value = window.GLOBAL_CONTEXT.config.globalRadius
   inpBR.value = window.GLOBAL_CONTEXT.config.bubbleRadius
@@ -234,7 +357,23 @@
     window.GLOBAL_CONTEXT.config.bubbleRadius = Number(inpBR.value)
     applyConfig()
   }
-  // 更新状态栏时间
+  // ========== 发送消息逻辑 ==========
+  const input = document.getElementById("chat-input")
+  const sendBtn = document.getElementById("send-btn")
+  function sendMsg(){
+    const txt = input.value.trim()
+    if(!txt) return toast("内容不能为空")
+    window.sendAuditCard(txt, "me")
+    input.value = ""
+  }
+  sendBtn.onclick = sendMsg
+  input.onkeydown = e=>{
+    if(e.key === "Enter"){
+      e.preventDefault()
+      sendMsg()
+    }
+  }
+  // ========== 状态栏时间 ==========
   function updateTime() {
     const d = new Date()
     const h = String(d.getHours()).padStart(2, "0")
@@ -243,6 +382,8 @@
   }
   updateTime()
   setInterval(updateTime, 60000)
+  // 页面加载渲染聊天
+  renderChat()
 </script>
 </body>
 </html>
