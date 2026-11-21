@@ -4,9 +4,35 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>梦角字卡传讯</title>
+  <style>
+    /* 后面所有全局CSS、主题变量写在这里，用 :root 定义美化变量 */
+    :root {
+      --main-color: #8c78b9;
+      --global-radius: 16px;
+      -- bubble-radius: 12px;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #222;
+    }
+  </style>
 </head>
 <body>
+  <!-- 手机模拟器外壳、所有面板、弹窗全部放在这里 -->
   <div id="app"></div>
-<script type="module" src="src/main.js"></script>
+
+  <script>
+    // 全部JS代码都写在这里！
+    // 全局上下文、存储工具、事件总线、所有模块逻辑
+    window.GLOBAL_CONTEXT = {
+      activeSessionId: null,
+      config: {}
+    }
+    // 后面我们一点点在这里追加代码
+  </script>
 </body>
 </html>
