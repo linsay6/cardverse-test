@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>梦角字卡传讯</title>
   <style>
-    /* 后面所有全局CSS、主题变量写在这里，用 :root 定义美化变量 */
     :root {
       --main-color: #8c78b9;
       --global-radius: 16px;
-      -- bubble-radius: 12px;
+      --bubble-radius: 12px;
+      --toast-bg: #333333;
+      --toast-text: #ffffff;
     }
     * {
       box-sizing: border-box;
@@ -17,22 +18,231 @@
       padding: 0;
     }
     body {
-      background: #222;
+      background-color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      font-family: system-ui, sans-serif;
+      color: #fff;
+    }
+    /* 手机模拟器外壳 */
+    .phone-shell {
+      width: 360px;
+      height: 720px;
+      border-radius:  42px;
+      border:  10px solid #111;
+      background: #000;
+      overflow: hidden;
+      position: relative;
+    }
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+    /* 顶部状态栏 */
+    .status-bar {
+      height: 32px;
+      background: rgba((0,0,0,0.25);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 18px;
+      font-size: 12px;
+    }
+    /* 内容容器，所有面板放这里 */
+    #app-container {
+      height: calc(100% - 32px);
+      overflow: auto;
+    }
+    /* 美化设置弹窗 */
+    .-setting-drawer {
+      position: absolute;
+      inset: 0;
+      background: rgba((0,0,0,0..7);
+      display: none;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .-setting-drawer.open {
+      display: block;
+    }
+    .setting-item {
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+    input[type="color"], input[type="range"] {
+      width: 100%;
+    }
+    button {
+      padding:  6px 12px;
+      border-radius:  8px;
+      border: none;
+      cursor: pointer;
+      margin:  2px;
+    }
+    .toast {
+      position: fixed;
+      bottom:  40px;
+      left:  50%;
+      transform: translateX(-50%);
+      padding:  8px  16px;
+      border-radius:  8px;
+      z-index: 9999;
+      background: var(--toast-bg);
+      color: var(--toast-text);
+      font-size: 13px;
     }
   </style>
 </head>
 <body>
-  <!-- 手机模拟器外壳、所有面板、弹窗全部放在这里 -->
-  <div id="app"></div>
-
-  <script>
-    // 全部JS代码都写在这里！
-    // 全局上下文、存储工具、事件总线、所有模块逻辑
-    window.GLOBAL_CONTEXT = {
-      activeSessionId: null,
-      config: {}
+<div class="phone-shell">
+  <div class="phone-screen">
+    <div class="status-bar">
+      <span id="time-text">00:00</span>
+      <span>信号</span>
+    </div>
+    <div id="app-container">
+      <!-- 后续聊天、字卡、树洞等面板渲染在这里 -->
+      <div style="padding:20px">
+        <p>基座加载成功！</p>
+        <button id="open-setting-btn">打开美化设置</button>
+      </div>
+    </div>
+    <!-- 美化抽屉 -->
+    <div class="setting-drawer" id="setting-drawer">
+      <div class="setting-item">
+        <label>主色调</label>
+        <input type="color" id="inp-main-color">
+      </div>
+      <div class="setting-item">
+        <label>全局圆角</label>
+        <input type="range" id="inp-global-radius" min="0" max="36" value="16">
+      </div>
+      <div class="setting-item">
+        <label>气泡圆角</label>
+        <input type="range" id="inp-bubble-radius" min="0" max="24" value="12">
+      </div>
+      <button id="close-setting">关闭</button>
+    </div>
+  </div>
+</div>
+<script>
+  // ========== 全局上下文 ==========
+  window.GLOBAL_CONTEXT = {
+    activeSessionId: null,
+    config: {
+      mainColor: "#8c78b9",
+      globalRadius: 16,
+      bubbleRadius: 12
     }
-    // 后面我们一点点在这里追加代码
-  </script>
+  }
+  // ========== 事件总线 ==========
+  const EventBus = {
+    events: {},
+    on(name, fn) {
+      if (!this.events[name]) this.events[name] = []
+      this.events[name].push(fn)
+    },
+    emit(name, data) {
+      if (!this.events[name]) return
+      this.events[name].forEach(cb => cb(data))
+    }
+  }
+  // 预设事件
+  const EVENT = {
+    SESSION_CHANGED: "session-changed",
+    AUDIT_DATA_UPDATED: "my-audit-data-updated"
+  }
+  // ========== localStorage 存储工具 ==========
+  const Store = {
+    get(key, defaultValue) {
+      try {
+        const str = localStorage.getItem(key)
+        return str ? JSON.parse(str) : defaultValue
+      } catch (e) {
+        return defaultValue
+      }
+    },
+    set(key, val) {
+      localStorage.setItem(key, JSON.stringify(val))
+    },
+    exportAll() {
+      const out = {}
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        out[k] = this.get(k, null)
+      }
+      return out
+    },
+    importAll(json) {
+      Object.entries(json).forEach(([k, v]) => this.set(k, v))
+    }
+  }
+  // 读取保存的美化配置
+  const savedConfig = Store.get("app-config", null)
+  if (savedConfig) {
+    window.GLOBAL_CONTEXT.config = savedConfig
+  }
+  function applyConfig() {
+    const cfg = window.GLOBAL_CONTEXT.config
+    document.documentElement.style.setProperty("--main-color", cfg.mainColor)
+    document.documentElement.style.setProperty("--global-radius", cfg.globalRadius + "px")
+    document.documentElement.style.setProperty("--bubble-radius", cfg.bubbleRadius + "px")
+    Store.set("app-config", cfg)
+  }
+  applyConfig()
+  // ========== 简单 Toast ==========
+  function toast(text) {
+    const el = document.createElement("div")
+    el.className = "toast"
+    el.innerText = text
+    document.body.appendChild(el)
+    setTimeout(() => el.remove(), 1600)
+  }
+  // ========== 美化面板绑定 ==========
+  const drawer = document.getElementById("setting-drawer")
+  const openBtn = document.getElementById("open-setting-btn")
+  const closeBtn = document.getElementById("close-setting")
+  const inpColor = document.getElementById("inp-main-color")
+  const inpGR = document.getElementById("inp-global-radius")
+  const inpBR = document.getElementById("inp-bubble-radius")
+  // 初始化输入框值
+  inpColor.value = window.GLOBAL_CONTEXT.config.mainColor
+  inpGR.value = window.GLOBAL_CONTEXT.config.globalRadius
+  inpBR.value = window.GLOBAL_CONTEXT.config.bubbleRadius
+
+  openBtn.onclick = () => drawer.classList.add("open")
+  closeBtn.onclick = () => drawer.classList.remove("open")
+
+  inpColor.oninput = () => {
+    window.GLOBAL_CONTEXT.config.mainColor = inpColor.value
+    applyConfig()
+  }
+  inpGR.oninput = () => {
+    window.GLOBAL_CONTEXT.config.globalRadius = Number(inpGR.value)
+    applyConfig()
+  }
+  inpBR.oninput = () => {
+    window.GLOBAL_CONTEXT.config.bubbleRadius = Number(inpBR.value)
+    applyConfig()
+  }
+  // 更新状态栏时间
+  function updateTime() {
+    const d = new Date()
+    const h = String(d.getHours()).padStart(2, "0")
+    const m = String(d.getMinutes()).padStart(2, "0")
+    document.getElementById("time-text").innerText = `${h}:${m}`
+  }
+  updateTime()
+  setInterval(updateTime, 60000)
+</script>
 </body>
 </html>
