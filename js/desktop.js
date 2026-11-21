@@ -59,7 +59,7 @@ export const DesktopModule = {
       `;
       // 点击卡片，进入对话
      cardDom.onclick = () => {
-  EventBus.emit("card:select", card);
+  EventBus.emit("session:switch", {sessionId: card.id, card});
   EventBus.emit("tab:switch", "chat");
 };
       this.rootEl.appendChild(cardDom);
