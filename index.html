@@ -1,660 +1,182 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>梦角MJ</title>
-  <style>
-    :root {
-      --main-color: #8c78b9;
-      --global-radius: 16px;
-      --bubble-radius: 12px;
-      --toast-bg: #333333;
-      --toast-text: #ffffff;
-      --chat-bg: #121212;
-      --me-bubble: #504080;
-      --mj-bubble: #2c2c2c;
-      --panel-bg: #fff;
-      --desk-bg: #f7f7f9;
-      --card-bg: #ffffff;
-      --text-main: #222222;
-      --text-sub: #888888;
-      --tab-bottom-inactive:#999;
-      --tab-bottom-active:#222;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: #1a1a1a;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      font-family: system-ui, sans-serif;
-      color: var(--text-main);
-    }
-    .phone-shell {
-      width: 360px;
-      height: 720px;
-      border-radius: 42px;
-      border: 10px solid #111;
-      background: #000;
-      overflow: hidden;
-      position: relative;
-    }
-    .phone-screen {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-    }
-    .status-bar {
-      height: 32px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 18px;
-      font-size: 12px;
-      flex-shrink: 0;
-      color:#222;
-    }
-    .app-main {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-    }
-    .page {
-      position: absolute;
-      inset: 0 0 60px 0;
-      overflow-y: auto;
-      display: none;
-      flex-direction: column;
-      background:var(--desk-bg);
-    }
-    .page.active { display: flex; }
-
-    /* ========== 底部常驻三Tab栏 ========== */
-    .bottom-main-tab{
-      height:60px;
-      background:#fff;
-      display:flex;
-      border-top:1px solid #eee;
-      flex-shrink:0;
-    }
-    .bottom-tab-item{
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:4px;
-      cursor:pointer;
-      color:var(--tab-bottom-inactive);
-      font-size:11px;
-    }
-    .bottom-tab-item.active{
-      color:var(--tab-bottom-active);
-    }
-    .bottom-tab-icon{
-      font-size:20px;
-    }
-
-    /* ========== 桌面首页 ========== */
-    #page-desktop { background: var(--desk-bg); padding: 12px; }
-    .desk-top { display: flex; gap: 10px; margin-bottom: 12px; }
-    .desk-card {
-      flex: 1;
-      background: var(--card-bg);
-      border-radius: var(--global-radius);
-      padding: 14px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-    .desk-card .label { font-size: 12px; color: var(--text-sub); margin-bottom: 6px; }
-    .desk-card .value { font-size: 15px; font-weight: 600; }
-    .checkin-bar {
-      background: var(--card-bg);
-      border-radius: var(--global-radius);
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-    .checkin-ico {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: #111; color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .checkin-text { flex: 1; font-size: 13px; }
-    .checkin-btn {
-      background: #111; color: #fff; border: none;
-      border-radius: 999px; padding: 8px 16px; font-size: 13px; cursor: pointer;
-    }
-    .icon-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 18px 10px;
-    }
-    .app-icon {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      position: relative;
-    }
-    .icon-box {
-      width: 52px; height: 52px;
-      border-radius: 16px;
-      background: var(--card-bg);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 24px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    }
-    .icon-name { font-size: 12px; color: var(--text-main); }
-    .badge {
-      position: absolute;
-      top: -4px; right: 6px;
-      min-width: 18px; height: 18px;
-      border-radius: 999px;
-      background: #e53935; color: #fff;
-      font-size: 11px;
-      display: flex; align-items: center; justify-content: center;
-      padding: 0 5px;
-    }
-    .desk-dots {
-      display: flex; justify-content: center; gap: 6px;
-      margin-top: 18px;
-    }
-    .desk-dots span {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: #bbb;
-    }
-    .desk-dots span.on { background: #333; }
-
-    /* ========== 功能子页面（点开桌面图标进入） ========== */
-    .sub-page{
-      position:absolute;
-      inset:0 0 60px 0;
-      background:#fff;
-      overflow-y:auto;
-      display:none;
-      flex-direction:column;
-    }
-    .sub-page.active{
-      display:flex;
-    }
-    .sub-header{
-      padding:14px 16px;
-      font-size:22px;
-      font-weight:bold;
-      flex-shrink:0;
-    }
-    .sub-back{
-      position:absolute;
-      top:14px;
-      left:12px;
-      border:none;
-      background:none;
-      font-size:18px;
-      cursor:pointer;
-      z-index:2;
-    }
-    .sub-body{
-      flex:1;
-      padding:12px 16px;
-      overflow-y:auto;
-    }
-
-    /* ========== 字卡库页面内标签 ========== */
-    .card-tab-row{
-      display:flex;
-      gap:8px;
-      padding:0 16px 12px;
-      flex-wrap:wrap;
-    }
-    .card-tab{
-      padding:8px 14px;
-      border-radius:999px;
-      border:none;
-      cursor:pointer;
-      background:#eee;
-    }
-    .card-tab.active{
-      background:#111;
-      color:#fff;
-    }
-    .card-search{
-      width:calc(100% - 32px);
-      margin:0 16px 16px;
-      padding:10px 14px;
-      border-radius:12px;
-      border:1px solid #eee;
-      outline:none;
-    }
-    .card-group-item{
-      background:#f5f5f7;
-      border-radius:14px;
-      padding:14px;
-      margin:0 16px 10px;
-    }
-    .card-group-title{
-      font-size:16px;
-      font-weight:600;
-      margin-bottom:4px;
-    }
-    .card-group-desc{
-      font-size:12px;
-      color:#777;
-    }
-
-    /* ========== 设置页横向标签 ========== */
-    .setting-tab-row{
-      display:flex;
-      gap:4px;
-      padding:0 16px 14px;
-      border-bottom:1px solid #eee;
-    }
-    .setting-tab{
-      padding:6px 10px;
-      border:none;
-      background:none;
-      font-size:14px;
-      cursor:pointer;
-      color:#777;
-    }
-    .setting-tab.active{
-      color:#111;
-      font-weight:600;
-      border-bottom:2px solid #111;
-    }
-    .setting-block{
-      background:#f5f5f7;
-      border-radius:14px;
-      padding:14px;
-      margin:0 16px 12px;
-    }
-    .setting-row{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:8px 0;
-    }
-
-    /* ========== 聊天子页面样式 ========== */
-    #sub-chat { background: var(--chat-bg); color:#fff;}
-    .chat-msg-area { flex: 1; padding-bottom: 8px; }
-    .msg-item { margin-bottom: 12px; }
-    .msg-me { display: flex; justify-content: flex-end; }
-    .msg-mj { display: flex; justify-content: flex-start; }
-    .bubble {
-      max-width: 75%;
-      padding: 8px 12px;
-      border-radius: var(--bubble-radius);
-      word-wrap: break-word;
-      white-space: pre-wrap;
-    }
-    .msg-me .bubble { background: var(--me-bubble); }
-    .msg-mj .bubble { background: var(--mj-bubble); }
-    .msg-time { font-size: 10px; opacity: 0.6; margin-top: 3px; }
-    .msg-me .msg-time { text-align: right; }
-    .input-bar {
-      display: flex; gap: 6px;
-      padding: 10px 12px;
-      border-top: 1px solid #282828;
-      flex-shrink: 0;
-    }
-    #chat-input {
-      flex: 1; border-radius: 999px; border: none;
-      padding: 8px 14px; background: #282828; color: #fff; outline: none;
-    }
-    #send-btn {
-      border-radius: 999px; border: none; padding: 0 14px;
-      background: var(--main-color); color: #fff; cursor: pointer;
-    }
-
-    .placeholder { opacity: 0.6; text-align: center; padding-top: 40px; }
-    .toast {
-      position: fixed; bottom: 70px; left: 50%;
-      transform: translateX(-50%);
-      padding: 8px 16px; border-radius: 8px; z-index: 9999;
-      background: var(--toast-bg); color: var(--toast-text); font-size: 13px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>梦角传讯</title>
+<style>
+:root {
+  --color-main: #7c68ee;
+  --color-bg: #ffffff;
+  --color-text: #222222;
+  --color-text-2: #666666;
+  --color-border: #e5e7eb;
+  --radius-global: 18px;
+  --radius-card: 14px;
+  --radius-btn: 10px;
+  --phone-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  --tab-active: var(--color-main);
+  --tab-inactive: #999;
+}
+* {
+  margin:0;
+  padding:0;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+body {
+  min-height: 100vh;
+  background: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:16px;
+}
+/* 手机外壳 */
+.phone-wrap {
+  width: 375px;
+  height: 700px;
+  background: #111;
+  border-radius: 42px;
+  padding:12px;
+  box-shadow: var(--phone-shadow);
+  overflow: hidden;
+  position: relative;
+}
+.phone-screen {
+  width:100%;
+  height:100%;
+  background: var(--color-bg);
+  border-radius: 32px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+/* 顶部状态栏 */
+.status-bar {
+  height:32px;
+  padding:0 18px;
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  font-size:13px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  flex-shrink:0;
+}
+/* 主内容区域 */
+.main-container {
+  flex:1;
+  position: relative;
+  overflow:hidden;
+}
+.tab-page {
+  width:100%;
+  height:100%;
+  position:absolute;
+  top:0;
+  left:0;
+  padding:12px;
+  overflow-y:auto;
+  display:none;
+  background: var(--color-bg);
+}
+.tab-page.active {
+  display:block;
+}
+/* 底部Tab栏 */
+.tab-bar {
+  height:54px;
+  display:flex;
+  background: var(--color-bg);
+  border-top:1px solid var(--color-border);
+  flex-shrink:0;
+}
+.tab-item {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  color: var(--tab-inactive);
+  font-size:12px;
+  gap:3px;
+  cursor:pointer;
+}
+.tab-item.active {
+  color: var(--tab-active);
+}
+.tab-icon {
+  font-size:18px;
+}
+</style>
 </head>
 <body>
-<div class="phone-shell">
+<div class="phone-wrap">
   <div class="phone-screen">
+    <!-- 顶部状态栏 -->
     <div class="status-bar">
-      <span id="time-text">00:00</span>
-      <span>信号</span>
+      <span id="status-time">00:00</span>
+      <span>📶 🔋</span>
     </div>
-    <div class="app-main">
-      <!-- 三大主页面：桌面 / 字卡库 / 设置 -->
-      <div class="page active" id="page-desktop">
-        <div class="desk-top">
-          <div class="desk-card">
-            <div class="label">今日情话</div>
-            <div class="value" id="desk-love">你不用和任何人比较</div>
-          </div>
-          <div class="desk-card">
-            <div class="label">已摸鱼</div>
-            <div class="value">5 天</div>
-          </div>
-        </div>
-        <div class="checkin-bar">
-          <div class="checkin-ico">♥</div>
-          <div class="checkin-text">和 TA 一起摸鱼 · 今天也要甜甜的</div>
-          <button class="checkin-btn">打卡</button>
-        </div>
-        <div class="icon-grid" id="icon-grid"></div>
-        <div class="desk-dots"><span class="on"></span><span></span><span></span></div>
+    <!-- 页面容器：桌面、字卡、设置 -->
+    <div class="main-container">
+      <div id="page-desktop" class="tab-page active">
+        <!-- 桌面九宫格挂载点 -->
+        <div id="desktop-root"></div>
       </div>
-
-      <div class="page" id="page-cardlib">
-        <div class="sub-header">字卡库</div>
-        <div class="card-tab-row">
-          <button class="card-tab active" data-cardtab="custom">可自定义字卡 <span style="color:#fff">9</span></button>
-          <button class="card-tab" data-cardtab="sys">系统预设字卡 <span style="color:#777">22262</span></button>
-          <button class="card-tab" data-cardtab="audit">审核报告字卡</button>
-        </div>
-        <input class="card-search" placeholder="搜索字卡内容...">
-        <div id="cardlib-content">
-          <div class="card-group-item">
-            <div class="card-group-title">公用字卡</div>
-            <div class="card-group-desc">以后每个桌面的联系人都能使用</div>
-          </div>
-          <div class="card-group-item">
-            <div class="card-group-title">专属字卡</div>
-            <div class="card-group-desc">只有当前桌面绑定的联系人才能使用</div>
-          </div>
-          <div class="card-group-item">
-            <div class="card-group-title">其他互动功能字卡·公用</div>
-            <div class="card-group-desc">添加的功能字卡 · 每个桌面的联系人都能使用</div>
-          </div>
-          <div class="card-group-item">
-            <div class="card-group-title">其他互动功能字卡·专属</div>
-            <div class="card-group-desc">添加的功能字卡 · 只有当前桌面的联系人能使用</div>
-          </div>
-          <div class="card-group-item">
-            <div class="card-group-title">寻踪日常·我的添加</div>
-          </div>
-        </div>
+      <div id="page-cardlib" class="tab-page">
+        <!-- 字卡库挂载点 -->
+        <div id="cardlib-root"></div>
       </div>
-
-      <div class="page" id="page-setting">
-        <div class="sub-header">设置</div>
-        <div class="setting-tab-row">
-          <button class="setting-tab active" data-settab="general">通用</button>
-          <button class="setting-tab" data-settab="chat">聊天</button>
-          <button class="setting-tab" data-settab="sys">系统</button>
-          <button class="setting-tab" data-settab="tool">工具</button>
-          <button class="setting-tab" data-settab="diag">信息诊断</button>
-          <button class="setting-tab" data-settab="about">关于</button>
-        </div>
-        <div id="setting-content">
-          <div class="setting-block">
-            <div class="setting-row">
-              <span>全屏模式（隐藏手机状态栏）</span>
-              <label class="switch">
-                <input type="checkbox">
-              </label>
-            </div>
-            <div style="font-size:12px;color:#777;line-height:1.5;margin-top:6px;">
-              手机端切到后台 (锁屏 / 切去别的应用) 会自动退出全屏，这是设备限制、不是 bug，切回来手动再开一次即可。<br>
-              开启后尽量隐藏手机顶部状态栏/浏览器栏，让内容占满全屏。<br>
-              iOS 限制：iPhone 顶部系统状态栏 (时间/电量) 由系统控制，任何网页都无法隐藏；从主屏幕打开时本开关会让内容顶满屏幕，应用内模拟状态栏下移到系统状态栏正下方、两栏不重叠。
-            </div>
-          </div>
-          <div class="setting-block">
-            <div class="setting-row">
-              <span>导出数据</span>
-              <span>›</span>
-            </div>
-            <div style="font-size:12px;color:#777;line-height:1.5;margin-top:6px;">
-              点开可选「仅聊天记录」：各桌面联系人 + 群聊，换机只搬聊天
-            </div>
-          </div>
-          <div class="setting-block">
-            <div class="setting-row">
-              <span>导入数据</span>
-              <span>›</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 从桌面图标点开的子页面 -->
-      <div class="sub-page" id="sub-chat">
-        <button class="sub-back" data-back>‹</button>
-        <div class="sub-header">梦角MJ</div>
-        <div class="chat-msg-area sub-body" id="chat-area"></div>
-        <div class="input-bar">
-          <input id="chat-input" placeholder="输入消息..." />
-          <button id="send-btn">发送</button>
-        </div>
-      </div>
-      <div class="sub-page" id="sub-tarot">
-        <button class="sub-back" data-back>‹</button>
-        <div class="sub-header">占卜</div>
-        <div class="sub-body placeholder">塔罗 / 雷诺曼模块开发中</div>
-      </div>
-      <div class="sub-page" id="sub-audit">
-        <button class="sub-back" data-back>‹</button>
-        <div class="sub-header">审核</div>
-        <div class="sub-body placeholder">待审申请、历史档案</div>
-      </div>
-      <div class="sub-page" id="sub-friend">
-        <button class="sub-back" data-back>‹</button>
-        <div class="sub-header">朋友圈</div>
-        <div class="sub-body placeholder">朋友圈开发中</div>
-      </div>
-      <div class="sub-page" id="sub-mail">
-        <button class="sub-back" data-back>‹</button>
-        <div class="sub-header">信箱</div>
-        <div class="sub-body placeholder">信箱开发中</div>
-      </div>
-      <div class="sub-page" id="sub-cal">
-        <button class="sub-back" data-back>‹</button>
-        <div class="sub-header">日历</div>
-        <div class="sub-body placeholder">日历开发中</div>
-      </div>
-      <div class="sub-page" id="sub-memory">
-        <button class="sub-back" data-back>‹</button>
-        <div class="sub-header">纪念</div>
-        <div class="sub-body placeholder">纪念日开发中</div>
-      </div>
-      <div class="sub-page" id="sub-collect">
-        <button class="sub-back" data-back>‹</button>
-        <div class="sub-header">收藏</div>
-        <div class="sub-body placeholder">收藏内容</div>
+      <div id="page-setting" class="tab-page">
+        <!-- 设置面板挂载点 -->
+        <div id="setting-root"></div>
       </div>
     </div>
-
-    <!-- 底部常驻三大Tab -->
-    <div class="bottom-main-tab">
-      <div class="bottom-tab-item active" data-mainpage="desktop">
-        <div class="bottom-tab-icon">📱</div>
+    <!-- 底部Tab -->
+    <div class="tab-bar">
+      <div class="tab-item active" data-tab="desktop">
+        <div class="tab-icon">🏠</div>
         <span>桌面</span>
       </div>
-      <div class="bottom-tab-item" data-mainpage="cardlib">
-        <div class="bottom-tab-icon">📖</div>
+      <div class="tab-item" data-tab="cardlib">
+        <div class="tab-icon">📇</div>
         <span>字卡</span>
       </div>
-      <div class="bottom-tab-item" data-mainpage="setting">
-        <div class="bottom-tab-icon">☀️</div>
+      <div class="tab-item" data-tab="setting">
+        <div class="tab-icon">⚙️</div>
         <span>设置</span>
       </div>
     </div>
   </div>
 </div>
 
+<script type="module" src="./js/app.js"></script>
 <script>
-  window.GLOBAL_CONTEXT = {
-    activeSessionId: "mj-001",
-    currentMainPage:"desktop",
-    config: { mainColor: "#8c78b9", globalRadius: 16, bubbleRadius: 12 }
+// Tab切换基础原生逻辑（只做显隐切换，简单写在这里，不进业务模块）
+const tabItems = document.querySelectorAll('.tab-item');
+const pages = document.querySelectorAll('.tab-page');
+tabItems.forEach(tab=>{
+  tab.onclick = ()=>{
+    const targetKey = tab.dataset.tab;
+    // 清除激活
+    tabItems.forEach(t=>t.classList.remove('active'));
+    pages.forEach(p=>p.classList.remove('active'));
+    // 激活
+    tab.classList.add('active');
+    document.getElementById(`page-${targetKey}`).classList.add('active');
   }
-  const EventBus = {
-    events: {},
-    on(name, fn) {
-      if (!this.events[name]) this.events[name] = []
-      this.events[name].push(fn)
-    },
-    emit(name, data) {
-      if (!this.events[name]) return
-      this.events[name].forEach(cb => cb(data))
-    }
-  }
-  const Store = {
-    get(key, defaultValue) {
-      try {
-        const str = localStorage.getItem(key)
-        return str ? JSON.parse(str) : defaultValue
-      } catch (e) { return defaultValue }
-    },
-    set(key, val) { localStorage.setItem(key, JSON.stringify(val)) }
-  }
-  const CHAT_KEY = `xy-home-v2:${window.GLOBAL_CONTEXT.activeSessionId}:chat-msgs`
-
-  // 桌面图标列表，和截图对应
-  const APP_LIST = [
-    { key: "chat",      icon: "💬", name: "聊天", badge:17 },
-    { key: "friend",    icon: "⋯", name: "朋友圈", badge:8 },
-    { key: "home",      icon: "🏠", name: "主页" },
-    { key: "mail",      icon: "✉️", name: "信箱", badge:11 },
-    { key: "audit",     icon: "🖼️", name: "审核", badge:4 },
-    { key: "cal",       icon: "📅", name: "日历" },
-    { key: "memory",    icon: "♥", name: "纪念" },
-    { key: "tarot",     icon: "◇", name: "占卜" },
-    { key: "collect",   icon: "🖼️", name: "收藏" },
-  ]
-
-  function renderDesktopIcons() {
-    const grid = document.getElementById("icon-grid")
-    grid.innerHTML = ""
-    APP_LIST.forEach(app => {
-      const div = document.createElement("div")
-      div.className = "app-icon"
-      div.dataset.sub = app.key
-      div.innerHTML = `
-        <div class="icon-box">${app.icon}</div>
-        <div class="icon-name">${app.name}</div>
-        ${app.badge ? `<div class="badge">${app.badge}</div>` : ""}
-      `
-      div.onclick = ()=> openSubPage(app.key)
-      grid.appendChild(div)
-    })
-  }
-
-  // 切换底部三大主Tab
-  function switchMainPage(name){
-    window.GLOBAL_CONTEXT.currentMainPage = name
-    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
-    document.getElementById(`page-${name}`).classList.add("active")
-    document.querySelectorAll(".bottom-tab-item").forEach(t=>t.classList.remove("active"))
-    document.querySelector(`.bottom-tab-item[data-mainpage="${name}"]`).classList.add("active")
-    // 关闭所有子页面
-    document.querySelectorAll(".sub-page").forEach(s=>s.classList.remove("active"))
-  }
-  document.querySelectorAll(".bottom-tab-item").forEach(tab=>{
-    tab.onclick = ()=> switchMainPage(tab.dataset.mainpage)
-  })
-
-  // 打开子页面（桌面图标点击）
-  function openSubPage(subKey){
-    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
-    document.querySelectorAll(".sub-page").forEach(s=>s.classList.remove("active"))
-    document.getElementById(`sub-${subKey}`).classList.add("active")
-  }
-  // 返回桌面主页面
-  document.querySelectorAll(".sub-back").forEach(btn=>{
-    btn.onclick = ()=>{
-      document.querySelectorAll(".sub-page").forEach(s=>s.classList.remove("active"))
-      switchMainPage("desktop")
-    }
-  })
-
-  // 字卡库内标签切换
-  document.querySelectorAll(".card-tab").forEach(tab=>{
-    tab.onclick = ()=>{
-      document.querySelectorAll(".card-tab").forEach(t=>t.classList.remove("active"))
-      tab.classList.add("active")
-    }
-  })
-  // 设置内标签切换
-  document.querySelectorAll(".setting-tab").forEach(tab=>{
-    tab.onclick = ()=>{
-      document.querySelectorAll(".setting-tab").forEach(t=>t.classList.remove("active"))
-      tab.classList.add("active")
-    }
-  })
-
-  // 聊天相关
-  function escapeHTML(str) {
-    return str.replace(/[&<>"']/g, c => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
-    })[c])
-  }
-  function renderChat() {
-    const list = Store.get(CHAT_KEY, [])
-    const wrap = document.getElementById("chat-area")
-    wrap.innerHTML = ""
-    list.forEach(msg => {
-      const div = document.createElement("div")
-      div.className = `msg-item ${msg.side === "me" ? "msg-me" : "msg-mj"}`
-      div.innerHTML = `
-        <div class="bubble">${escapeHTML(msg.text)}</div>
-        <div class="msg-time">${msg.timeStr}</div>
-      `
-      wrap.appendChild(div)
-    })
-    wrap.scrollTop = wrap.scrollHeight
-  }
-  window.sendAuditCard = function(text, side = "mj") {
-    const list = Store.get(CHAT_KEY, [])
-    const d = new Date()
-    const h = String(d.getHours()).padStart(2, "0")
-    const m = String(d.getMinutes()).padStart(2, "0")
-    const s = String(d.getSeconds()).padStart(2, "0")
-    list.push({ side, text, timeStr: `${h}:${m}:${s}`, ts: d.getTime(), injected: 1 })
-    Store.set(CHAT_KEY, list)
-    renderChat()
-  }
-  const input = document.getElementById("chat-input")
-  const sendBtn = document.getElementById("send-btn")
-  function sendMsg() {
-    const txt = input.value.trim()
-    if (!txt) return toast("内容不能为空")
-    window.sendAuditCard(txt, "me")
-    input.value = ""
-  }
-  sendBtn.onclick = sendMsg
-  input.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); sendMsg() } }
-
-  function toast(text) {
-    const el = document.createElement("div")
-    el.className = "toast"
-    el.innerText = text
-    document.body.appendChild(el)
-    setTimeout(() => el.remove(), 1600)
-  }
-
-  function updateTime() {
-    const d = new Date()
-    const h = String(d.getHours()).padStart(2, "0")
-    const m = String(d.getMinutes()).padStart(2, "0")
-    document.getElementById("time-text").innerText = `${h}:${m}`
-  }
-  updateTime()
-  setInterval(updateTime, 60000)
-
-  renderDesktopIcons()
-  renderChat()
+})
+// 状态栏时间刷新
+function updateTime(){
+  const d = new Date();
+  let h = String(d.getHours()).padStart(2,'0');
+  let m = String(d.getMinutes()).padStart(2,'0');
+  document.getElementById('status-time').innerText = `${h}:${m}`;
+}
+updateTime();
+setInterval(updateTime, 1000);
 </script>
 </body>
 </html>
