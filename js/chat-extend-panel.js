@@ -1,27 +1,31 @@
 import { ModalAvatarNick } from './modal-avatar-nick.js';
 import { Toast } from './core/toast.js';
+
 export const ChatExtendPanel = {
   rootDom: null,
   parentContainer: null,
   contactId: null,
   callbackClose: null,
+
   open(parentDom, cid, cbClose) {
     this.parentContainer = parentDom;
     this.contactId = cid;
     this.callbackClose = cbClose;
     this.rootDom = document.createElement("div");
-    this.rootDom.style.position = "fixed";
+    this.rootDom.style.position = "absolute";
     this.rootDom.style.inset = "0";
     this.rootDom.style.zIndex = "9998";
     this.rootDom.style.display = "flex";
     this.rootDom.style.flexDirection = "column-reverse";
     this.render();
-    parentDom.appendChild(this.rootDom);
+    this.parentContainer.appendChild(this.rootDom);
   },
+
   close() {
     if(this.rootDom) this.rootDom.remove();
     if(typeof this.callbackClose === "function") this.callbackClose();
   },
+
   render() {
     if(!this.rootDom) return;
     this.rootDom.innerHTML = "";
@@ -29,6 +33,7 @@ export const ChatExtendPanel = {
     panel.style.background = "#fff";
     panel.style.borderRadius = "16px 16px 0 0";
     panel.style.padding = "16px";
+
     const tabWrap = document.createElement("div");
     tabWrap.style.display = "flex";
     tabWrap.style.gap = "4px";
@@ -36,6 +41,7 @@ export const ChatExtendPanel = {
     tabWrap.style.marginBottom = "12px";
     const tabs = ["互动","工具","小游戏","TA的提问"];
     let activeTab = 0;
+
     const renderTabContent = ()=>{
       const contentBox = document.getElementById("extend-panel-content");
       if(!contentBox) return;
@@ -78,9 +84,10 @@ export const ChatExtendPanel = {
         })
         contentBox.appendChild(grid);
       }else{
-        contentBox.innerHTML = `<div style="text-align:center;color:#888;padding:30px 0">功能待开发</div>`
+        contentBox.innerHTML = `<div style="text-align:center;color:#888;padding:30px 0">功能待开发</div>`;
       }
-    }
+    };
+
     tabs.forEach((t,ti)=>{
       const tabEl = document.createElement("div");
       tabEl.innerText = t;
@@ -95,18 +102,20 @@ export const ChatExtendPanel = {
       }
       tabEl.onclick = ()=>{
         activeTab = ti;
-        this.render();
+        renderTabContent();
       }
       tabWrap.appendChild(tabEl);
     })
+
     const contentBox = document.createElement("div");
     contentBox.id = "extend-panel-content";
     panel.appendChild(tabWrap);
     panel.appendChild(contentBox);
     this.rootDom.appendChild(panel);
     renderTabContent();
+
     this.rootDom.onclick = (e)=>{
       if(e.target === this.rootDom) this.close();
     }
   }
-}
+};
