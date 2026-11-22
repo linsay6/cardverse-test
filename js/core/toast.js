@@ -1,41 +1,40 @@
-import { EventBus } from './context.js';
-
+// 全局顶层Toast，挂载body，最高层级不会被弹窗遮挡
 export const Toast = {
-  /**
-   * 弹出轻提示
-   * @param {string} msg 提示文字
-   * @param {number} duration 显示时长，毫秒
-   */
   show(msg, duration = 2200) {
-    // 如果页面上已经有toast，先移除旧的
-    let oldToast = document.querySelector('.app-toast');
-    if (oldToast) oldToast.remove();
+    let toastEl = document.querySelector('#global‑top‑toast');
+    if (toastEl) {
+      clearTimeout(toastEl._timer);
+      toastEl.textContent = msg;
+      toastEl.style.opacity = "1";
+    } else {
+      toastEl = document.createElement('div');
+      toastEl.id = 'global‑top‑toast';
+      toastEl.style.cssText = `
+        position: fixed;
+        left: 50%;
+        bottom: 140px;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.72);
+        color: #fff;
+        padding: 8px 18px;
+        border‑radius: 999px;
+        font‑size:14px;
+        z‑index: 999999;
+        white‑space: nowrap;
+        pointer‑events: none;
+        transition: opacity 0.2s ease;
+        opacity: 1;
+      `;
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.style.opacity = '1';
 
-    const toastEl = document.createElement('div');
-    toastEl.className = 'app-toast';
-    toastEl.innerText = msg;
-    toastEl.style.cssText = `
-      position: fixed;
-      left: 50%;
-      bottom: 120px;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.72);
-      color: #fff;
-      padding: 8px 16px;
-      border-radius: var(--radius-btn);
-      font-size: 14px;
-      z-index: 9999;
-      white-space: nowrap;
-    `;
-    document.body.appendChild(toastEl);
-
-    setTimeout(() => {
-      toastEl.remove();
+    toastEl._timer = setTimeout(() => {
+      toastEl.style.opacity = '0';
+      setTimeout(() => {
+        if(toastEl.parentNode) toastEl.remove();
+      }, 200);
     }, duration);
   }
 };
-
-// 也支持通过事件总线触发提示，方便别的模块直接发消息弹toast
-EventBus.on('toast:show', (payload) => {
-  Toast.show(payload.msg, payload.duration);
-});
