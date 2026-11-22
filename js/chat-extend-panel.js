@@ -6,7 +6,7 @@ export const ChatExtendPanel = {
   parentContainer: null,
   contactId: null,
   callbackClose: null,
-  //每次打开强制重置，修复二次点击才弹窗BUG
+
   open(parentDom, cid, cbClose) {
     this.parentContainer = parentDom;
     this.contactId = cid;
@@ -16,8 +16,8 @@ export const ChatExtendPanel = {
     this.rootDom.style.inset = "0";
     this.rootDom.style.zIndex = "9998";
     this.rootDom.style.display = "flex";
-    this.rootDom.style.flexDirection = "column‑reverse";
-    //每次打开强制重置tab下标0【互动】
+    this.rootDom.style.flexDirection = "column-reverse";
+
     let activeTab = 0;
     const renderAll = ()=>{
       this.rootDom.innerHTML = "";
@@ -25,6 +25,7 @@ export const ChatExtendPanel = {
       panel.style.background = "#fff";
       panel.style.borderRadius = "16px 16px 0 0";
       panel.style.padding = "16px";
+
       const tabWrap = document.createElement("div");
       tabWrap.style.display = "flex";
       tabWrap.style.gap = "4px";
@@ -49,13 +50,14 @@ export const ChatExtendPanel = {
         }
         tabWrap.appendChild(tabEl);
       })
+
       const contentBox = document.createElement("div");
       if(activeTab === 0){
         const grid = document.createElement("div");
         grid.style.display = "grid";
         grid.style.gridTemplateColumns = "repeat(4, 1fr)";
-        grid.style.gap = "14px 6px";
-        grid.style.padding = "4px";
+        grid.style.gap = "18px 10px";
+        grid.style.padding = "6px 2px";
         const items = [
           {label:"通话",icon:"📞"},
           {label:"拍一拍",icon:"👏"},
@@ -74,8 +76,8 @@ export const ChatExtendPanel = {
           itemDom.style.gap = "6px";
           itemDom.style.cursor = "pointer";
           itemDom.innerHTML = `
-            <div style="width:48px;height:48px;background:#f5f5f5;border‑radius:12px;display:flex;align‑items:center;justify‑content:center;font‑size:22px">${it.icon}</div>
-            <span style="font‑size:12px;text‑align:center">${it.label}</span>
+            <div style="width:60px;height:60px;background:#f5f5f5;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px">${it.icon}</div>
+            <span style="font-size:12px;text-align:center">${it.label}</span>
           `;
           if(it.label === "头像和昵称互动"){
             itemDom.onclick = ()=>{
@@ -88,7 +90,7 @@ export const ChatExtendPanel = {
         })
         contentBox.appendChild(grid);
       }else{
-        contentBox.innerHTML = `<div style="text‑align:center;color:#888;padding:30px 0">功能待开发</div>`;
+        contentBox.innerHTML = `<div style="text-align:center;color:#888;padding:30px 0">功能待开发</div>`;
       }
       panel.appendChild(tabWrap);
       panel.appendChild(contentBox);
