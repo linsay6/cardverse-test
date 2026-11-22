@@ -60,7 +60,7 @@ const TabManager = {
     });
   }
 };
-
+window.TabManager = TabManager;
 async function bootstrap() {
   console.log("应用开始初始化");
   ThemeManager.load();
