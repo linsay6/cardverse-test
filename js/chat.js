@@ -4,7 +4,6 @@ import { EventBus } from './core/context.js';
 import { ChatSettingSubModule } from './chat-setting.js';
 // 新增导入拓展面板
 import { ChatExtendPanel } from './chat-extend-panel.js';
-
 export const ChatModule = {
   rootEl: null,
   msgListEl: null,
@@ -15,7 +14,6 @@ export const ChatModule = {
   isTyping: false,
   viewMode: "chat",
   applyCheckTimer: null,
-
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
@@ -47,7 +45,6 @@ export const ChatModule = {
       this.checkPendingApply();
     },30000);
   },
-
   checkPendingApply(){
     if(!this.activeContactId) return;
     const list = Store.get("contactList",[]);
@@ -74,7 +71,6 @@ export const ChatModule = {
       this.renderMessages();
     }
   },
-
   executeApply(apply, contactObj){
     switch(apply.targetType){
       case "taAvatar":
@@ -91,7 +87,6 @@ export const ChatModule = {
         break;
     }
   },
-
   pushNoticeMessage(text){
     this.messageList.push({
       type:"notice",
@@ -101,7 +96,6 @@ export const ChatModule = {
     this.saveHistory();
     this.renderMessages();
   },
-
   loadContactSession(contactId) {
     const contactList = Store.get("contactList", []);
     const findItem = contactList.find(c => c.id === contactId);
@@ -123,7 +117,6 @@ export const ChatModule = {
     if(!this.activeContactInfo.taNickRandom) this.activeContactInfo.taNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
     if(!this.activeContactInfo.myAvatarRandom) this.activeContactInfo.myAvatarRandom = {enable:false,intervalHour:4,lastChangeTs:0};
     if(!this.activeContactInfo.myNickRandom) this.activeContactInfo.myNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
-
     this.messageList = Store.get(`chat-contact-${contactId}`, []);
     this.render();
     Toast.show(`进入对话：${findItem.name}`);
@@ -173,7 +166,6 @@ export const ChatModule = {
     inputWrap.style.display = "flex";
     inputWrap.style.gap = "8px";
     inputWrap.style.background = "#fff";
-
     // ==========【新增左下角三点拓展按钮】==========
     const extendBtn = document.createElement("button");
     extendBtn.id = "chat-extend-btn";
@@ -183,7 +175,6 @@ export const ChatModule = {
     extendBtn.style.fontSize = "20px";
     extendBtn.style.cursor = "pointer";
     extendBtn.style.padding = "0 4px";
-
     this.inputEl = document.createElement('input');
     this.inputEl.style.flex = "1";
     this.inputEl.style.padding = "10px 12px";
@@ -206,11 +197,9 @@ export const ChatModule = {
     inputWrap.appendChild(extendBtn);
     inputWrap.appendChild(this.inputEl);
     inputWrap.appendChild(sendBtn);
-
     wrap.appendChild(this.msgListEl);
     wrap.appendChild(inputWrap);
     this.rootEl.appendChild(wrap);
-
     // 右上角设置按钮
     document.getElementById("chat-more-btn").onclick = ()=>{
       if(!this.activeContactId){
@@ -226,7 +215,6 @@ export const ChatModule = {
       }
       Toast.show("返回联系人列表");
     };
-
     // =========绑定左下角三点按钮，唤起拓展面板=========
     document.getElementById("chat-extend-btn").onclick = ()=>{
       if(!this.activeContactId){
@@ -235,7 +223,6 @@ export const ChatModule = {
       }
       ChatExtendPanel.open(this.rootEl, this.activeContactId, ()=>{});
     };
-
     this.renderMessages();
   },
   updateContact(patch){
@@ -260,18 +247,15 @@ export const ChatModule = {
         avatarDom.src = "";
       }
     }
-
     if (!this.msgListEl) return;
     this.msgListEl.innerHTML = "";
     const theme = Store.get("chatTheme", {avatarShape:"circle",timePos:"avatarBottom"});
     const avatarRadius = theme.avatarShape === "circle" ? "50%" : "8px";
     const timePos = theme.timePos;
-
     const headerAvatar = document.getElementById("chat-header-avatar");
     if(headerAvatar){
       headerAvatar.style.borderRadius = avatarRadius;
     }
-
     if (!this.activeContactId) {
       this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
       return;
@@ -281,7 +265,6 @@ export const ChatModule = {
       return;
     }
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
-
     this.messageList.forEach(msg => {
       if(msg.type === "notice"){
         const noticeEl = document.createElement("div");
@@ -299,7 +282,6 @@ export const ChatModule = {
         this.msgListEl.appendChild(noticeEl);
         return;
       }
-
       const d = new Date(msg.time);
       const hh = String(d.getHours()).padStart(2,'0');
       const mm = String(d.getMinutes()).padStart(2,'0');
@@ -328,7 +310,7 @@ export const ChatModule = {
       if (msg.role === "user") {
         let timeHtml = "";
         if(timePos === "avatarBottom"){
-          timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
+          timeHtml = `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
         }else if(timePos === "bubbleBottom"){
           timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
         }else if(timePos === "bubbleOuter"){
@@ -346,7 +328,7 @@ export const ChatModule = {
               <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
               <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
             </div>
-            ${timePos === "avatarBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+            ${timePos === "avatarBottom" ? `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
           `
         }else{
           msgWrap.style.marginBottom = "14px";
@@ -360,7 +342,7 @@ export const ChatModule = {
                 <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
                 ${timePos === "bubbleOuter" ? `<div style="font-size:11px;color:#999;align-self:flex-end">${timeStr}</div>` : ""}
               </div>
-              ${timePos === "avatarBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+              ${timePos === "avatarBottom" ? `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
             </div>
           `;
         }
@@ -368,9 +350,9 @@ export const ChatModule = {
       } else {
         let timeHtml = "";
         if(timePos === "avatarBottom"){
-          timeHtml = `<div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
+          timeHtml = `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
         }else if(timePos === "bubbleBottom"){
-          timeHtml = `<div style="font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
+          timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
         }else if(timePos === "bubbleOuter"){
           timeHtml = `<div style="font-size:11px;color:#999;margin-right:6px;align-self:flex-end">${timeStr}</div>`;
         }else if(timePos === "topCenter"){
@@ -386,7 +368,7 @@ export const ChatModule = {
               <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
               <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
             </div>
-            ${timePos === "avatarBottom" ? `<div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+            ${timePos === "avatarBottom" ? `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
           `
         }else{
           msgWrap.style.marginBottom = "14px";
@@ -394,20 +376,19 @@ export const ChatModule = {
           msgWrap.style.justifyContent = "flex-start";
           msgWrap.innerHTML = `
             <div style="max-width:70%;">
-              ${timePos === "bubbleBottom" ? `<div style="font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>` : ""}
+              ${timePos === "bubbleBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>` : ""}
               <div style="display:flex;align-items:flex-end;gap:6px">
                 <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
                 <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
                 ${timePos === "bubbleOuter" ? `<div style="font-size:11px;color:#999;align-self:flex-end">${timeStr}</div>` : ""}
               </div>
-              ${timePos === "avatarBottom" ? `<div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+              ${timePos === "avatarBottom" ? `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
             </div>
           `;
         }
         this.msgListEl.appendChild(msgWrap);
       }
     });
-
     if(this.isTyping){
       const tip = document.createElement("div");
       tip.style.color="#777";
@@ -417,7 +398,6 @@ export const ChatModule = {
     }
     this.msgListEl.scrollTop = this.msgListEl.scrollHeight;
   },
-
   sendMessage() {
     const content = this.inputEl.value.trim();
     if (!content) return;
@@ -448,7 +428,6 @@ export const ChatModule = {
       this.renderMessages();
     },1200);
   },
-
   saveHistory() {
     if(!this.activeContactId) return;
     Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
