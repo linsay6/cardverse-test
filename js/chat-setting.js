@@ -59,15 +59,15 @@ export const ChatSettingSubModule = {
     this.parentContainer.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.style.height = "auto";
-    wrap.style.background = "#f7f7f7";
+    wrap.style.background = "transparent";
 
     const header = document.createElement("div");
     header.style.display = "flex";
     header.style.alignItems = "center";
     header.style.gap = "10px";
     header.style.padding = "14px 16px";
-    header.style.borderBottom = "1px solid #eee";
-    header.style.background = "#fff";
+    header.style.borderBottom = "1px solid rgba(128,128,128,0.15)";
+    header.style.background = "transparent";
     header.innerHTML = `
       <button id="csub-back" style="border:none;background:none;font-size:20px;cursor:pointer">←</button>
       <span style="font-size:18px;font-weight:500;color:#222">聊天设置</span>
@@ -81,14 +81,13 @@ export const ChatSettingSubModule = {
     const mainCard = document.createElement("div");
     mainCard.style.width = "100%";
     mainCard.style.maxWidth = "420px";
-    mainCard.style.background = "#fff";
+    mainCard.style.background = "transparent";
     mainCard.style.borderRadius = "14px";
-    mainCard.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)";
     mainCard.style.overflow = "hidden";
 
     const tab1Wrap = document.createElement("div");
     tab1Wrap.style.display = "flex";
-    tab1Wrap.style.borderBottom = "1px solid #eee";
+    tab1Wrap.style.borderBottom = "1px solid rgba(128,128,128,0.15)";
     this.tab1List.forEach(tName => {
       const tabEl = document.createElement("div");
       tabEl.innerText = tName;
@@ -120,7 +119,7 @@ export const ChatSettingSubModule = {
     if (this.activeTab1 === "功能") {
       const tab2Wrap = document.createElement("div");
       tab2Wrap.style.display = "flex";
-      tab2Wrap.style.borderBottom = "1px solid #eee";
+      tab2Wrap.style.borderBottom = "1px solid rgba(128,128,128,0.15)";
       this.tab2List.forEach(tName => {
         const tabEl2 = document.createElement("div");
         tabEl2.innerText = tName;
@@ -162,7 +161,7 @@ export const ChatSettingSubModule = {
         justify-content:space-between;
         align-items:center;
         padding:16px 0;
-        border-bottom:1px solid #eee;
+        border-bottom:1px solid rgba(128,128,128,0.15);
         cursor:pointer;
       }
       .row-label{font-size:14px;color:#222}
@@ -198,12 +197,12 @@ export const ChatSettingSubModule = {
         justify-content:space-between;
         align-items:center;
         padding:16px 0;
-        border-bottom:1px solid #eee;
+        border-bottom:1px solid rgba(128,128,128,0.15);
         cursor:pointer;
       }
       .row-label{font-size:14px;color:#222;display:flex;align-items:center;gap:8px}
       .row-value{font-size:13px;color:#888;text-align:right}
-      .tip-text{font-size:12px;color:#999;padding:12px 0}
+      .tip-text{font-size:12px;color:#666;padding:12px 0}
       </style>
       <div class="tip-text">昵称与头像（聊天专用 · 与桌面各自独立，互不同步）</div>
 
