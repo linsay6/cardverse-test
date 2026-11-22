@@ -32,6 +32,10 @@ export const ChatModule = {
     EventBus.on("themeChange", () => {
       if(this.viewMode === "chat") this.renderMessages();
     });
+    // 美化配置变更刷新聊天界面
+    EventBus.on("chatThemeChange", ()=>{
+      this.renderMessages();
+    })
   },
 
   loadContactSession(contactId) {
@@ -138,7 +142,6 @@ export const ChatModule = {
       this.render();
     };
 
-    // 修复返回按钮：直接调用TabManager切换tab，不使用querySelector点击模拟
     document.getElementById("chat-back-btn").onclick = ()=>{
       if(window.TabManager){
         window.TabManager.switchTab("setting");
@@ -175,6 +178,9 @@ export const ChatModule = {
 
     if (!this.msgListEl) return;
     this.msgListEl.innerHTML = "";
+    const theme = Store.get("chatTheme", {avatarShape:"circle",timePos:"avatarBottom"});
+    const avatarRadius = theme.avatarShape === "circle" ? "50%" : "8px";
+    const timePos = theme.timePos;
 
     if (!this.activeContactId) {
       this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
@@ -187,39 +193,114 @@ export const ChatModule = {
     }
 
     this.messageList.forEach(msg => {
-      // 修复时间，弃用toLocaleTimeString
       const d = new Date(msg.time);
       const hh = String(d.getHours()).padStart(2,'0');
       const mm = String(d.getMinutes()).padStart(2,'0');
-      const timeStr = `${hh}:${mm}`;
-
-      const msgWrap = document.createElement('div');
-      msgWrap.style.marginBottom = "14px";
-      msgWrap.style.display = "flex";
-      if (msg.role === "user") {
-        msgWrap.style.justifyContent = "flex-end";
-        msgWrap.innerHTML = `
-          <div style="max-width:70%;">
-            <div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>
-            <div style="display:flex;align-items:flex-end;gap:6px;justify-content:flex-end">
+      const ss = String(d.getSeconds()).padStart(2,'0');
+      const timeStr = `${hh}:${mm}:${ss}`;
+      if(timePos === "hide"){
+        // 隐藏时间
+        if (msg.role === "user") {
+          this.msgListEl.innerHTML += `
+          <div style="marginBottom:14px;display:flex;justify-content:flex-end">
+            <div style="max-width:70%;display:flex;align-items:flex-end;gap:6px;justify-content:flex-end">
               <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
-              <img src="${msg.avatar || ''}" style="width:34px;height:34px;border-radius:50%;background:#eee;object-fit:cover">
+              <img src="${msg.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
             </div>
-          </div>
-        `;
-      } else {
-        msgWrap.style.justifyContent = "flex-start";
-        msgWrap.innerHTML = `
-          <div style="max-width:70%;">
-            <div style="display:flex;align-items:flex-end;gap:6px">
-              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:50%;background:#eee;object-fit:cover">
+          </div>`
+        }else{
+          this.msgListEl.innerHTML += `
+          <div style="marginBottom:14px;display:flex;justify-content:flex-start">
+            <div style="max-width:70%;display:flex;align-items:flex-end;gap:6px">
+              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
               <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
             </div>
-            <div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>
-          </div>
-        `;
+          </div>`
+        }
+        return;
       }
-      this.msgListEl.appendChild(msgWrap);
+
+      if (msg.role === "user") {
+        let timeHtml = "";
+        if(timePos === "avatarBottom"){
+          timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
+        }else if(timePos === "bubbleBottom"){
+          timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
+        }else if(timePos === "bubbleOuter"){
+          timeHtml = `<div style="font-size:11px;color:#999;margin-left:6px;align-self:flex-end">${timeStr}</div>`;
+        }else if(timePos === "topCenter"){
+          timeHtml = `<div style="width:100%;text-align:center;font-size:11px;color:#999;margin:4px 0">${timeStr}</div>`;
+        }else if(timePos === "divider"){
+          timeHtml = `<div style="width:100%;display:flex;align-items:center;color:#999;font-size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
+        }
+        const msgWrap = document.createElement('div');
+        if(timePos === "topCenter" || timePos === "divider"){
+          msgWrap.innerHTML = `
+            <div style="width:100%">${timeHtml}</div>
+            <div style="display:flex;justify-content:flex-end;gap:6px;align-items:flex-end">
+              <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
+              <img src="${msg.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+            </div>
+            ${timePos === "avatarBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+          `
+        }else{
+          msgWrap.style.marginBottom = "14px";
+          msgWrap.style.display = "flex";
+          msgWrap.style.justifyContent = "flex-end";
+          msgWrap.innerHTML = `
+            <div style="max-width:70%;">
+              ${timePos === "bubbleBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>` : ""}
+              <div style="display:flex;align-items:flex-end;gap:6px;justify-content:flex-end">
+                <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
+                <img src="${msg.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+                ${timePos === "bubbleOuter" ? `<div style="font-size:11px;color:#999;align-self:flex-end">${timeStr}</div>` : ""}
+              </div>
+              ${timePos === "avatarBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+            </div>
+          `;
+        }
+        this.msgListEl.appendChild(msgWrap);
+      } else {
+        let timeHtml = "";
+        if(timePos === "avatarBottom"){
+          timeHtml = `<div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
+        }else if(timePos === "bubbleBottom"){
+          timeHtml = `<div style="font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
+        }else if(timePos === "bubbleOuter"){
+          timeHtml = `<div style="font-size:11px;color:#999;margin-right:6px;align-self:flex-end">${timeStr}</div>`;
+        }else if(timePos === "topCenter"){
+          timeHtml = `<div style="width:100%;text-align:center;font-size:11px;color:#999;margin:4px 0">${timeStr}</div>`;
+        }else if(timePos === "divider"){
+          timeHtml = `<div style="width:100%;display:flex;align-items:center;color:#999;font-size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
+        }
+        const msgWrap = document.createElement('div');
+        if(timePos === "topCenter" || timePos === "divider"){
+          msgWrap.innerHTML = `
+            <div style="width:100%">${timeHtml}</div>
+            <div style="display:flex;justify-content:flex-start;gap:6px;align-items:flex-end">
+              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+              <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
+            </div>
+            ${timePos === "avatarBottom" ? `<div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+          `
+        }else{
+          msgWrap.style.marginBottom = "14px";
+          msgWrap.style.display = "flex";
+          msgWrap.style.justifyContent = "flex-start";
+          msgWrap.innerHTML = `
+            <div style="max-width:70%;">
+              ${timePos === "bubbleBottom" ? `<div style="font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>` : ""}
+              <div style="display:flex;align-items:flex-end;gap:6px">
+                <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+                <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
+                ${timePos === "bubbleOuter" ? `<div style="font-size:11px;color:#999;align-self:flex-end">${timeStr}</div>` : ""}
+              </div>
+              ${timePos === "avatarBottom" ? `<div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+            </div>
+          `;
+        }
+        this.msgListEl.appendChild(msgWrap);
+      }
     });
 
     if(this.isTyping){
