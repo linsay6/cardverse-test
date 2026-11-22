@@ -201,6 +201,7 @@ export const ChatSettingSubModule = {
     } else if (this.activeTab1 === "功能" && this.activeTab2 === "形象") {
       const nick = this.contactInfo?.name || "默认";
       const hasAvatar = !!this.contactInfo?.avatar;
+      const hasMyAvatar = !!this.contactInfo?.myAvatar;
       cardContent.innerHTML = `
       <style>
       .setting-row{
@@ -222,7 +223,7 @@ export const ChatSettingSubModule = {
        </div>
        <div class="setting-row" id="row-my-nick">
          <span class="row-label">我的昵称</span>
-         <span class="row-value">我 ></span>
+         <span class="row-value">${this.contactInfo?.myNick||"我"} ></span>
        </div>
        <div class="setting-row" id="row-contact-avatar">
          <span class="row-label">联系人头像</span>
@@ -234,13 +235,14 @@ export const ChatSettingSubModule = {
        </div>
        <div class="setting-row" id="row-my-avatar">
          <span class="row-label">我的头像</span>
-         <span class="row-value">已设置 ></span>
+         <span class="row-value">${hasMyAvatar ? "已设置" : "未设置"} ></span>
        </div>
        <div class="setting-row" id="row-clear-my-avatar">
          <span class="row-label">清空我的头像</span>
          <span class="row-value"></span>
        </div>
        <input type="file" id="avatar-file" accept="image/*" style="display:none">
+       <input type="file" id="my‑avatar‑file" accept="image/*" style="display:none">
        `;
     } else if(this.activeTab1 === "数据"){
       cardContent.innerHTML = `
@@ -292,9 +294,9 @@ export const ChatSettingSubModule = {
         )
       }
     }
+
     const rowTimePos = document.getElementById("row-time-pos");
     if(rowTimePos){
-      // 只保留3个选项！！！
       rowTimePos.onclick = ()=>{
         this.openRadioModal("选择消息时间位置",
           [
@@ -341,11 +343,12 @@ export const ChatSettingSubModule = {
           Store.set("contactList", list);
           this.contactInfo = list[idx];
           EventBus.emit("contactInfoChange", this.contactId);
-          Toast.show("昵称已更新，聊天页实时刷新");
+          Toast.show("昵称已更新，全部界面同步刷新");
           this.render();
         }
       }
     }
+
     const rowContactAvatar = document.getElementById("row-contact-avatar");
     const fileInput = document.getElementById("avatar-file");
     if(rowContactAvatar && fileInput){
@@ -363,13 +366,14 @@ export const ChatSettingSubModule = {
             Store.set("contactList", list);
             this.contactInfo = list[idx];
             EventBus.emit("contactInfoChange", this.contactId);
-            Toast.show("头像已更新，聊天页实时刷新");
+            Toast.show("联系人头像已更新，全部界面同步刷新");
             this.render();
           }
         }
         reader.readAsDataURL(file);
       }
     }
+
     const rowClearContactAvatar = document.getElementById("row-clear-contact-avatar");
     if(rowClearContactAvatar){
       rowClearContactAvatar.onclick = ()=>{
@@ -381,7 +385,74 @@ export const ChatSettingSubModule = {
           Store.set("contactList", list);
           this.contactInfo = list[idx];
           EventBus.emit("contactInfoChange", this.contactId);
-          Toast.show("头像已清空");
+          Toast.show("联系人头像已清空");
+          this.render();
+        }
+      }
+    }
+
+    // ==========【新增：我的昵称、我的头像、清空我的头像事件绑定】==========
+    const rowMyNick = document.getElementById("row-my-nick");
+    if(rowMyNick){
+      rowMyNick.onclick = ()=>{
+        const oldVal = this.contactInfo?.myNick || "我";
+        const newName = prompt("输入我的聊天昵称", oldVal);
+        if(newName === null) return;
+        const trimName = newName.trim();
+        if(!trimName){
+          Toast.show("昵称不能为空");
+          return;
+        }
+        const list = Store.get("contactList",[]);
+        const idx = list.findIndex(x=>x.id === this.contactId);
+        if(idx !== -1){
+          list[idx].myNick = trimName;
+          Store.set("contactList", list);
+          this.contactInfo = list[idx];
+          EventBus.emit("contactInfoChange", this.contactId);
+          Toast.show("我的昵称已更新，全部界面同步刷新");
+          this.render();
+        }
+      }
+    }
+
+    const rowMyAvatar = document.getElementById("row-my-avatar");
+    const myAvatarFileInput = document.getElementById("my‑avatar‑file");
+    if(rowMyAvatar && myAvatarFileInput){
+      rowMyAvatar.onclick = ()=> myAvatarFileInput.click();
+      myAvatarFileInput.onchange = (ev)=>{
+        const file = ev.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (res)=>{
+          const base64Img = res.target.result;
+          const list = Store.get("contactList",[]);
+          const idx = list.findIndex(x=>x.id === this.contactId);
+          if(idx !== -1){
+            list[idx].myAvatar = base64Img;
+            Store.set("contactList", list);
+            this.contactInfo = list[idx];
+            EventBus.emit("contactInfoChange", this.contactId);
+            Toast.show("我的头像已更新，全部界面同步刷新");
+            this.render();
+          }
+        }
+        reader.readAsDataURL(file);
+      }
+    }
+
+    const rowClearMyAvatar = document.getElementById("row-clear-my-avatar");
+    if(rowClearMyAvatar){
+      rowClearMyAvatar.onclick = ()=>{
+        if(!confirm("确认清空【我的头像】？")) return;
+        const list = Store.get("contactList",[]);
+        const idx = list.findIndex(x=>x.id === this.contactId);
+        if(idx !== -1){
+          delete list[idx].myAvatar;
+          Store.set("contactList", list);
+          this.contactInfo = list[idx];
+          EventBus.emit("contactInfoChange", this.contactId);
+          Toast.show("我的头像已清空");
           this.render();
         }
       }
