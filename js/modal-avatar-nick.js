@@ -7,17 +7,18 @@ export const ModalAvatarNick = {
   contactId: null,
   contactInfo: null,
   callbackClose: null,
+  chatModuleRef: null,
 
   open(parentDom, cid, closeCb) {
     this.contactId = cid;
     this.callbackClose = closeCb;
+    this.chatModuleRef = window.ChatModule;
     const list = Store.get("contactList", []);
     this.contactInfo = list.find(i => i.id === cid);
     if (!this.contactInfo) {
       Toast.show("找不到该联系人");
       return;
     }
-    //兜底初始化全部字段，包含对方自动申请间隔
     if(!this.contactInfo.taAvatarPool) this.contactInfo.taAvatarPool = [];
     if(!this.contactInfo.myAvatarPool) this.contactInfo.myAvatarPool = [];
     if(!this.contactInfo.taNickPool) this.contactInfo.taNickPool = [];
@@ -55,12 +56,12 @@ export const ModalAvatarNick = {
     EventBus.emit("contactInfoChange", this.contactId);
   },
 
-  // 弹出提交申请确认弹窗
-  openApplyConfirmModal(applyObj, onConfirm) {
+  // 用户提交申请弹窗：5秒倒计时，超时随机同意/拒绝
+  openApplyCountdownModal(applyObj){
     const mask = document.createElement("div");
     mask.style.position = "fixed";
     mask.style.inset = "0";
-    mask.style.background = "rgba(0,0,0,0.35)";
+    mask.style.background = "rgba(0,0,0,0.4)";
     mask.style.zIndex = "10001";
     mask.style.display = "flex";
     mask.style.alignItems = "center";
@@ -71,57 +72,70 @@ export const ModalAvatarNick = {
     modal.style.background = "#fff";
     modal.style.borderRadius = "14px";
     modal.style.padding = "20px";
+    let count = 5;
     modal.innerHTML = `
-      <div style="font‑weight:bold;font‑size:16px;margin‑bottom:12px">提交变更申请</div>
-      <div style="font‑size:14px;color:#444;margin‑bottom:16px">${applyObj.desc}</div>
-      <div style="font‑size:12px;color:#888;margin‑bottom:16px">超时2小时未处理将自动同意</div>
+      <div style="font-weight:bold;font-size:16px;margin-bottom:12px">提交变更申请</div>
+      <div style="font-size:14px;color:#444;margin-bottom:12px">${applyObj.desc}</div>
+      <div id="count-text" style="font-size:13px;color:#777;margin-bottom:16px">等待对方判断，剩余 ${count} 秒</div>
       <div style="display:flex;gap:10px">
-        <button id="apply‑cancel" style="flex:1;padding:9px;border:1px solid #ccc;background:#fff;border‑radius:8px">取消</button>
-        <button id="apply‑ok" style="flex:1;padding:9px;background:#7c68ee;color:#fff;border:none;border‑radius:8px">提交申请</button>
+        <button id="apply-reject" style="flex:1;padding:9px;border:1px solid #ccc;background:#fff;border-radius:8px">拒绝</button>
+        <button id="apply-accept" style="flex:1;padding:9px;background:#4caf50;color:#fff;border:none;border-radius:8px">同意</button>
       </div>
     `;
     mask.appendChild(modal);
     document.body.appendChild(mask);
-    document.getElementById("apply‑cancel").onclick = ()=> mask.remove();
-    document.getElementById("apply‑ok").onclick = ()=>{
+    const countText = modal.querySelector("#count-text");
+    let timer = setInterval(()=>{
+      count--;
+      countText.textContent = `等待对方判断，剩余 ${count} 秒`;
+      if(count <=0){
+        clearInterval(timer);
+        mask.remove();
+        //5秒超时随机
+        const autoResult = Math.random()>0.5 ? "accept":"reject";
+        this.doApplyResult(applyObj, autoResult);
+      }
+    },1000);
+
+    const clean = ()=>{
+      clearInterval(timer);
       mask.remove();
-      onConfirm();
     };
-    mask.onclick = e=>{ if(e.target===mask) mask.remove(); };
+    modal.querySelector("#apply-accept").onclick = ()=>{
+      clean();
+      this.doApplyResult(applyObj,"accept");
+    };
+    modal.querySelector("#apply-reject").onclick = ()=>{
+      clean();
+      this.doApplyResult(applyObj,"reject");
+    };
+    mask.onclick = (e)=>{if(e.target===mask) clean();};
   },
 
-  //处理申请：同意/拒绝，同时向聊天写入notice记录
-  handleApplyAction(applyId, action) {
+  doApplyResult(applyObj,action){
     const list = Store.get("contactList",[]);
     const idx = list.findIndex(x=>x.id === this.contactId);
     if(idx === -1) return;
     const contact = list[idx];
-    const applyIdx = contact.pendingApplyList.findIndex(a=>a.applyId === applyId);
-    if(applyIdx === -1) return;
-    const apply = contact.pendingApplyList[applyIdx];
-
-    //获取chat模块，写入聊天notice消息
-    const chatModule = window.ChatModule;
     if(action === "accept"){
-      switch(apply.targetType){
-        case "taAvatar": contact.avatar = apply.newVal; break;
-        case "taNick": contact.name = apply.newVal; break;
-        case "myAvatar": contact.myAvatar = apply.newVal; break;
-        case "myNick": contact.myNick = apply.newVal; break;
+      switch(applyObj.targetType){
+        case "taAvatar": contact.avatar = applyObj.newVal; break;
+        case "taNick": contact.name = applyObj.newVal; break;
+        case "myAvatar": contact.myAvatar = applyObj.newVal; break;
+        case "myNick": contact.myNick = applyObj.myNick; break;
       }
-      if(chatModule?.pushNoticeMessage){
-        chatModule.pushNoticeMessage(`【${apply.from==="ta"?"对方":"我"}发起】${apply.desc} —— 已手动同意`, apply.from);
+      if(this.chatModuleRef?.pushNoticeMessage){
+        this.chatModuleRef.pushNoticeMessage(`【我发起】${applyObj.desc} —— 已同意`,"me");
       }
     }else{
-      if(chatModule?.pushNoticeMessage){
-        chatModule.pushNoticeMessage(`【${apply.from==="ta"?"对方":"我"}发起】${apply.desc} —— 已手动拒绝`, apply.from);
+      if(this.chatModuleRef?.pushNoticeMessage){
+        this.chatModuleRef.pushNoticeMessage(`【我发起】${applyObj.desc} —— 已拒绝`,"me");
       }
     }
-    contact.pendingApplyList.splice(applyIdx,1);
     Store.set("contactList",list);
     this.contactInfo = contact;
-    EventBus.emit("contactInfoChange", this.contactId);
-    Toast.show(action==="accept"?"已同意申请":"已拒绝申请");
+    EventBus.emit("contactInfoChange",this.contactId);
+    Toast.show(action==="accept"?"已同意":"已拒绝");
     this.render();
   },
 
@@ -131,7 +145,7 @@ export const ModalAvatarNick = {
     const panel = document.createElement("div");
     panel.style.width = "90%";
     panel.style.maxWidth = "420px";
-    panel.style.maxHeight = "80vh";
+    panel.style.maxHeight = "82vh";
     panel.style.background = "#fff";
     panel.style.borderRadius = "16px";
     panel.style.overflow = "auto";
@@ -139,187 +153,174 @@ export const ModalAvatarNick = {
     const head = document.createElement("div");
     head.style.padding = "14px 16px";
     head.style.display = "flex";
-    head.style.justifyContent = "space‑between";
+    head.style.justifyContent = "space-between";
     head.style.alignItems = "center";
     head.style.borderBottom = "1px solid #eee";
-    head.innerHTML = `<span style="font‑weight:bold;font‑size:16px">头像昵称互动</span><button id="modal‑an‑close" style="border:none;background:none;font‑size:20px">×</button>`;
+    head.innerHTML = `<span style="font-weight:bold;font-size:16px">头像昵称互动</span><button id="modal-an-close" style="border:none;background:none;font-size:20px">×</button>`;
     panel.appendChild(head);
 
-    //子tab
-    const tabWrap = document.createElement("div");
-    tabWrap.style.display = "flex";
-    tabWrap.style.borderBottom = "1px solid #eee";
-    const tabList = ["TA头像池", "TA昵称池", "我的头像池", "我的昵称池"];
-    let activeTab = 0;
-    const contentBox = document.createElement("div");
-    contentBox.id = "modal‑an‑content";
-    contentBox.style.padding = "14px 16px";
-
-    const renderTabContent = ()=>{
-      contentBox.innerHTML = "";
-      //轮换配置+【对方发起申请间隔】
-      const randDiv = document.createElement("div");
-      randDiv.style.marginBottom = "12px";
-      randDiv.style.borderBottom = "1px solid #eee";
-      randDiv.innerHTML = `
-        <div style="font‑weight:bold;font‑size:14px;margin‑bottom:8px">随机轮换 & 对方申请设置</div>
-        <div style="padding:8px 0;display:flex;justify‑content:space‑between;align‑items:center">
-          <span>对方自动发起申请间隔(小时)</span>
-          <input id="ta‑apply‑interval" value="${this.contactInfo.taApplyIntervalHours}" style="width:60px;padding:4px;border:1px solid #ddd;border‑radius:4px">
-          <button id="save‑ta‑apply‑int" style="padding:3px 6px;font‑size:11px">保存</button>
-        </div>
-      `;
-      contentBox.appendChild(randDiv);
-
-      if(activeTab === 0){
-        this.renderRandomRow(contentBox, "taAvatarRandom", "TA头像随机轮换");
-        this.renderPoolList(contentBox, this.contactInfo.taAvatarPool, "taAvatarPool", "image");
-      }else if(activeTab ===1){
-        this.renderRandomRow(contentBox, "taNickRandom", "TA昵称随机轮换");
-        this.renderPoolList(contentBox, this.contactInfo.taNickPool, "taNickPool", "text");
-      }else if(activeTab ===2){
-        this.renderRandomRow(contentBox, "myAvatarRandom", "我的头像随机轮换");
-        this.renderPoolList(contentBox, this.contactInfo.myAvatarPool, "myAvatarPool", "image");
-      }else if(activeTab ===3){
-        this.renderRandomRow(contentBox, "myNickRandom", "我的昵称随机轮换");
-        this.renderPoolList(contentBox, this.contactInfo.myNickPool, "myNickPool", "text");
+    //一级tab：头像 / 昵称
+    let mainTab = "avatar"; // avatar / nick
+    let subTab = "ta"; // ta / mine
+    const mainTabWrap = document.createElement("div");
+    mainTabWrap.style.display = "flex";
+    mainTabWrap.style.borderBottom = "1px solid #eee";
+    mainTabWrap.style.margin = "0 16px";
+    ["avatar","nick"].forEach(t=>{
+      const tabBtn = document.createElement("div");
+      tabBtn.innerText = t==="avatar"?"头像":"昵称";
+      tabBtn.style.flex = "1";
+      tabBtn.style.textAlign = "center";
+      tabBtn.style.padding = "11px 0";
+      tabBtn.style.cursor = "pointer";
+      tabBtn.style.fontSize = "14px";
+      if(mainTab === t){
+        tabBtn.style.fontWeight = "bold";
+        tabBtn.style.borderBottom = "2px solid #222";
       }
-
-      //待处理申请列表
-      const applyWrap = document.createElement("div");
-      applyWrap.style.marginTop = "16px";
-      applyWrap.innerHTML = `<div style="font‑weight:bold;font‑size:14px;margin‑bottom:8px">待处理申请</div>`;
-      if(this.contactInfo.pendingApplyList.length === 0){
-        applyWrap.innerHTML += `<div style="font‑size:13px;color:#777">暂无待处理申请</div>`;
-      }else{
-        this.contactInfo.pendingApplyList.forEach(ap=>{
-          const row = document.createElement("div");
-          row.style.display = "flex";
-          row.style.justifyContent = "space‑between";
-          row.style.alignItems = "center";
-          row.style.padding = "6px 0";
-          row.style.borderBottom = "1px solid #eee";
-          row.innerHTML = `
-            <div style="font‑size:13px">${ap.desc}</div>
-            <div style="display:flex;gap:6px">
-              <button data‑applyid="${ap.applyId}" data‑act="accept" style="padding:3px 5px;background:#4caf50;color:#fff;border:none;border‑radius:4px;font‑size:12px">同意</button>
-              <button data‑applyid="${ap.applyId}" data‑act="reject" style="padding:3px 5px;background:#f44336;color:#fff;border:none;border‑radius:4px;font‑size:12px">拒绝</button>
-            </div>
-          `;
-          applyWrap.appendChild(row);
-        })
-      }
-      contentBox.appendChild(applyWrap);
-    };
-
-    tabList.forEach((t,ti)=>{
-      const tab = document.createElement("div");
-      tab.innerText = t;
-      tab.style.padding = "12px 6px";
-      tab.style.flex = "1";
-      tab.style.textAlign = "center";
-      tab.style.fontSize = "13px";
-      tab.style.cursor = "pointer";
-      if(ti === activeTab) tab.style.fontWeight = "bold";
-      tab.dataset.tabIdx = String(ti);
-      tabWrap.appendChild(tab);
-    })
-    panel.appendChild(tabWrap);
-    panel.appendChild(contentBox);
-    this.maskDom.appendChild(panel);
-    renderTabContent();
-
-    //DOM全部挂载完成后绑定事件
-    const closeBtn = panel.querySelector("#modal‑an‑close");
-    if(closeBtn) closeBtn.onclick = ()=>this.close();
-    this.maskDom.onclick = (e)=>{ if(e.target === this.maskDom) this.close(); };
-
-    //tab切换
-    const tabNodes = panel.querySelectorAll('[data‑tab‑idx]');
-    tabNodes.forEach(el=>{
-      el.onclick = ()=>{
-        activeTab = Number(el.dataset.tabIdx);
-        renderTabContent();
-      }
-    });
-
-    //保存对方申请间隔小时
-    const saveTaIntBtn = panel.querySelector("#save‑ta‑apply‑int");
-    if(saveTaIntBtn){
-      saveTaIntBtn.onclick = ()=>{
-        const inputEl = panel.querySelector("#ta‑apply‑interval");
-        const val = Number(inputEl.value);
-        if(isNaN(val)||val<1||val>24) return Toast.show("请输入1‑24小时");
-        this.contactInfo.taApplyIntervalHours = val;
-        this.saveContact();
-        Toast.show("对方申请间隔已保存");
+      tabBtn.onclick = ()=>{
+        mainTab = t;
+        subTab = "ta";
         this.render();
-      }
-    }
-
-    //待处理申请同意拒绝
-    panel.querySelectorAll('[data‑applyid]').forEach(btn=>{
-      btn.onclick = ()=>{
-        this.handleApplyAction(btn.dataset.applyid, btn.dataset.act);
-      }
+      };
+      mainTabWrap.appendChild(tabBtn);
     })
-  },
+    panel.appendChild(mainTabWrap);
 
-  renderRandomRow(box, keyName, titleText) {
-    const item = this.contactInfo[keyName];
-    const div = document.createElement("div");
-    div.style.padding = "10px 0";
-    div.style.borderBottom = "1px solid #eee";
-    div.style.display = "flex";
-    div.style.justifyContent = "space‑between";
-    div.style.alignItems = "center";
-    div.innerHTML = `
-      <span style="font‑size:14px">${titleText}</span>
-      <label class="switch">
-        <input type="checkbox" ${item.enable ? "checked":""}>
-        <span></span>
-      </label>
+    //二级tab TA /我的
+    const subTabWrap = document.createElement("div");
+    subTabWrap.style.display = "flex";
+    subTabWrap.style.margin = "12px 16px";
+    subTabWrap.style.borderRadius = "8px";
+    subTabWrap.style.overflow = "hidden";
+    const subItems = mainTab==="avatar"
+      ?[{k:"ta",label:"TA头像池("+this.contactInfo.taAvatarPool.length+")"},{k:"mine",label:"我的头像池("+this.contactInfo.myAvatarPool.length+")"}]
+      :[{k:"ta",label:"TA昵称池("+this.contactInfo.taNickPool.length+")"},{k:"mine",label:"我的昵称池("+this.contactInfo.myNickPool.length+")"}];
+    subItems.forEach(s=>{
+      const btn = document.createElement("div");
+      btn.innerText = s.label;
+      btn.style.flex = "1";
+      btn.style.textAlign = "center";
+      btn.style.padding = "9px 0";
+      btn.style.cursor = "pointer";
+      btn.style.fontSize = "13px";
+      if(subTab === s.k){
+        btn.style.background = "#222";
+        btn.style.color = "#fff";
+      }else{
+        btn.style.background = "#f3f3f3";
+      }
+      btn.onclick = ()=>{
+        subTab = s.k;
+        this.render();
+      };
+      subTabWrap.appendChild(btn);
+    })
+    panel.appendChild(subTabWrap);
+
+    const contentWrap = document.createElement("div");
+    contentWrap.style.padding = "0 16px 18px 16px";
+
+    //轮换设置
+    const randBox = document.createElement("div");
+    randBox.style.marginBottom = "14px";
+    randBox.style.borderBottom = "1px solid #eee";
+    randBox.innerHTML = `<div style="font-weight:bold;font-size:14px;margin-bottom:8px">随机轮换设置</div>`;
+    const switchCss = document.createElement("style");
+    switchCss.textContent = `
+    .switch input{display:none}
+    .switch span{width:40px;height:20px;background:#ccc;border-radius:20px;display:block;position:relative}
+    .switch span:after{content:"";width:16px;height:16px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:0.2s}
+    .switch input:checked+span{background:#7c68ee}
+    .switch input:checked+span:after{left:22px}
     `;
-    const css = document.createElement("style");
-    css.textContent = `
-    .switch input {display:none;}
-    .switch span {width:40px;height:20px;background:#ccc;border‑radius:20px;display:block;position:relative}
-    .switch span:after {content:"";width:16px;height:16px;background:#fff;border‑radius:50%;position:absolute;top:2px;left:2px;transition:0.2s}
-    .switch input:checked + span {background:#7c68ee}
-    .switch input:checked + span:after {left:22px}
-    `
-    box.appendChild(css);
-    box.appendChild(div);
-    const ck = div.querySelector("input");
-    ck.onchange = ()=>{
-      this.contactInfo[keyName].enable = ck.checked;
-      this.saveContact();
-      Toast.show("已保存轮换设置");
+    randBox.appendChild(switchCss);
+    if(mainTab === "avatar"){
+      const key = subTab==="ta"?"taAvatarRandom":"myAvatarRandom";
+      const cfg = this.contactInfo[key];
+      const rowDiv = document.createElement("div");
+      rowDiv.style.display = "flex";
+      rowDiv.style.justifyContent = "space-between";
+      rowDiv.style.alignItems = "center";
+      rowDiv.style.padding = "8px 0";
+      rowDiv.innerHTML = `<span style="font-size:13px">${subTab==="ta"?"TA头像随机轮换":"我的头像随机轮换"}</span><label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>`;
+      const ck = rowDiv.querySelector("input");
+      ck.onchange = ()=>{
+        this.contactInfo[key].enable = ck.checked;
+        this.saveContact();
+        Toast.show("已保存轮换设置");
+        this.render();
+      };
+      randBox.appendChild(rowDiv);
+    }else{
+      const key = subTab==="ta"?"taNickRandom":"myNickRandom";
+      const cfg = this.contactInfo[key];
+      const rowDiv = document.createElement("div");
+      rowDiv.style.display = "flex";
+      rowDiv.style.justifyContent = "space-between";
+      rowDiv.style.alignItems = "center";
+      rowDiv.style.padding = "8px 0";
+      rowDiv.innerHTML = `<span style="font-size:13px">${subTab==="ta"?"TA昵称随机轮换":"我的昵称随机轮换"}</span><label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>`;
+      const ck = rowDiv.querySelector("input");
+      ck.onchange = ()=>{
+        this.contactInfo[key].enable = ck.checked;
+        this.saveContact();
+        Toast.show("已保存轮换设置");
+        this.render();
+      };
+      randBox.appendChild(rowDiv);
     }
-  },
+    contentWrap.appendChild(randBox);
 
-  //渲染池子列表 type:image图片 / text文本昵称
-  renderPoolList(box, poolArr, poolKey, type) {
-    const wrap = document.createElement("div");
-    wrap.style.marginTop = "12px";
-    if(type === "image"){
-      //图片头像池，批量上传
-      const uploadRow = document.createElement("div");
-      uploadRow.style.display = "flex";
-      uploadRow.style.gap = "6px";
+    //池子渲染
+    let poolArr,poolKey,targetType;
+    if(mainTab==="avatar"){
+      if(subTab==="ta"){poolArr=this.contactInfo.taAvatarPool;poolKey="taAvatarPool";targetType="taAvatar";}
+      else{poolArr=this.contactInfo.myAvatarPool;poolKey="myAvatarPool";targetType="myAvatar";}
+    }else{
+      if(subTab==="ta"){poolArr=this.contactInfo.taNickPool;poolKey="taNickPool";targetType="taNick";}
+      else{poolArr=this.contactInfo.myNickPool;poolKey="myNickPool";targetType="myNick";}
+    }
+
+    const poolArea = document.createElement("div");
+    if(mainTab==="avatar"){
+      //头像池
       const fileInput = document.createElement("input");
-      fileInput.type = "file";
-      fileInput.accept = "image/*";
-      fileInput.multiple = true;
-      fileInput.style.display = "none";
-      const uploadBtn = document.createElement("button");
-      uploadBtn.innerText = "批量选择上传图片";
-      uploadBtn.style.width = "100%";
-      uploadBtn.style.padding = "8px";
-      uploadBtn.style.border = "1px solid #ddd";
-      uploadBtn.style.borderRadius = "8px";
-      uploadBtn.style.background = "#f7f7f7";
-      uploadBtn.onclick = ()=> fileInput.click();
+      fileInput.type="file";
+      fileInput.accept="image/*";
+      fileInput.multiple=true;
+      fileInput.style.display="none";
+      const btnRow = document.createElement("div");
+      btnRow.style.display = "flex";
+      btnRow.style.gap = "8px";
+      btnRow.style.marginBottom = "12px";
+      const batchBtn = document.createElement("button");
+      batchBtn.innerText = "批量添加头像";
+      batchBtn.style.flex="1";
+      batchBtn.style.padding="9px";
+      batchBtn.style.border="1px solid #ddd";
+      batchBtn.style.borderRadius="8px";
+      batchBtn.style.background="#f7f7f7";
+      batchBtn.onclick = ()=> fileInput.click();
+      const clearBtn = document.createElement("button");
+      clearBtn.innerText = "清空池子";
+      clearBtn.style.flex="1";
+      clearBtn.style.padding="9px";
+      clearBtn.style.border="1px solid #ddd";
+      clearBtn.style.borderRadius="8px";
+      clearBtn.style.background="#f7f7f7";
+      clearBtn.onclick = ()=>{
+        if(confirm("确定清空当前池子全部内容？")){
+          this.contactInfo[poolKey] = [];
+          this.saveContact();
+          Toast.show("已清空");
+          this.render();
+        }
+      };
+      btnRow.appendChild(batchBtn);
+      btnRow.appendChild(clearBtn);
+      poolArea.appendChild(fileInput);
+      poolArea.appendChild(btnRow);
       fileInput.onchange = async (ev)=>{
         const files = Array.from(ev.target.files);
         for(const f of files){
@@ -327,154 +328,134 @@ export const ModalAvatarNick = {
             const r = new FileReader();
             r.onload = e=>res(e.target.result);
             r.readAsDataURL(f);
-          })
+          });
           if(!this.contactInfo[poolKey].includes(b64)){
             this.contactInfo[poolKey].push(b64);
           }
         }
         this.saveContact();
-        Toast.show(`成功添加${files.length}张图片`);
+        Toast.show(`添加${files.length}张图片`);
         this.render();
-      }
-      uploadRow.appendChild(fileInput);
-      uploadRow.appendChild(uploadBtn);
-      wrap.appendChild(uploadRow);
-
-      const previewWrap = document.createElement("div");
-      previewWrap.style.display = "flex";
-      previewWrap.style.flexWrap = "wrap";
-      previewWrap.style.gap = "8px";
-      previewWrap.style.marginTop = "10px";
+      };
+      //图片预览网格
+      const gridWrap = document.createElement("div");
+      gridWrap.style.display = "grid";
+      gridWrap.style.gridTemplateColumns = "repeat(4,1fr)";
+      gridWrap.style.gap = "10px";
       poolArr.forEach((src,idx)=>{
         const itemDiv = document.createElement("div");
         itemDiv.style.position = "relative";
-        itemDiv.style.width = "60px";
-        itemDiv.style.height = "60px";
+        itemDiv.style.aspectRatio = "1/1";
         itemDiv.style.borderRadius = "8px";
         itemDiv.style.overflow = "hidden";
         itemDiv.style.border = "1px solid #ddd";
         itemDiv.innerHTML = `
-          <img src="${src}" style="width:100%;height:100%;object‑fit:cover">
-          <button data‑pool="${poolKey}" data‑idx="${idx}" class="pool‑del‑btn" style="position:absolute;top:0;right:0;background:rgba(0,0,0,0.6);color:#fff;border:none;width:18px;height:18px;font‑size:10px">×</button>
+          <img src="${src}" style="width:100%;height:100%;object-fit:cover">
+          <button data-del-idx="${idx}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;font-size:10px">×</button>
         `;
-        //点击图片条目：发起申请弹窗
+        //点击图片发起申请
         itemDiv.onclick = (e)=>{
-          if(e.target.classList.contains("pool‑del‑btn")) return;
-          let targetType;
-          if(poolKey === "taAvatarPool") targetType = "taAvatar";
-          if(poolKey === "myAvatarPool") targetType = "myAvatar";
-          const applyObj = {
-            applyId:Date.now().toString(),
-            from:"me",
-            targetType: targetType,
-            newVal: src,
-            createTs: Date.now(),
-            expireMs: 2*3600*1000,
-            status:"pending",
-            desc:`申请变更${targetType==="taAvatar"?"对方头像":"我的头像"}`
-          }
-          this.openApplyConfirmModal(applyObj,()=>{
-            const list = Store.get("contactList",[]);
-            const cidx = list.findIndex(x=>x.id === this.contactId);
-            list[cidx].pendingApplyList.push(applyObj);
-            Store.set("contactList",list);
-            this.contactInfo = list[cidx];
-            Toast.show("申请已提交");
-            this.render();
-          })
-        }
-        previewWrap.appendChild(itemDiv);
+          if(e.target.tagName==="BUTTON") return;
+          const desc = `申请变更${subTab==="ta"?"对方头像":"我的头像"}`;
+          const applyObj = {targetType,newVal:src,desc,from:"me"};
+          this.openApplyCountdownModal(applyObj);
+        };
+        gridWrap.appendChild(itemDiv);
       })
-      wrap.appendChild(previewWrap);
+      poolArea.appendChild(gridWrap);
     }else{
-      //昵称文本池子
-      const addRow = document.createElement("div");
-      addRow.style.display = "flex";
-      addRow.style.gap = "6px";
-      const input = document.createElement("input");
-      input.style.flex = "1";
-      input.style.padding = "8px 10px";
-      input.style.border = "1px solid #ddd";
-      input.style.borderRadius = "8px";
-      input.placeholder = "输入昵称";
+      //昵称池
+      const inputRow = document.createElement("div");
+      inputRow.style.display = "flex";
+      inputRow.style.gap = "8px";
+      inputRow.style.marginBottom = "12px";
+      const nickInput = document.createElement("input");
+      nickInput.style.flex = "1";
+      nickInput.style.padding = "9px";
+      nickInput.style.border = "1px solid #ddd";
+      nickInput.style.borderRadius = "8px";
+      nickInput.placeholder = "输入昵称";
       const addBtn = document.createElement("button");
       addBtn.innerText = "添加";
-      addBtn.style.padding = "8px 12px";
+      addBtn.style.padding = "9px 12px";
       addBtn.style.border = "none";
       addBtn.style.borderRadius = "8px";
       addBtn.style.background = "#7c68ee";
       addBtn.style.color = "#fff";
       addBtn.onclick = ()=>{
-        const val = input.value.trim();
-        if(!val) return Toast.show("昵称不能为空");
-        if(this.contactInfo[poolKey].includes(val)) return Toast.show("已存在");
-        this.contactInfo[poolKey].push(val);
+        const v = nickInput.value.trim();
+        if(!v) return Toast.show("昵称不能为空");
+        if(this.contactInfo[poolKey].includes(v)) return Toast.show("已存在");
+        this.contactInfo[poolKey].push(v);
         this.saveContact();
         Toast.show("添加成功");
         this.render();
-      }
-      addRow.appendChild(input);
-      addRow.appendChild(addBtn);
-      wrap.appendChild(addRow);
-
+      };
+      const clearBtn = document.createElement("button");
+      clearBtn.innerText = "清空池子";
+      clearBtn.style.padding = "9px 12px";
+      clearBtn.style.border = "1px solid #ddd";
+      clearBtn.style.borderRadius = "8px";
+      clearBtn.style.background="#f7f7f7";
+      clearBtn.onclick = ()=>{
+        if(confirm("确定清空当前池子全部昵称？")){
+          this.contactInfo[poolKey] = [];
+          this.saveContact();
+          Toast.show("已清空");
+          this.render();
+        }
+      };
+      inputRow.appendChild(nickInput);
+      inputRow.appendChild(addBtn);
+      inputRow.appendChild(clearBtn);
+      poolArea.appendChild(inputRow);
+      //昵称列表
       const listWrap = document.createElement("div");
-      listWrap.style.marginTop = "10px";
       poolArr.forEach((text,idx)=>{
         const row = document.createElement("div");
         row.style.display = "flex";
-        row.style.justifyContent = "space‑between";
+        row.style.justifyContent = "space-between";
         row.style.alignItems = "center";
-        row.style.padding = "8px 0";
+        row.style.padding = "9px 0";
         row.style.borderBottom = "1px solid #f1f1f1";
         row.innerHTML = `
-          <span style="font‑size:13px">${text}</span>
-          <div style="display:flex;gap:4px">
-            <button data‑pool="${poolKey}" data‑idx="${idx}" class="pool‑apply‑btn" style="border:none;background:#7c68ee;color:#fff;border‑radius:4px;padding:3px 6px;font‑size:11px">发起申请</button>
-            <button data‑pool="${poolKey}" data‑idx="${idx}" class="pool‑del‑btn" style="border:none;background:#f33;color:#fff;border‑radius:4px;padding:3px 6px;font‑size:11px">删除</button>
+          <span style="font-size:13px">${text}</span>
+          <div style="display:flex;gap:6px">
+            <button data-apply-idx="${idx}" style="border:none;background:#7c68ee;color:#fff;border-radius:4px;padding:4px 7px;font-size:11px">发起申请</button>
+            <button data-del-idx="${idx}" style="border:none;background:#f44336;color:#fff;border-radius:4px;padding:4px 7px;font-size:11px">删除</button>
           </div>
         `;
-        //发起申请按钮
-        row.querySelector(".pool‑apply‑btn").onclick = ()=>{
-          let targetType;
-          if(poolKey === "taNickPool") targetType = "taNick";
-          if(poolKey === "myNickPool") targetType = "myNick";
-          const applyObj = {
-            applyId:Date.now().toString(),
-            from:"me",
-            targetType: targetType,
-            newVal: text,
-            createTs: Date.now(),
-            expireMs: 2*3600*1000,
-            status:"pending",
-            desc:`申请变更${targetType==="taNick"?"对方昵称":"我的昵称为："+text}`
-          }
-          this.openApplyConfirmModal(applyObj,()=>{
-            const list = Store.get("contactList",[]);
-            const cidx = list.findIndex(x=>x.id === this.contactId);
-            list[cidx].pendingApplyList.push(applyObj);
-            Store.set("contactList",list);
-            this.contactInfo = list[cidx];
-            Toast.show("申请已提交");
-            this.render();
-          })
-        }
         listWrap.appendChild(row);
       })
-      wrap.appendChild(listWrap);
+      poolArea.appendChild(listWrap);
     }
+    contentWrap.appendChild(poolArea);
+    panel.appendChild(contentWrap);
+    this.maskDom.appendChild(panel);
 
-    //删除条目事件
-    wrap.querySelectorAll(".pool‑del‑btn").forEach(btn=>{
+    //绑定删除事件
+    panel.querySelectorAll("[data-del-idx]").forEach(btn=>{
       btn.onclick = (e)=>{
         e.stopPropagation();
-        const pKey = btn.dataset.pool;
-        const idx = Number(btn.dataset.idx);
-        this.contactInfo[pKey].splice(idx,1);
+        const idx = Number(btn.dataset.delIdx);
+        this.contactInfo[poolKey].splice(idx,1);
         this.saveContact();
         Toast.show("已删除");
         this.render();
-      }
+      };
     })
-    box.appendChild(wrap);
+    panel.querySelectorAll("[data-apply-idx]").forEach(btn=>{
+      btn.onclick = ()=>{
+        const idx = Number(btn.dataset.applyIdx);
+        const val = poolArr[idx];
+        const desc = `申请变更${subTab==="ta"?"对方昵称":"我的昵称为："+val}`;
+        const applyObj = {targetType,newVal:val,desc,from:"me"};
+        this.openApplyCountdownModal(applyObj);
+      };
+    });
+
+    const closeBtn = panel.querySelector("#modal-an-close");
+    if(closeBtn) closeBtn.onclick = ()=>this.close();
+    this.maskDom.onclick = (e)=>{if(e.target === this.maskDom) this.close();};
   }
 };
