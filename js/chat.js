@@ -74,12 +74,13 @@ export const ChatModule = {
     }
   },
 
-  // 对外接口：写入系统通知，自动持久化保存
-  pushSystemNotice(text){
+  // ========== 升级：系统通知，支持附加图片 ==========
+  pushSystemNotice(text, imageUrl = null) {
     this.messageList.push({
-      type:"notice",
-      content:text,
-      time:Date.now()
+      type: "notice",
+      content: text,
+      imageUrl: imageUrl, // 增加图片字段
+      time: Date.now()
     });
     this.saveHistory();
     this.renderMessages();
@@ -156,7 +157,6 @@ export const ChatModule = {
     this.msgListEl = document.createElement('div');
     this.msgListEl.style.flex = "1";
     this.msgListEl.style.overflowY = "auto";
-    // 隐藏滚动条，保留滚轮功能
     this.msgListEl.style.scrollbarWidth = "none";
     this.msgListEl.style.msOverflowStyle = "none";
     this.msgListEl.style.padding = "12px";
@@ -277,22 +277,51 @@ export const ChatModule = {
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
 
     this.messageList.forEach(msg => {
-      // 系统通知消息，对齐图2样式
+      // ========== 升级：系统通知消息，支持带图片的卡片样式 ==========
       if(msg.type === "notice"){
         const noticeEl = document.createElement("div");
         noticeEl.style.margin = "10px auto";
-        noticeEl.style.padding = "8px 16px";
+        noticeEl.style.padding = "12px 16px";
         noticeEl.style.background = "#f3f4f6";
         noticeEl.style.borderRadius = "12px";
-        noticeEl.style.textAlign = "center";
-        noticeEl.style.fontSize = "13px";
-        noticeEl.style.color = "#4b5563";
+        noticeEl.style.display = "flex";
+        noticeEl.style.flexDirection = "column";
+        noticeEl.style.alignItems = "center";
+        noticeEl.style.justifyContent = "center";
         noticeEl.style.maxWidth = "85%";
         noticeEl.style.wordBreak = "break-all";
-        noticeEl.textContent = msg.content;
+        noticeEl.style.width = "fit-content"; // 宽度自适应内容
+        noticeEl.style.minWidth = "120px";
+
+        if (msg.imageUrl) {
+          // 带图片卡片：文字在上，图片在下
+          const textEl = document.createElement("div");
+          textEl.style.fontSize = "13px";
+          textEl.style.color = "#4b5563";
+          textEl.style.marginBottom = "8px";
+          textEl.style.textAlign = "center";
+          textEl.textContent = msg.content;
+          noticeEl.appendChild(textEl);
+
+          const imgEl = document.createElement("img");
+          imgEl.src = msg.imageUrl;
+          imgEl.style.width = "56px";
+          imgEl.style.height = "56px";
+          imgEl.style.borderRadius = "8px"; 
+          imgEl.style.objectFit = "cover";
+          imgEl.style.display = "block";
+          noticeEl.appendChild(imgEl);
+        } else {
+          // 纯文本通知
+          noticeEl.style.fontSize = "13px";
+          noticeEl.style.color = "#4b5563";
+          noticeEl.style.textAlign = "center";
+          noticeEl.textContent = msg.content;
+        }
         this.msgListEl.appendChild(noticeEl);
         return;
       }
+      // ==================================================================
 
       const d = new Date(msg.time);
       const hh = String(d.getHours()).padStart(2,'0');
