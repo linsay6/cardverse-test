@@ -1,6 +1,13 @@
 // js/desktop.js
-export function initDesktop(container) {
-  container.innerHTML = `
+export const DesktopModule = {
+  rootEl: null,
+  init(containerSelector) {
+    this.rootEl = document.querySelector(containerSelector);
+    if (!this.rootEl) {
+      console.error("桌面容器找不到", containerSelector);
+      return;
+    }
+    this.rootEl.innerHTML = `
     <div class="desktop-page">
       <div class="grid-9">
         <div class="app-item" data-target="chat">
@@ -61,22 +68,29 @@ export function initDesktop(container) {
       .app-name{font-size:13px;color:#333;}
     </style>
   `;
-
-  // 图标点击跳转Tab事件，通知app主模块切换tab
-  container.querySelectorAll('.app-item').forEach(el=>{
-    el.onclick = ()=>{
-      const target = el.dataset.target;
-      if(!target) return;
-      if(target === 'chat'){
-        window.$bus.emit('tab:switch','chat');
-      }else if(target === 'card'){
-        window.$bus.emit('tab:switch','card');
-      }else if(target === 'setting' || target === 'setting-contact'){
-        window.$bus.emit('tab:switch','setting');
-        if(target === 'setting-contact'){
-          window.$bus.emit('setting:open-contact');
+    // 图标点击跳转Tab事件
+    this.rootEl.querySelectorAll('.app-item').forEach(el=>{
+      el.onclick = ()=>{
+        const target = el.dataset.target;
+        if(!target) return;
+        if(target === 'chat'){
+          // 调用TabManager的切换，这里我们通过事件总线通知app.js
+          import('./app.js').then(({TabManager})=>{
+            TabManager.switchTab('chat');
+          })
+        }else if(target === 'card'){
+          import('./app.js').then(({TabManager})=>{
+            TabManager.switchTab('card');
+          })
+        }else if(target === 'setting' || target === 'setting-contact'){
+          import('./app.js').then(({TabManager})=>{
+            TabManager.switchTab('setting');
+          })
+          if(target === 'setting-contact'){
+            // 后续setting模块监听 setting:open-contact 事件
+          }
         }
       }
-    }
-  })
-}
+    })
+  }
+};
