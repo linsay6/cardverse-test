@@ -62,15 +62,19 @@ export const ChatModule = {
     }
   },
 
-  pushNoticeMessage(text, from="me"){
+  // 对外暴露：推送标准化系统通知消息（图5样式）
+  pushSystemNotice(text){
     this.messageList.push({
       type:"notice",
       content:text,
-      from: from,
       time:Date.now()
     });
     this.saveHistory();
     this.renderMessages();
+  },
+
+  pushNoticeMessage(text, from="me"){
+    this.pushSystemNotice(text);
   },
 
   loadContactSession(contactId) {
@@ -255,16 +259,17 @@ export const ChatModule = {
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
 
     this.messageList.forEach(msg => {
+      // 系统通知消息（头像昵称变更记录，图5）
       if(msg.type === "notice"){
         const noticeEl = document.createElement("div");
         noticeEl.style.margin="10px 0";
-        noticeEl.style.padding="8px 12px";
+        noticeEl.style.padding="8px 14px";
         noticeEl.style.background="#eeeeee";
-        noticeEl.style.borderRadius="8px";
+        noticeEl.style.borderRadius="999px";
         noticeEl.style.textAlign="center";
         noticeEl.style.fontSize="12px";
         noticeEl.style.color="#555";
-        noticeEl.style.maxWidth="85%";
+        noticeEl.style.maxWidth="88%";
         noticeEl.style.marginLeft="auto";
         noticeEl.style.marginRight="auto";
         noticeEl.textContent = msg.content;
@@ -278,57 +283,87 @@ export const ChatModule = {
       const ss = String(d.getSeconds()).padStart(2,'0');
       const timeStr = `${hh}:${mm}:${ss}`;
 
-      if(timePos === "hide"){
-        msgItem = document.createElement("div");
-      }
-      const msgItem = document.createElement("div");
-      msgItem.style.marginBottom = "14px";
-      msgItem.style.display = "flex";
-      msgItem.style.alignItems = "flex-end";
-      let timeHtml = "";
-      if(timePos === "hide") timeHtml = "";
-      else if(timePos === "avatarBottom"){
-        timeHtml = `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
-      }else if(timePos === "bubbleBottom"){
-        timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
-      }else if(timePos === "bubbleOuter"){
-        timeHtml = `<div style="font-size:11px;color:#999;margin-left:6px;align-self:flex-end;white-space:nowrap">${timeStr}</div>`;
-      }else if(timePos === "topCenter"){
-        timeHtml = `<div style="width:100%;text-align:center;font-size:11px;color:#999;margin:4px 0">${timeStr}</div>`;
-      }else if(timePos === "divider"){
-        timeHtml = `<div style="width:100%;display:flex;align-items:center;color:#999;font-size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
-      }
+      const msgWrap = document.createElement("div");
+      msgWrap.style.marginBottom = "16px";
 
-      if (msg.role === "user") {
-        msgItem.style.justifyContent = "flex-end";
-        msgItem.innerHTML = `
-          ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
-          <div style="display:flex;flex-direction:row-reverse;align-items:flex-end;gap:6px">
-            <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover;flex-shrink:0">
-            <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-end">
-              ${timePos==="bubbleBottom"?timeHtml:""}
-              <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
-              ${timePos==="avatarBottom"?timeHtml:""}
+      // --------------------------头像下方模式：严格对齐参考图4
+      if(timePos === "avatarBottom"){
+        if(msg.role === "user"){
+          //我方：头像在右侧，时间在头像正下方居中，气泡在头像左边
+          msgWrap.style.display = "flex";
+          msgWrap.style.justifyContent = "flex-end";
+          msgWrap.style.alignItems = "flex‑start";
+          msgWrap.innerHTML = `
+            <div style="max‑width:70%">
+              <div style="background:#fff;color:#222;padding:8px 12px;border‑radius:12px;box‑shadow:0 1px 3px rgba(0,0,0,0.08);word‑break:break‑all">${msg.content}</div>
             </div>
-            ${timePos==="bubbleOuter"?timeHtml:""}
-          </div>
-        `;
-      } else {
-        msgItem.style.justifyContent = "flex-start";
-        msgItem.innerHTML = `
-          ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
-          <div style="display:flex;align-items:flex-end;gap:6px">
-            <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover;flex-shrink:0">
-            <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-start">
-              ${timePos==="bubbleBottom"?timeHtml:""}
-              <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
-              ${timePos==="avatarBottom"?timeHtml:""}
+            <div style="display:flex;flex‑direction:column;align‑items:center;margin‑left:8px">
+              <img src="${myCurrentAvatar}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover">
+              <div style="font‑size:11px;color:#999;margin‑top:4px">${timeStr}</div>
             </div>
-            ${timePos==="bubbleOuter"?timeHtml:""}
-          </div>
-        `;
+          `;
+        }else{
+          //对方：头像在左侧，时间头像正下方居中，气泡头像右边
+          msgWrap.style.display = "flex";
+          msgWrap.style.justifyContent = "flex‑start";
+          msgWrap.style.alignItems = "flex‑start";
+          msgWrap.innerHTML = `
+            <div style="display:flex;flex‑direction:column;align‑items:center;margin‑right:8px">
+              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover">
+              <div style="font‑size:11px;color:#999;margin‑top:4px">${timeStr}</div>
+            </div>
+            <div style="max‑width:70%">
+              <div style="background:#222;color:#fff;padding:8px 12px;border‑radius:12px;word‑break:break‑all">${msg.content}</div>
+            </div>
+          `;
+        }
+      }else{
+        //其余5种时间模式逻辑保持
+        let timeHtml = "";
+        if(timePos === "hide") timeHtml = "";
+        else if(timePos === "bubbleBottom"){
+          timeHtml = `<div style="text‑align:right;font‑size:11px;color:#999;margin‑bottom:4px">${timeStr}</div>`;
+        }else if(timePos === "bubbleOuter"){
+          timeHtml = `<div style="font‑size:11px;color:#999;margin‑left:6px;align‑self:flex‑end;white‑space:nowrap">${timeStr}</div>`;
+        }else if(timePos === "topCenter"){
+          timeHtml = `<div style="width:100%;text‑align:center;font‑size:11px;color:#999;margin:4px 0">${timeStr}</div>`;
+        }else if(timePos === "divider"){
+          timeHtml = `<div style="width:100%;display:flex;align‑items:center;color:#999;font‑size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
+        }
+
+        if (msg.role === "user") {
+          msgWrap.style.display = "flex";
+          msgWrap.style.justifyContent = "flex‑end";
+          msgWrap.style.alignItems = "flex‑end";
+          msgWrap.innerHTML = `
+            ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
+            <div style="display:flex;flex‑direction:row‑reverse;align‑items:flex‑end;gap:6px">
+              <img src="${myCurrentAvatar}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover;flex‑shrink:0">
+              <div style="max‑width:70%;display:flex;flex‑direction:column;align‑items:flex‑end">
+                ${timePos==="bubbleBottom"?timeHtml:""}
+                <div style="background:#fff;color:#222;padding:8px 12px;border‑radius:12px;box‑shadow:0 1px 3px rgba(0,0,0,0.08);word‑break:break‑all">${msg.content}</div>
+              </div>
+              ${timePos==="bubbleOuter"?timeHtml:""}
+            </div>
+          `;
+        } else {
+          msgWrap.style.display = "flex";
+          msgWrap.style.justifyContent = "flex‑start";
+          msgWrap.style.alignItems = "flex‑end";
+          msgWrap.innerHTML = `
+            ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
+            <div style="display:flex;align‑items:flex‑end;gap:6px">
+              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover;flex‑shrink:0">
+              <div style="max‑width:70%;display:flex;flex‑direction:column;align‑items:flex‑start">
+                ${timePos==="bubbleBottom"?timeHtml:""}
+                <div style="background:#222;color:#fff;padding:8px 12px;border‑radius:12px;word‑break:break‑all">${msg.content}</div>
+              </div>
+              ${timePos==="bubbleOuter"?timeHtml:""}
+            </div>
+          `;
+        }
       }
-      this.msgListEl.appendChild(msgItem);
+      this.msgListEl.appendChild(msgWrap);
     });
 
     if(this.isTyping){
