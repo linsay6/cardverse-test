@@ -13,7 +13,8 @@ export const ChatModule = {
   messageList: [],
   isTyping: false,
   viewMode: "chat",
-  primaryColor: "#673ab7",
+  primaryColor: "#7c68ee",
+  bgColor: "#ffffff",
 
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
@@ -21,6 +22,11 @@ export const ChatModule = {
       console.error("聊天容器找不到", containerSelector);
       return;
     }
+    // 初始化读取主题色
+    const theme = Store.get("app-theme", {});
+    this.primaryColor = theme.colorMain || "#7c68ee";
+    this.bgColor = theme.colorBg || "#ffffff";
+    
     this.render();
     document.addEventListener("contact:change", (ev) => {
       this.loadContactSession(ev.detail);
@@ -29,9 +35,11 @@ export const ChatModule = {
     if(initCid){
       this.loadContactSession(initCid);
     }
+    // 监听主题变化，实时更新颜色
     EventBus.on("themeChange", (theme) => {
-      this.primaryColor = theme?.primaryColor || "#673ab7";
-      if(this.viewMode === "chat") this.renderMessages();
+      this.primaryColor = theme.colorMain || "#7c68ee";
+      this.bgColor = theme.colorBg || "#ffffff";
+      if(this.viewMode === "chat") this.renderChatLayout();
     });
     EventBus.on("chatThemeChange", ()=>{
       this.renderMessages();
@@ -40,6 +48,14 @@ export const ChatModule = {
       if(cid === this.activeContactId){
         const list = Store.get("contactList",[]);
         this.activeContactInfo = list.find(item=>item.id === cid);
+        this.renderMessages();
+      }
+    });
+    // 监听清空聊天事件，刷新列表
+    EventBus.on("chatLogClear", (cid)=>{
+      if(cid === this.activeContactId){
+        this.messageList = [];
+        this.saveHistory();
         this.renderMessages();
       }
     });
@@ -120,7 +136,7 @@ export const ChatModule = {
     wrap.style.height = "100%";
     wrap.style.display = "flex";
     wrap.style.flexDirection = "column";
-    wrap.style.background = "#f7f7f7";
+    wrap.style.background = this.bgColor;
     wrap.style.position = "relative";
     wrap.style.overflow = "hidden";
 
@@ -130,30 +146,30 @@ export const ChatModule = {
     chatHeader.style.justifyContent = "space-between";
     chatHeader.style.alignItems = "center";
     chatHeader.style.borderBottom = "1px solid #e5e5e5";
-    chatHeader.style.background = "#fff";
+    chatHeader.style.background = this.bgColor;
     chatHeader.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px">
-        <button id="chat-back-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;">←</button>
-        <img id="chat-header-avatar" src="" style="width:36px;height:36px;object‑fit:cover;background:#eee">
-        <div id="chat‑title" style="font‑weight:bold;color:#222">未选择联系人</div>
+        <button id="chat-back-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:${this.bgColor};">←</button>
+        <img id="chat-header-avatar" src="" style="width:36px;height:36px;object-fit:cover;background:#eee">
+        <div id="chat-title" style="font-weight:bold;color:#222">未选择联系人</div>
       </div>
-      <button id="chat‑more‑btn" style="width:32px;height:32px;border‑radius:50%;border:1px solid #ddd;background:#fff;font‑size:18px">⋯</button>
+      <button id="chat-more-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:${this.bgColor};font-size:18px">⋯</button>
     `;
     wrap.appendChild(chatHeader);
     this.msgListEl = document.createElement('div');
     this.msgListEl.style.flex = "1";
     this.msgListEl.style.overflowY = "auto";
     this.msgListEl.style.padding = "12px";
-    this.msgListEl.style.boxSizing = "border‑box";
+    this.msgListEl.style.boxSizing = "border-box";
     const inputWrap = document.createElement('div');
     inputWrap.style.padding = "10px 12px";
     inputWrap.style.borderTop = "1px solid #e5e5e5";
     inputWrap.style.display = "flex";
     inputWrap.style.gap = "8px";
-    inputWrap.style.background = "#fff";
+    inputWrap.style.background = this.bgColor;
 
     const extendBtn = document.createElement("button");
-    extendBtn.id = "chat‑extend‑btn";
+    extendBtn.id = "chat-extend-btn";
     extendBtn.innerText = "···";
     extendBtn.style.border = "none";
     extendBtn.style.background = "transparent";
@@ -188,7 +204,7 @@ export const ChatModule = {
     wrap.appendChild(inputWrap);
     this.rootEl.appendChild(wrap);
 
-    document.getElementById("chat‑more‑btn").onclick = ()=>{
+    document.getElementById("chat-more-btn").onclick = ()=>{
       if(!this.activeContactId){
         Toast.show("请先选中联系人");
         return;
@@ -196,14 +212,14 @@ export const ChatModule = {
       this.viewMode = "setting";
       this.render();
     };
-    document.getElementById("chat‑back‑btn").onclick = ()=>{
+    document.getElementById("chat-back-btn").onclick = ()=>{
       if(window.TabManager){
         window.TabManager.switchTab("setting");
       }
       Toast.show("返回联系人列表");
     };
 
-    document.getElementById("chat‑extend‑btn").onclick = ()=>{
+    document.getElementById("chat-extend-btn").onclick = ()=>{
       if(!this.activeContactId){
         Toast.show("请先选中联系人");
         return;
@@ -224,8 +240,8 @@ export const ChatModule = {
     Toast.show("已更新");
   },
   renderMessages() {
-    const titleDom = document.getElementById("chat‑title");
-    const avatarDom = document.getElementById("chat‑header‑avatar");
+    const titleDom = document.getElementById("chat-title");
+    const avatarDom = document.getElementById("chat-header-avatar");
     if(titleDom && avatarDom){
       if(this.activeContactInfo){
         titleDom.innerText = this.activeContactInfo.name;
@@ -242,17 +258,17 @@ export const ChatModule = {
     const avatarRadius = theme.avatarShape === "circle" ? "50%" : "8px";
     const timePos = theme.timePos;
 
-    const headerAvatar = document.getElementById("chat‑header‑avatar");
+    const headerAvatar = document.getElementById("chat-header-avatar");
     if(headerAvatar){
       headerAvatar.style.borderRadius = avatarRadius;
     }
 
     if (!this.activeContactId) {
-      this.msgListEl.innerHTML = `<div style="text‑align:center;margin‑top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
+      this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
       return;
     }
     if (this.messageList.length === 0) {
-      this.msgListEl.innerHTML = `<div style="text‑align:center;margin‑top:40px;color:#777">暂无消息，发送第一条消息吧</div>`;
+      this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">暂无消息，发送第一条消息吧</div>`;
       return;
     }
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
@@ -284,31 +300,29 @@ export const ChatModule = {
       const msgItem = document.createElement("div");
       msgItem.style.marginBottom = "14px";
       msgItem.style.display = "flex";
-      msgItem.style.alignItems = "flex‑start";
+      msgItem.style.alignItems = "flex-start";
 
-      let timeDom = "";
       if(timePos === "avatarBottom"){
-        //头像下方：头像容器是垂直column，头像+时间居中
         if(msg.role === "user"){
-          msgItem.style.justifyContent = "flex‑end";
+          msgItem.style.justifyContent = "flex-end";
           msgItem.innerHTML = `
-            <div style="max‑width:70%">
-              <div style="background:#fff;color:#222;padding:8px 12px;border‑radius:12px;box‑shadow:0 1px 3px rgba(0,0,0,0.08);word‑break:break‑all">${msg.content}</div>
+            <div style="max-width:70%">
+              <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
             </div>
-            <div style="display:flex;flex‑direction:column;align‑items:center;margin‑left:8px">
-              <img src="${myCurrentAvatar}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover">
-              <div style="font‑size:11px;color:#999;margin‑top:4px">${timeStr}</div>
+            <div style="display:flex;flex-direction:column;align-items:center;margin-left:8px">
+              <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+              <div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>
             </div>
           `;
         }else{
-          msgItem.style.justifyContent = "flex‑start";
+          msgItem.style.justifyContent = "flex-start";
           msgItem.innerHTML = `
-            <div style="display:flex;flex‑direction:column;align‑items:center;margin‑right:8px">
-              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover">
-              <div style="font‑size:11px;color:#999;margin‑top:4px">${timeStr}</div>
+            <div style="display:flex;flex-direction:column;align-items:center;margin-right:8px">
+              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+              <div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>
             </div>
-            <div style="max‑width:70%">
-              <div style="background:#222;color:#fff;padding:8px 12px;border‑radius:12px;word‑break:break‑all">${msg.content}</div>
+            <div style="max-width:70%">
+              <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
             </div>
           `;
         }
@@ -316,38 +330,38 @@ export const ChatModule = {
         let timeHtml = "";
         if(timePos === "hide") timeHtml = "";
         else if(timePos === "bubbleBottom"){
-          timeHtml = `<div style="text‑align:right;font‑size:11px;color:#999;margin‑bottom:4px">${timeStr}</div>`;
+          timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
         }else if(timePos === "bubbleOuter"){
-          timeHtml = `<div style="font‑size:11px;color:#999;margin‑left:6px;align‑self:flex‑end;white‑space:nowrap">${timeStr}</div>`;
+          timeHtml = `<div style="font-size:11px;color:#999;margin-left:6px;align-self:flex-end;white-space:nowrap">${timeStr}</div>`;
         }else if(timePos === "topCenter"){
-          timeHtml = `<div style="width:100%;text‑align:center;font‑size:11px;color:#999;margin:4px 0">${timeStr}</div>`;
+          timeHtml = `<div style="width:100%;text-align:center;font-size:11px;color:#999;margin:4px 0">${timeStr}</div>`;
         }else if(timePos === "divider"){
-          timeHtml = `<div style="width:100%;display:flex;align‑items:center;color:#999;font‑size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
+          timeHtml = `<div style="width:100%;display:flex;align-items:center;color:#999;font-size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
         }
         if(msg.role === "user"){
-          msgItem.style.justifyContent = "flex‑end";
-          msgItem.style.alignItems = "flex‑end";
+          msgItem.style.justifyContent = "flex-end";
+          msgItem.style.alignItems = "flex-end";
           msgItem.innerHTML = `
             ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
-            <div style="display:flex;flex‑direction:row‑reverse;align‑items:flex‑end;gap:6px">
-              <img src="${myCurrentAvatar}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover;flex‑shrink:0">
-              <div style="max‑width:70%;display:flex;flex‑direction:column;align‑items:flex‑end">
+            <div style="display:flex;flex-direction:row-reverse;align-items:flex-end;gap:6px">
+              <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover;flex-shrink:0">
+              <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-end">
                 ${timePos==="bubbleBottom"?timeHtml:""}
-                <div style="background:#fff;color:#222;padding:8px 12px;border‑radius:12px;box‑shadow:0 1px 3px rgba(0,0,0,0.08);word‑break:break‑all">${msg.content}</div>
+                <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
               </div>
               ${timePos==="bubbleOuter"?timeHtml:""}
             </div>
           `;
         }else{
-          msgItem.style.justifyContent = "flex‑start";
-          msgItem.style.alignItems = "flex‑end";
+          msgItem.style.justifyContent = "flex-start";
+          msgItem.style.alignItems = "flex-end";
           msgItem.innerHTML = `
             ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
-            <div style="display:flex;align‑items:flex‑end;gap:6px">
-              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover;flex‑shrink:0">
-              <div style="max‑width:70%;display:flex;flex‑direction:column;align‑items:flex‑start">
+            <div style="display:flex;align-items:flex-end;gap:6px">
+              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover;flex-shrink:0">
+              <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-start">
                 ${timePos==="bubbleBottom"?timeHtml:""}
-                <div style="background:#222;color:#fff;padding:8px 12px;border‑radius:12px;word‑break:break‑all">${msg.content}</div>
+                <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
               </div>
               ${timePos==="bubbleOuter"?timeHtml:""}
             </div>
@@ -400,6 +414,6 @@ export const ChatModule = {
 
   saveHistory() {
     if(!this.activeContactId) return;
-    Store.set(`chat‑contact‑${this.activeContactId}`, this.messageList);
+    Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
   }
 };
