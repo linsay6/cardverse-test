@@ -13,6 +13,7 @@ export const ChatModule = {
   messageList: [],
   isTyping: false,
   viewMode: "chat",
+  primaryColor: "#673ab7",
 
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
@@ -28,7 +29,8 @@ export const ChatModule = {
     if(initCid){
       this.loadContactSession(initCid);
     }
-    EventBus.on("themeChange", () => {
+    EventBus.on("themeChange", (theme) => {
+      this.primaryColor = theme?.primaryColor || "#673ab7";
       if(this.viewMode === "chat") this.renderMessages();
     });
     EventBus.on("chatThemeChange", ()=>{
@@ -169,7 +171,7 @@ export const ChatModule = {
     sendBtn.style.padding = "10px 16px";
     sendBtn.style.border = "none";
     sendBtn.style.borderRadius = "999px";
-    sendBtn.style.background = "#673ab7";
+    sendBtn.style.background = this.primaryColor;
     sendBtn.style.color = "#fff";
     sendBtn.onclick = () => this.sendMessage();
     this.inputEl.onkeydown = (e) => {
@@ -276,18 +278,21 @@ export const ChatModule = {
       const ss = String(d.getSeconds()).padStart(2,'0');
       const timeStr = `${hh}:${mm}:${ss}`;
 
+      if(timePos === "hide"){
+        msgItem = document.createElement("div");
+      }
       const msgItem = document.createElement("div");
       msgItem.style.marginBottom = "14px";
       msgItem.style.display = "flex";
       msgItem.style.alignItems = "flex-end";
       let timeHtml = "";
-
-      if(timePos === "avatarBottom"){
+      if(timePos === "hide") timeHtml = "";
+      else if(timePos === "avatarBottom"){
         timeHtml = `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
       }else if(timePos === "bubbleBottom"){
         timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
       }else if(timePos === "bubbleOuter"){
-        timeHtml = `<div style="font-size:11px;color:#999;margin-left:6px;align-self:flex-end">${timeStr}</div>`;
+        timeHtml = `<div style="font-size:11px;color:#999;margin-left:6px;align-self:flex-end;white-space:nowrap">${timeStr}</div>`;
       }else if(timePos === "topCenter"){
         timeHtml = `<div style="width:100%;text-align:center;font-size:11px;color:#999;margin:4px 0">${timeStr}</div>`;
       }else if(timePos === "divider"){
@@ -299,7 +304,7 @@ export const ChatModule = {
         msgItem.innerHTML = `
           ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
           <div style="display:flex;flex-direction:row-reverse;align-items:flex-end;gap:6px">
-            <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+            <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover;flex-shrink:0">
             <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-end">
               ${timePos==="bubbleBottom"?timeHtml:""}
               <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
@@ -313,7 +318,7 @@ export const ChatModule = {
         msgItem.innerHTML = `
           ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
           <div style="display:flex;align-items:flex-end;gap:6px">
-            <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+            <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover;flex-shrink:0">
             <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-start">
               ${timePos==="bubbleBottom"?timeHtml:""}
               <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
