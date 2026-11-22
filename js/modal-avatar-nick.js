@@ -1,11 +1,13 @@
 import { Store } from './core/store.js';
 import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
+
 export const ModalAvatarNick = {
   maskDom: null,
   contactId: null,
   contactInfo: null,
   callbackClose: null,
+
   open(parentDom, cid, closeCb) {
     this.contactId = cid;
     this.callbackClose = closeCb;
@@ -15,7 +17,6 @@ export const ModalAvatarNick = {
       Toast.show("找不到该联系人");
       return;
     }
-    // 兜底初始化，防止字段缺失
     if(!this.contactInfo.taAvatarPool) this.contactInfo.taAvatarPool = [];
     if(!this.contactInfo.myAvatarPool) this.contactInfo.myAvatarPool = [];
     if(!this.contactInfo.taNickPool) this.contactInfo.taNickPool = [];
@@ -26,20 +27,23 @@ export const ModalAvatarNick = {
     if(!this.contactInfo.myNickRandom) this.contactInfo.myNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
 
     this.maskDom = document.createElement("div");
-    this.maskDom.style.position = "fixed";
+    this.maskDom.style.position = "absolute";
     this.maskDom.style.inset = "0";
     this.maskDom.style.background = "rgba(0,0,0,0.45)";
     this.maskDom.style.zIndex = "10000";
     this.maskDom.style.display = "flex";
     this.maskDom.style.alignItems = "center";
     this.maskDom.style.justifyContent = "center";
-    this.render();
+
     parentDom.appendChild(this.maskDom);
+    this.render();
   },
+
   close() {
     if(this.maskDom) this.maskDom.remove();
     if(typeof this.callbackClose === "function") this.callbackClose();
   },
+
   saveContact() {
     const list = Store.get("contactList", []);
     const idx = list.findIndex(x => x.id === this.contactId);
@@ -48,9 +52,11 @@ export const ModalAvatarNick = {
     Store.set("contactList", list);
     EventBus.emit("contactInfoChange", this.contactId);
   },
+
   render() {
     if(!this.maskDom) return;
     this.maskDom.innerHTML = "";
+
     const panel = document.createElement("div");
     panel.style.width = "90%";
     panel.style.maxWidth = "420px";
@@ -58,6 +64,7 @@ export const ModalAvatarNick = {
     panel.style.background = "#fff";
     panel.style.borderRadius = "16px";
     panel.style.overflow = "auto";
+
     const head = document.createElement("div");
     head.style.padding = "14px 16px";
     head.style.display = "flex";
@@ -72,9 +79,12 @@ export const ModalAvatarNick = {
     tabWrap.style.borderBottom = "1px solid #eee";
     const tabList = ["TA头像池", "TA昵称池", "我的头像池", "我的昵称池"];
     let activeTab = 0;
+
+    const contentBox = document.createElement("div");
+    contentBox.id = "modal-an-content";
+    contentBox.style.padding = "14px 16px";
+
     const renderTabContent = ()=>{
-      const contentBox = document.getElementById("modal-an-content");
-      if(!contentBox) return;
       contentBox.innerHTML = "";
       if(activeTab === 0){
         this.renderRandomRow(contentBox, "taAvatarRandom", "TA头像随机轮换");
@@ -90,6 +100,7 @@ export const ModalAvatarNick = {
         this.renderPoolList(contentBox, this.contactInfo.myNickPool, "myNickPool", "昵称");
       }
     };
+
     tabList.forEach((t,ti)=>{
       const tab = document.createElement("div");
       tab.innerText = t;
@@ -99,24 +110,31 @@ export const ModalAvatarNick = {
       tab.style.fontSize = "13px";
       tab.style.cursor = "pointer";
       if(ti === activeTab) tab.style.fontWeight = "bold";
-      tab.onclick = ()=>{
-        activeTab = ti;
-        this.render();
-      }
+      tab.dataset.tabIdx = String(ti);
       tabWrap.appendChild(tab);
     })
     panel.appendChild(tabWrap);
-    const contentBox = document.createElement("div");
-    contentBox.id = "modal-an-content";
-    contentBox.style.padding = "14px 16px";
     panel.appendChild(contentBox);
     this.maskDom.appendChild(panel);
     renderTabContent();
-    document.getElementById("modal-an-close").onclick = ()=>this.close();
+
+    // ✅DOM全部挂载完毕之后，再绑定事件，避免null报错
+    const closeBtn = panel.querySelector("#modal-an-close");
+    if(closeBtn) closeBtn.onclick = ()=>this.close();
+
     this.maskDom.onclick = (e)=>{
       if(e.target === this.maskDom) this.close();
     }
+
+    const tabNodes = panel.querySelectorAll('[data‑tab‑idx]');
+    tabNodes.forEach(el=>{
+      el.onclick = ()=>{
+        activeTab = Number(el.dataset.tabIdx);
+        renderTabContent();
+      }
+    })
   },
+
   renderRandomRow(box, keyName, titleText) {
     const item = this.contactInfo[keyName];
     const div = document.createElement("div");
@@ -149,6 +167,7 @@ export const ModalAvatarNick = {
       Toast.show("已保存轮换设置");
     }
   },
+
   renderPoolList(box, poolArr, poolKey, tipText) {
     const wrap = document.createElement("div");
     wrap.style.marginTop = "12px";
@@ -188,6 +207,12 @@ export const ModalAvatarNick = {
       row.style.padding = "8px 0";
       row.style.borderBottom = "1px solid #f1f1f1";
       row.innerHTML = `<span style="font-size:13px">${v}</span><button data-idx="${idx}" style="border:none;background:#f33;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px">删除</button>`;
+      const delBtn = row.querySelector("button");
+      delBtn.onclick = ()=>{
+        this.contactInfo[poolKey].splice(idx,1);
+        this.saveContact();
+        this.render();
+      }
       listWrap.appendChild(row);
     })
     wrap.appendChild(listWrap);
