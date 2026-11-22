@@ -1,100 +1,72 @@
-// js/desktop.js
 export const DesktopModule = {
-  rootEl: null,
-  init(containerSelector) {
-    this.rootEl = document.querySelector(containerSelector);
-    if (!this.rootEl) {
-      console.error("桌面容器找不到", containerSelector);
-      return;
-    }
-    this.rootEl.innerHTML = `
-    <div class="desktop-page">
-      <div class="grid-9">
-        <div class="app-item" data-tab="chat">
-          <div class="app-icon">💬</div>
-          <div class="app-name">聊天</div>
-        </div>
-        <div class="app-item" data-tab="card">
-          <div class="app-icon">📜</div>
-          <div class="app-name">字卡库</div>
-        </div>
-        <div class="app-item" data-tab="setting" data-sub="contact">
-          <div class="app-icon">👤</div>
-          <div class="app-name">联系人</div>
-        </div>
-        <div class="app-item" data-page="treehole">
-          <div class="app-icon">🌳</div>
-          <div class="app-name">树洞</div>
-        </div>
-        <div class="app-item" data-page="tarot">
-          <div class="app-icon">🔮</div>
-          <div class="app-name">塔罗</div>
-        </div>
-        <div class="app-item" data-page="cabin">
-          <div class="app-icon">🏠</div>
-          <div class="app-name">小屋</div>
-        </div>
-        <div class="app-item" data-page="review">
-          <div class="app-icon">✅</div>
-          <div class="app-name">审核</div>
-        </div>
-        <div class="app-item" data-tab="setting">
-          <div class="app-icon">⚙️</div>
-          <div class="app-name">设置</div>
-        </div>
+  init(selector) {
+    const wrap = document.querySelector(selector);
+    if (!wrap) return;
+
+    wrap.innerHTML = `
+    <div class="desktop-grid">
+      <div class="desktop-item" data-tab="chat">
+        <div class="icon">💬</div>
+        <div class="label">聊天</div>
+      </div>
+      <div class="desktop-item" data-tab="card">
+        <div class="icon">📜</div>
+        <div class="label">字卡库</div>
+      </div>
+      <div class="desktop-item" data-tab="setting" data-sub="contact">
+        <div class="icon">👤</div>
+        <div class="label">联系人</div>
+      </div>
+      <div class="desktop-item" data-action="treehole">
+        <div class="icon">🌳</div>
+        <div class="label">树洞</div>
+      </div>
+      <div class="desktop-item" data-action="tarot">
+        <div class="icon">🔮</div>
+        <div class="label">塔罗</div>
+      </div>
+      <div class="desktop-item" data-action="house">
+        <div class="icon">🏠</div>
+        <div class="label">小屋</div>
+      </div>
+      <div class="desktop-item" data-action="audit">
+        <div class="icon">✅</div>
+        <div class="label">审核</div>
+      </div>
+      <div class="desktop-item" data-tab="setting">
+        <div class="icon">⚙️</div>
+        <div class="label">设置</div>
       </div>
     </div>
     <style>
-      .desktop-page{padding:20px 12px;box-sizing:border-box;}
-      .grid-9{
-        display:grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap:18px;
-      }
-      .app-item{
-        display:flex;
-        flex-direction:column;
-        align-items:center;
-        gap:6px;
-        padding:10px;
-      }
-      .app-icon{
-        width:52px;height:52px;
-        display:grid;place-items:center;
-        font-size:26px;
-        background:#f4f4f6;
-        border-radius:14px;
-      }
-      .app-name{font-size:13px;color:#333;}
+    .desktop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px}
+    .desktop-item{text-align:center;padding:12px;border-radius:12px;background:var(--color-bg);cursor:pointer}
+    .desktop-item .icon{font-size:32px;margin-bottom:6px}
+    .desktop-item .label{font-size:14px;color:var(--color-text)}
     </style>
-  `;
+    `;
 
-    // 统一点击事件，改用全局Tab切换（绝大多数这类单页项目TabManager会挂window）
-    this.rootEl.querySelectorAll('.app-item').forEach(el=>{
+    wrap.querySelectorAll('.desktop-item').forEach(el=>{
       el.onclick = ()=>{
         const targetTab = el.dataset.tab;
-        const subPage = el.dataset.sub;
-        const pageName = el.dataset.page;
+        const sub = el.dataset.sub;
+        const action = el.dataset.action;
 
-        // 主Tab切换：聊天 / 字卡 / 设置
         if(targetTab){
-          if(window.TabManager && typeof window.TabManager.switchTab === 'function'){
-            window.TabManager.switchTab(targetTab);
-            // 联系人：切换到设置tab后，通知设置页打开联系人面板
-            if(subPage === 'contact'){
-              window.dispatchEvent(new CustomEvent('setting:open-contact'));
-            }
-          }else{
-            console.error("TabManager不存在，请确认app.js里面挂载 window.TabManager = TabManager");
-          }
-          return;
-        }
+          // 直接点击底部对应的tab按钮，复用原有逻辑，不调用TabManager
+          const tabBtn = document.querySelector(`.tab-btn[data-tab="${targetTab}"]`);
+          if(tabBtn) tabBtn.click();
 
-        // 独立页面：树洞、塔罗、小屋、审核（先打印占位，后续我们再单独写对应模块）
-        if(pageName){
-          alert(`【${pageName}】模块待开发`);
+          if(sub === 'contact'){
+            setTimeout(()=>{
+              // 等设置面板切出来之后，抛事件给setting模块打开联系人
+              document.dispatchEvent(new CustomEvent('setting:open-contact'));
+            }, 80);
+          }
+        }else if(action){
+          alert(`功能【${el.querySelector('.label').innerText}】暂未开发`);
         }
       }
     })
   }
-};
+}
