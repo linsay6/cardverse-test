@@ -13,7 +13,6 @@ export const ChatModule = {
   messageList: [],
   isTyping: false,
   viewMode: "chat",
-  applyCheckTimer: null,
 
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
@@ -42,37 +41,6 @@ export const ChatModule = {
         this.renderMessages();
       }
     });
-    this.applyCheckTimer = setInterval(()=>{
-      this.checkPendingApply();
-    },30000);
-  },
-
-  // 检测待处理申请：超时自动同意，写入notice消息
-  checkPendingApply(){
-    if(!this.activeContactId) return;
-    const list = Store.get("contactList",[]);
-    const idx = list.findIndex(i=>i.id === this.activeContactId);
-    if(idx === -1) return;
-    const contact = list[idx];
-    if(!Array.isArray(contact.pendingApplyList)) return;
-    const now = Date.now();
-    let changed = false;
-    contact.pendingApplyList = contact.pendingApplyList.filter(apply=>{
-      if(apply.status !== "pending") return true;
-      if(now > apply.createTs + apply.expireMs){
-        apply.status = "autoAccept";
-        this.executeApply(apply, contact);
-        changed = true;
-        this.pushNoticeMessage(`【${apply.from==="ta"?"对方":"我"}发起】${apply.desc} —— 超时未处理，已自动同意`, apply.from);
-        return false;
-      }
-      return true;
-    });
-    if(changed){
-      Store.set("contactList",list);
-      this.activeContactInfo = contact;
-      this.renderMessages();
-    }
   },
 
   executeApply(apply, contactObj){
@@ -92,7 +60,6 @@ export const ChatModule = {
     }
   },
 
-  // type:notice 聊天系统通知，携带来源 from:"me"/"ta"
   pushNoticeMessage(text, from="me"){
     this.messageList.push({
       type:"notice",
@@ -116,7 +83,6 @@ export const ChatModule = {
     }
     this.activeContactId = contactId;
     this.activeContactInfo = findItem;
-    // 初始化全部池子、轮换配置，新增taApplyIntervalHours对方申请间隔
     if(!this.activeContactInfo.taAvatarPool) this.activeContactInfo.taAvatarPool = [];
     if(!this.activeContactInfo.myAvatarPool) this.activeContactInfo.myAvatarPool = [];
     if(!this.activeContactInfo.taNickPool) this.activeContactInfo.taNickPool = [];
@@ -305,7 +271,6 @@ export const ChatModule = {
       }
 
       const d = new Date(msg.time);
-      // 24小时制 精确到秒 hh:mm:ss
       const hh = String(d.getHours()).padStart(2,'0');
       const mm = String(d.getMinutes()).padStart(2,'0');
       const ss = String(d.getSeconds()).padStart(2,'0');
@@ -314,46 +279,44 @@ export const ChatModule = {
       const msgItem = document.createElement("div");
       msgItem.style.marginBottom = "14px";
       msgItem.style.display = "flex";
-      msgItem.style.alignItems = "flex‑end";
+      msgItem.style.alignItems = "flex-end";
       let timeHtml = "";
 
       if(timePos === "avatarBottom"){
-        timeHtml = `<div style="text‑align:center;width:34px;font‑size:11px;color:#999;margin‑top:4px">${timeStr}</div>`;
+        timeHtml = `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
       }else if(timePos === "bubbleBottom"){
-        timeHtml = `<div style="text‑align:right;font‑size:11px;color:#999;margin‑bottom:4px">${timeStr}</div>`;
+        timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
       }else if(timePos === "bubbleOuter"){
-        timeHtml = `<div style="font‑size:11px;color:#999;margin‑left:6px;align‑self:flex‑end">${timeStr}</div>`;
+        timeHtml = `<div style="font-size:11px;color:#999;margin-left:6px;align-self:flex-end">${timeStr}</div>`;
       }else if(timePos === "topCenter"){
-        timeHtml = `<div style="width:100%;text‑align:center;font‑size:11px;color:#999;margin:4px 0">${timeStr}</div>`;
+        timeHtml = `<div style="width:100%;text-align:center;font-size:11px;color:#999;margin:4px 0">${timeStr}</div>`;
       }else if(timePos === "divider"){
-        timeHtml = `<div style="width:100%;display:flex;align‑items:center;color:#999;font‑size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
+        timeHtml = `<div style="width:100%;display:flex;align-items:center;color:#999;font-size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
       }
 
       if (msg.role === "user") {
-        //我方消息：头像在右侧，气泡在左侧 flex‑direction:row‑reverse
-        msgItem.style.justifyContent = "flex‑end";
+        msgItem.style.justifyContent = "flex-end";
         msgItem.innerHTML = `
           ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
-          <div style="display:flex;flex‑direction:row‑reverse;align‑items:flex‑end;gap:6px">
-            <img src="${myCurrentAvatar}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover">
-            <div style="max‑width:70%;display:flex;flex‑direction:column;align‑items:flex‑end">
+          <div style="display:flex;flex-direction:row-reverse;align-items:flex-end;gap:6px">
+            <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+            <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-end">
               ${timePos==="bubbleBottom"?timeHtml:""}
-              <div style="background:#fff;color:#222;padding:8px 12px;border‑radius:12px;box‑shadow:0 1px 3px rgba(0,0,0,0.08);word‑break:break‑all">${msg.content}</div>
+              <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
               ${timePos==="avatarBottom"?timeHtml:""}
             </div>
             ${timePos==="bubbleOuter"?timeHtml:""}
           </div>
         `;
       } else {
-        //对方消息：头像在左侧，气泡在右侧
-        msgItem.style.justifyContent = "flex‑start";
+        msgItem.style.justifyContent = "flex-start";
         msgItem.innerHTML = `
           ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
-          <div style="display:flex;align‑items:flex‑end;gap:6px">
-            <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover">
-            <div style="max‑width:70%;display:flex;flex‑direction:column;align‑items:flex‑start">
+          <div style="display:flex;align-items:flex-end;gap:6px">
+            <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+            <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-start">
               ${timePos==="bubbleBottom"?timeHtml:""}
-              <div style="background:#222;color:#fff;padding:8px 12px;border‑radius:12px;word‑break:break‑all">${msg.content}</div>
+              <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
               ${timePos==="avatarBottom"?timeHtml:""}
             </div>
             ${timePos==="bubbleOuter"?timeHtml:""}
