@@ -1,17 +1,14 @@
 import { Store } from './core/store.js';
 import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
-
 export const ChatSettingSubModule = {
   parentContainer: null,
   contactId: null,
   contactInfo: null,
-
   tab1List: ["美化", "功能", "数据"],
   activeTab1: "功能",
   tab2List: ["形象", "消息", "显示"],
   activeTab2: "形象",
-
   open(parentDom, cid, cbBack) {
     this.parentContainer = parentDom;
     this.contactId = cid;
@@ -20,7 +17,6 @@ export const ChatSettingSubModule = {
     this.callbackBack = cbBack;
     this.render();
   },
-
   openRadioModal(title, optionList, currentVal, onSelect) {
     const mask = document.createElement("div");
     mask.style.position = "fixed";
@@ -30,14 +26,12 @@ export const ChatSettingSubModule = {
     mask.style.display = "flex";
     mask.style.alignItems = "center";
     mask.style.justifyContent = "center";
-
     const modal = document.createElement("div");
     modal.style.width = "85%";
     modal.style.maxWidth = "360px";
     modal.style.background = "#fff";
     modal.style.borderRadius = "14px";
     modal.style.overflow = "hidden";
-
     modal.innerHTML = `<div style="padding:16px 16px 8px;font-weight:bold;font-size:16px">${title}</div>`;
     optionList.forEach(opt => {
       const itemDiv = document.createElement("div");
@@ -54,21 +48,18 @@ export const ChatSettingSubModule = {
       };
       modal.appendChild(itemDiv);
     });
-
     mask.appendChild(modal);
     document.body.appendChild(mask);
     mask.onclick = (e) => {
       if(e.target === mask) mask.remove();
     };
   },
-
   render() {
     if (!this.parentContainer) return;
     this.parentContainer.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.style.height = "auto";
     wrap.style.background = "transparent";
-
     const header = document.createElement("div");
     header.style.display = "flex";
     header.style.alignItems = "center";
@@ -81,18 +72,15 @@ export const ChatSettingSubModule = {
       <span style="font‑size:18px;font‑weight:500;color:#222">聊天设置</span>
     `;
     wrap.appendChild(header);
-
     const contentWrap = document.createElement("div");
     contentWrap.style.padding = "16px";
     contentWrap.style.boxSizing = "border‑box";
-
     const mainCard = document.createElement("div");
     mainCard.style.width = "100%";
     mainCard.style.maxWidth = "420px";
     mainCard.style.background = "transparent";
     mainCard.style.borderRadius = "14px";
     mainCard.style.overflow = "hidden";
-
     const tab1Wrap = document.createElement("div");
     tab1Wrap.style.display = "flex";
     tab1Wrap.style.borderBottom = "1px solid rgba(128,128,128,0.15)";
@@ -123,7 +111,6 @@ export const ChatSettingSubModule = {
       tab1Wrap.appendChild(tabEl);
     });
     mainCard.appendChild(tab1Wrap);
-
     if (this.activeTab1 === "功能") {
       const tab2Wrap = document.createElement("div");
       tab2Wrap.style.display = "flex";
@@ -156,11 +143,9 @@ export const ChatSettingSubModule = {
       });
       mainCard.appendChild(tab2Wrap);
     }
-
     const cardContent = document.createElement("div");
     cardContent.style.padding = "0 16px 16px 16px";
     const chatTheme = Store.get("chatTheme", {avatarShape:"circle",timePos:"avatarBottom"});
-
     if (this.activeTab1 === "美化") {
       cardContent.innerHTML = `
       <style>
@@ -173,7 +158,7 @@ export const ChatSettingSubModule = {
         cursor:pointer;
       }
       .row‑label{font‑size:14px;color:#222}
-      .row‑value{font‑size:13px;color:#888;text‑align:right}
+      .row‑value{font‑size:13px;color:#888;margin‑left:auto}
       </style>
       <div class="setting‑row" id="row‑avatar‑shape">
         <span class="row‑label">头像形状</span>
@@ -209,11 +194,10 @@ export const ChatSettingSubModule = {
         cursor:pointer;
       }
       .row‑label{font‑size:14px;color:#222;display:flex;align‑items:center;gap:8px}
-      .row‑value{font‑size:13px;color:#888;text‑align:right}
+      .row‑value{font‑size:13px;color:#888;margin‑left:auto}
       .tip‑text{font‑size:12px;color:#666;padding:12px 0}
       </style>
       <div class="tip‑text">昵称与头像（聊天专用 · 与桌面各自独立，互不同步）</div>
-
       <div class="setting‑row" id="row‑contact‑nick">
         <span class="row‑label">联系人昵称</span>
         <span class="row‑value">${nick} ></span>
@@ -253,17 +237,14 @@ export const ChatSettingSubModule = {
       cardContent.innerHTML = `<div style="padding:30px 0;text‑align:center;color:#888">页面待开发</div>`;
     }
     mainCard.appendChild(cardContent);
-
     contentWrap.appendChild(mainCard);
     wrap.appendChild(contentWrap);
     this.parentContainer.appendChild(wrap);
-
     document.getElementById("csub‑back").onclick = () => {
       if (typeof this.callbackBack === "function") {
         this.callbackBack();
       }
     };
-
     // =========美化tab事件======
     const rowAvatarShape = document.getElementById("row‑avatar‑shape");
     if(rowAvatarShape){
@@ -305,7 +286,6 @@ export const ChatSettingSubModule = {
         )
       }
     }
-
     // ======形象tab：联系人昵称======
     const rowContactNick = document.getElementById("row‑contact‑nick");
     if(rowContactNick){
@@ -329,7 +309,6 @@ export const ChatSettingSubModule = {
         }
       }
     }
-
     // ======形象tab：我的昵称======
     const rowMyNick = document.getElementById("row‑my‑nick");
     if(rowMyNick){
@@ -353,7 +332,6 @@ export const ChatSettingSubModule = {
         }
       }
     }
-
     // ======形象tab：联系人头像======
     const rowContactAvatar = document.getElementById("row‑contact‑avatar");
     const fileInput = document.getElementById("avatar‑file");
@@ -379,7 +357,6 @@ export const ChatSettingSubModule = {
         reader.readAsDataURL(file);
       }
     }
-
     // ======形象tab：清空联系人头像======
     const rowClearContactAvatar = document.getElementById("row‑clear‑contact‑avatar");
     if(rowClearContactAvatar){
@@ -397,7 +374,6 @@ export const ChatSettingSubModule = {
         }
       }
     }
-
     // ======形象tab：我的头像======
     const rowMyAvatar = document.getElementById("row‑my‑avatar");
     const myFileInput = document.getElementById("myavatar‑file");
@@ -423,7 +399,6 @@ export const ChatSettingSubModule = {
         reader.readAsDataURL(file);
       }
     }
-
     // ======形象tab：清空我的头像======
     const rowClearMyAvatar = document.getElementById("row‑clear‑my‑avatar");
     if(rowClearMyAvatar){
@@ -441,7 +416,6 @@ export const ChatSettingSubModule = {
         }
       }
     }
-
     // =========【数据tab】清空会话记录====
     const btnClearChatLog = document.getElementById("btn‑clear‑chat‑log");
     if(btnClearChatLog){
