@@ -301,10 +301,11 @@ export const SettingModule = {
         }
         const list = this.getContactList();
         const newItem = {
-          id: Date.now().toString(),
-          name,
-          desc: descInput.value.trim()
-        };
+  id: Date.now().toString(),
+  name,
+  desc: descInput.value.trim(),
+  avatar: ""
+};
         list.push(newItem);
         this.saveContactList(list);
         Toast.show("添加成功");
