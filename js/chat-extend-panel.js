@@ -76,8 +76,8 @@ export const ChatExtendPanel = {
           itemDom.style.gap = "6px";
           itemDom.style.cursor = "pointer";
           itemDom.innerHTML = `
-            <div style="width:60px;height:60px;background:#f5f5f5;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px">${it.icon}</div>
-            <span style="font-size:12px;text-align:center">${it.label}</span>
+            <div style="width:60px;height:60px;background:#f5f5f5;border‑radius:14px;display:flex;align‑items:center;justify‑content:center;font‑size:26px">${it.icon}</div>
+            <span style="font‑size:12px;text‑align:center">${it.label}</span>
           `;
           if(it.label === "头像和昵称互动"){
             itemDom.onclick = ()=>{
@@ -90,7 +90,7 @@ export const ChatExtendPanel = {
         })
         contentBox.appendChild(grid);
       }else{
-        contentBox.innerHTML = `<div style="text-align:center;color:#888;padding:30px 0">功能待开发</div>`;
+        contentBox.innerHTML = `<div style="text‑align:center;color:#888;padding:30px 0">功能待开发</div>`;
       }
       panel.appendChild(tabWrap);
       panel.appendChild(contentBox);
