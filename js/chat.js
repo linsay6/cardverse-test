@@ -312,7 +312,7 @@ export const ChatModule = {
         if(timePos === "avatarBottom"){
           timeHtml = `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
         }else if(timePos === "bubbleBottom"){
-          timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
+          timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
         }else if(timePos === "bubbleOuter"){
           timeHtml = `<div style="font-size:11px;color:#999;margin-left:6px;align-self:flex-end">${timeStr}</div>`;
         }else if(timePos === "topCenter"){
@@ -321,19 +321,21 @@ export const ChatModule = {
           timeHtml = `<div style="width:100%;display:flex;align-items:center;color:#999;font-size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
         }
         const msgWrap = document.createElement('div');
-        if(timePos === "topCenter" || timePos === "divider"){
+        msgWrap.style.marginBottom = "14px";
+        msgWrap.style.display = "flex";
+        msgWrap.style.justifyContent = "flex-end";
+        if(timePos === "avatarBottom"){
           msgWrap.innerHTML = `
-            <div style="width:100%">${timeHtml}</div>
-            <div style="display:flex;justify-content:flex-end;gap:6px;align-items:flex-end">
-              <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
               <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+              <div style="font-size:11px;color:#999">${timeStr}</div>
             </div>
-            ${timePos === "avatarBottom" ? `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
-          `
+            <div style="max-width:70%;margin-left:6px">
+              <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
+              ${timePos === "bubbleBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+            </div>
+          `;
         }else{
-          msgWrap.style.marginBottom = "14px";
-          msgWrap.style.display = "flex";
-          msgWrap.style.justifyContent = "flex-end";
           msgWrap.innerHTML = `
             <div style="max-width:70%;">
               ${timePos === "bubbleBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>` : ""}
@@ -342,9 +344,18 @@ export const ChatModule = {
                 <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
                 ${timePos === "bubbleOuter" ? `<div style="font-size:11px;color:#999;align-self:flex-end">${timeStr}</div>` : ""}
               </div>
-              ${timePos === "avatarBottom" ? `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+              ${timePos === "bubbleBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
             </div>
           `;
+        }
+        if(timePos === "topCenter" || timePos === "divider"){
+          msgWrap.innerHTML = `
+            <div style="width:100%">${timeHtml}</div>
+            <div style="display:flex;justify-content:flex-end;gap:6px;align-items:flex-end">
+              <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
+              <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+            </div>
+          `
         }
         this.msgListEl.appendChild(msgWrap);
       } else {
@@ -352,7 +363,7 @@ export const ChatModule = {
         if(timePos === "avatarBottom"){
           timeHtml = `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
         }else if(timePos === "bubbleBottom"){
-          timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
+          timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>`;
         }else if(timePos === "bubbleOuter"){
           timeHtml = `<div style="font-size:11px;color:#999;margin-right:6px;align-self:flex-end">${timeStr}</div>`;
         }else if(timePos === "topCenter"){
@@ -361,19 +372,20 @@ export const ChatModule = {
           timeHtml = `<div style="width:100%;display:flex;align-items:center;color:#999;font-size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
         }
         const msgWrap = document.createElement('div');
-        if(timePos === "topCenter" || timePos === "divider"){
+        msgWrap.style.marginBottom = "14px";
+        msgWrap.style.display = "flex";
+        msgWrap.style.justifyContent = "flex-start";
+        if(timePos === "avatarBottom"){
           msgWrap.innerHTML = `
-            <div style="width:100%">${timeHtml}</div>
-            <div style="display:flex;justify-content:flex-start;gap:6px;align-items:flex-end">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
               <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+              <div style="font-size:11px;color:#999">${timeStr}</div>
+            </div>
+            <div style="max-width:70%;margin-left:6px">
               <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
             </div>
-            ${timePos === "avatarBottom" ? `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
-          `
+          `;
         }else{
-          msgWrap.style.marginBottom = "14px";
-          msgWrap.style.display = "flex";
-          msgWrap.style.justifyContent = "flex-start";
           msgWrap.innerHTML = `
             <div style="max-width:70%;">
               ${timePos === "bubbleBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>` : ""}
@@ -382,9 +394,18 @@ export const ChatModule = {
                 <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
                 ${timePos === "bubbleOuter" ? `<div style="font-size:11px;color:#999;align-self:flex-end">${timeStr}</div>` : ""}
               </div>
-              ${timePos === "avatarBottom" ? `<div style="text-align:center;width:34px;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
+              ${timePos === "bubbleBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
             </div>
           `;
+        }
+        if(timePos === "topCenter" || timePos === "divider"){
+          msgWrap.innerHTML = `
+            <div style="width:100%">${timeHtml}</div>
+            <div style="display:flex;justify-content:flex-start;gap:6px;align-items:flex-end">
+              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+              <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
+            </div>
+          `
         }
         this.msgListEl.appendChild(msgWrap);
       }
