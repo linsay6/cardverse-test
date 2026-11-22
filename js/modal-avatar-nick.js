@@ -82,6 +82,44 @@ export const ModalAvatarNick = {
     modal.style.padding = "20px";
     let count = 5;
     const isMeSend = applyObj.from === "me";
+
+    // ==========动态生成图5邀请弹窗标题、文案 ==========
+    let titleText = "";
+    let descText = "";
+    const taNick = this.contactInfo?.name || "TA";
+    const myNick = "我";
+    if(isMeSend){
+      //我方发起申请
+      if(applyObj.targetType === "taAvatar"){
+        titleText = `${myNick} 的换头像邀请`;
+        descText = `你邀请${taNick}更换头像`;
+      }else if(applyObj.targetType === "taNick"){
+        titleText = `${myNick} 的换昵称邀请`;
+        descText = `你邀请${taNick}更换昵称为：${applyObj.newVal}`;
+      }else if(applyObj.targetType === "myAvatar"){
+        titleText = `${myNick} 的换头像邀请`;
+        descText = `你申请变更自己的头像`;
+      }else if(applyObj.targetType === "myNick"){
+        titleText = `${myNick} 的换昵称邀请`;
+        descText = `你申请变更自己的昵称为：${applyObj.newVal}`;
+      }
+    }else{
+      // TA对方发起申请 from:"ta"
+      if(applyObj.targetType === "myAvatar"){
+        titleText = `${taNick} 的换头像邀请`;
+        descText = `${taNick} 邀请你换上这个头像`;
+      }else if(applyObj.targetType === "myNick"){
+        titleText = `${taNick} 的换昵称邀请`;
+        descText = `${taNick} 邀请你换上这个昵称`;
+      }else if(applyObj.targetType === "taAvatar"){
+        titleText = `${taNick} 的换头像邀请`;
+        descText = `${taNick}申请变更自己头像`;
+      }else if(applyObj.targetType === "taNick"){
+        titleText = `${taNick} 的换昵称邀请`;
+        descText = `${taNick}申请变更自己昵称为：${applyObj.newVal}`;
+      }
+    }
+
     const btnHtml = isMeSend ? "" : `
       <div style="display:flex;gap:10px;margin-top:10px">
         <button id="apply-reject" style="flex:1;padding:9px;border:1px solid #ccc;background:#fff;border-radius:8px">拒绝</button>
@@ -89,8 +127,8 @@ export const ModalAvatarNick = {
       </div>
     `;
     modal.innerHTML = `
-      <div style="font-weight:bold;font-size:16px;margin-bottom:12px">提交变更申请</div>
-      <div style="font-size:14px;color:#444;margin-bottom:12px">${applyObj.desc}</div>
+      <div style="font-weight:bold;font-size:16px;margin-bottom:12px">${titleText}</div>
+      <div style="font-size:14px;color:#444;margin-bottom:12px">${descText}</div>
       <div id="count-text" style="font-size:13px;color:#777;margin-bottom:16px">等待判断，剩余 ${count} 秒</div>
       ${btnHtml}
     `;
@@ -130,15 +168,17 @@ export const ModalAvatarNick = {
     if(idx === -1) return;
     const contact = list[idx];
     let logText = "";
+    const taNick = contact?.name||"TA";
+    const whoText = applyObj.from==="ta"?taNick:"我";
     if(action === "accept"){
       switch(applyObj.targetType){
-        case "taAvatar": contact.avatar = applyObj.newVal; logText = `【${applyObj.from==="ta"?"对方":"我"}发起】${applyObj.desc} —— 已同意`; break;
-        case "taNick": contact.name = applyObj.newVal; logText = `【${applyObj.from==="ta"?"对方":"我"}发起】${applyObj.desc} —— 已同意`; break;
-        case "myAvatar": contact.myAvatar = applyObj.newVal; logText = `【${applyObj.from==="ta"?"对方":"我"}发起】${applyObj.desc} —— 已同意`; break;
-        case "myNick": contact.myNick = applyObj.newVal; logText = `【${applyObj.from==="ta"?"对方":"我"}发起】${applyObj.desc} —— 已同意`; break;
+        case "taAvatar": contact.avatar = applyObj.newVal; logText = `【${whoText}发起】${applyObj.desc} —— 已同意`; break;
+        case "taNick": contact.name = applyObj.newVal; logText = `【${whoText}发起】${applyObj.desc} —— 已同意`; break;
+        case "myAvatar": contact.myAvatar = applyObj.newVal; logText = `【${whoText}发起】${applyObj.desc} —— 已同意`; break;
+        case "myNick": contact.myNick = applyObj.newVal; logText = `【${whoText}发起】${applyObj.desc} —— 已同意`; break;
       }
     }else{
-      logText = `【${applyObj.from==="ta"?"对方":"我"}发起】${applyObj.desc} —— 已拒绝`;
+      logText = `【${whoText}发起】${applyObj.desc} —— 已拒绝`;
     }
     if(this.chatModuleRef?.pushSystemNotice){
       this.chatModuleRef.pushSystemNotice(logText);
@@ -168,6 +208,19 @@ export const ModalAvatarNick = {
     head.style.borderBottom = "1px solid #eee";
     head.innerHTML = `<span style="font-weight:bold;font-size:16px">头像昵称互动</span><button id="modal-an-close" style="border:none;background:none;font-size:20px">×</button>`;
     panel.appendChild(head);
+
+    // =========【测试按钮，正式上线务必删除整块】==========
+    const testBar = document.createElement("div");
+    testBar.style.padding="8px 16px";
+    testBar.style.background="#fff0cc";
+    testBar.style.borderBottom="1px solid #eee";
+    testBar.innerHTML=`
+      <div style="font-size:12px;color:#999;margin-bottom:4px">【本地模拟测试｜发布版本删除此块】</div>
+      <button id="sim‑ta‑avatar" style="padding:4px 8px;margin‑right:6px">模拟TA发起头像申请</button>
+      <button id="sim‑ta‑nick" style="padding:4px 8px">模拟TA发起昵称申请</button>
+    `;
+    panel.appendChild(testBar);
+    // =====================================================
 
     const mainTabWrap = document.createElement("div");
     mainTabWrap.style.display = "flex";
@@ -264,9 +317,10 @@ export const ModalAvatarNick = {
       hourRow.style.alignItems = "center";
       hourRow.style.justifyContent = "space-between";
       hourRow.style.padding = "6px 0 8px 0";
+      const minVal = Number(cfg.minHour ?? 2);
       hourRow.innerHTML = `
         <span style="font-size:13px">最小小时</span>
-        <input id="rand-min" type="number" min="1" value="${cfg.minHour}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+        <input id="rand-min" type="number" min="1" value="${minVal}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
       `;
       randBox.appendChild(hourRow);
       const hourRow2 = document.createElement("div");
@@ -274,9 +328,10 @@ export const ModalAvatarNick = {
       hourRow2.style.alignItems = "center";
       hourRow2.style.justifyContent = "space-between";
       hourRow2.style.padding = "6px 0 8px 0";
+      const maxVal = Number(cfg.maxHour ??6);
       hourRow2.innerHTML = `
         <span style="font-size:13px">最大小时</span>
-        <input id="rand-max" type="number" min="1" value="${cfg.maxHour}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+        <input id="rand-max" type="number" min="1" value="${maxVal}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
       `;
       randBox.appendChild(hourRow2);
     }else{
@@ -302,25 +357,26 @@ export const ModalAvatarNick = {
       hourRow.style.alignItems = "center";
       hourRow.style.justifyContent = "space-between";
       hourRow.style.padding = "6px 0 8px 0";
+      const minVal = Number(cfg.minHour ??2);
       hourRow.innerHTML = `
-        <span style="font-size:13px">最小小时</span>
-        <input id="rand-min" type="number" min="1" value="${cfg.minHour}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+        <span style="font‑size:13px">最小小时</span>
+        <input id="rand‑min" type="number" min="1" value="${minVal}" style="width:60px;padding:6px;border:1px solid #ddd;border‑radius:6px;text‑align:center">
       `;
       randBox.appendChild(hourRow);
       const hourRow2 = document.createElement("div");
       hourRow2.style.display = "flex";
       hourRow2.style.alignItems = "center";
-      hourRow2.style.justifyContent = "space-between";
+      hourRow2.style.justifyContent = "space‑between";
       hourRow2.style.padding = "6px 0 8px 0";
+      const maxVal = Number(cfg.maxHour ??6);
       hourRow2.innerHTML = `
-        <span style="font-size:13px">最大小时</span>
-        <input id="rand-max" type="number" min="1" value="${cfg.maxHour}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+        <span style="font‑size:13px">最大小时</span>
+        <input id="rand‑max" type="number" min="1" value="${maxVal}" style="width:60px;padding:6px;border:1px solid #ddd;border‑radius:6px;text‑align:center">
       `;
       randBox.appendChild(hourRow2);
     }
     contentWrap.appendChild(randBox);
 
-    // 保存最小最大小时
     const inMin = panel.querySelector("#rand-min");
     const inMax = panel.querySelector("#rand-max");
     if(inMin&&inMax){
@@ -428,8 +484,8 @@ export const ModalAvatarNick = {
         itemDiv.style.overflow = "hidden";
         itemDiv.style.border = "1px solid #ddd";
         itemDiv.innerHTML = `
-          <img src="${src}" style="width:100%;height:100%;object-fit:cover">
-          <button data-del-idx="${idx}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;font-size:10px">×</button>
+          <img src="${src}" style="width:100%;height:100%;object‑fit:cover">
+          <button data‑del‑idx="${idx}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,0.6);color:#fff;border:none;border‑radius:50%;font‑size:10px">×</button>
         `;
         itemDiv.onclick = (e)=>{
           if(e.target.tagName==="BUTTON") return;
@@ -505,15 +561,15 @@ export const ModalAvatarNick = {
       poolArr.forEach((text,idx)=>{
         const row = document.createElement("div");
         row.style.display = "flex";
-        row.style.justifyContent = "space-between";
+        row.style.justifyContent = "space‑between";
         row.style.alignItems = "center";
         row.style.padding = "9px 0";
         row.style.borderBottom = "1px solid #f1f1f1";
         row.innerHTML = `
-          <span style="font-size:13px">${text}</span>
+          <span style="font‑size:13px">${text}</span>
           <div style="display:flex;gap:6px">
-            <button data-apply-idx="${idx}" style="border:none;background:${this.primaryColor};color:#fff;border-radius:4px;padding:4px 7px;font-size:11px">发起申请</button>
-            <button data-del-idx="${idx}" style="border:none;background:#f44336;color:#fff;border-radius:4px;padding:4px 7px;font-size:11px">删除</button>
+            <button data‑apply‑idx="${idx}" style="border:none;background:${this.primaryColor};color:#fff;border‑radius:4px;padding:4px 7px;font‑size:11px">发起申请</button>
+            <button data‑del‑idx="${idx}" style="border:none;background:#f44336;color:#fff;border‑radius:4px;padding:4px 7px;font‑size:11px">删除</button>
           </div>
         `;
         listWrap.appendChild(row);
@@ -524,7 +580,33 @@ export const ModalAvatarNick = {
     panel.appendChild(contentWrap);
     this.maskDom.appendChild(panel);
 
-    panel.querySelectorAll("[data-del-idx]").forEach(btn=>{
+    //绑定模拟测试按钮
+    const simAvatarBtn = panel.querySelector("#sim‑ta‑avatar");
+    const simNickBtn = panel.querySelector("#sim‑ta‑nick");
+    if(simAvatarBtn){
+      simAvatarBtn.onclick=()=>{
+        const fakeApply = {
+          targetType:"myAvatar",
+          newVal:"",
+          desc:"TA向我发起变更我的头像申请",
+          from:"ta"
+        };
+        this.openApplyCountdownModal(fakeApply);
+      }
+    }
+    if(simNickBtn){
+      simNickBtn.onclick=()=>{
+        const fakeApply = {
+          targetType:"myNick",
+          newVal:"星光",
+          desc:`TA向我发起变更我的昵称为：星光`,
+          from:"ta"
+        };
+        this.openApplyCountdownModal(fakeApply);
+      }
+    }
+
+    panel.querySelectorAll("[data‑del‑idx]").forEach(btn=>{
       btn.onclick = (e)=>{
         e.stopPropagation();
         const idx = Number(btn.dataset.delIdx);
@@ -534,7 +616,7 @@ export const ModalAvatarNick = {
         this.render();
       };
     })
-    panel.querySelectorAll("[data-apply-idx]").forEach(btn=>{
+    panel.querySelectorAll("[data‑apply‑idx]").forEach(btn=>{
       btn.onclick = ()=>{
         const idx = Number(btn.dataset.applyIdx);
         const val = poolArr[idx];
@@ -544,7 +626,7 @@ export const ModalAvatarNick = {
       };
     });
 
-    const closeBtn = panel.querySelector("#modal-an-close");
+    const closeBtn = panel.querySelector("#modal‑an‑close");
     if(closeBtn) closeBtn.onclick = ()=>this.close();
     this.maskDom.onclick = (e)=>{if(e.target === this.maskDom) this.close();};
   }
