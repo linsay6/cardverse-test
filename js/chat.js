@@ -13,14 +13,13 @@ export const ChatModule = {
   isTyping: false,
   viewMode: "chat",
 
-  init(containerSelector) {
+   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
       console.error("聊天容器找不到", containerSelector);
       return;
     }
     this.render();
-
     document.addEventListener("contact:change", (ev) => {
       this.loadContactSession(ev.detail);
     });
@@ -28,14 +27,20 @@ export const ChatModule = {
     if(initCid){
       this.loadContactSession(initCid);
     }
-
     EventBus.on("themeChange", () => {
       if(this.viewMode === "chat") this.renderMessages();
     });
-    // 美化配置变更刷新聊天界面
     EventBus.on("chatThemeChange", ()=>{
       this.renderMessages();
-    })
+    });
+    // 监听联系人信息变更：头像、昵称修改后实时刷新聊天UI
+    EventBus.on("contactInfoChange", (cid)=>{
+      if(cid === this.activeContactId){
+        const list = Store.get("contactList",[]);
+        this.activeContactInfo = list.find(item=>item.id === cid);
+        this.renderMessages();
+      }
+    });
   },
 
   loadContactSession(contactId) {
