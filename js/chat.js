@@ -22,11 +22,10 @@ export const ChatModule = {
       console.error("聊天容器找不到", containerSelector);
       return;
     }
-    // 初始化读取主题色
     const theme = Store.get("app-theme", {});
     this.primaryColor = theme.colorMain || "#7c68ee";
     this.bgColor = theme.colorBg || "#ffffff";
-    
+
     this.render();
     document.addEventListener("contact:change", (ev) => {
       this.loadContactSession(ev.detail);
@@ -35,7 +34,6 @@ export const ChatModule = {
     if(initCid){
       this.loadContactSession(initCid);
     }
-    // 监听主题变化，实时更新颜色
     EventBus.on("themeChange", (theme) => {
       this.primaryColor = theme.colorMain || "#7c68ee";
       this.bgColor = theme.colorBg || "#ffffff";
@@ -51,7 +49,6 @@ export const ChatModule = {
         this.renderMessages();
       }
     });
-    // 监听清空聊天事件，刷新列表
     EventBus.on("chatLogClear", (cid)=>{
       if(cid === this.activeContactId){
         this.messageList = [];
@@ -78,6 +75,7 @@ export const ChatModule = {
     }
   },
 
+  // 对外接口：写入系统通知（图4聊天居中记录，modal‑avatar‑nick调用）
   pushSystemNotice(text){
     this.messageList.push({
       type:"notice",
@@ -109,10 +107,11 @@ export const ChatModule = {
     if(!this.activeContactInfo.taNickPool) this.activeContactInfo.taNickPool = [];
     if(!this.activeContactInfo.myNickPool) this.activeContactInfo.myNickPool = [];
     if(!this.activeContactInfo.pendingApplyList) this.activeContactInfo.pendingApplyList = [];
-    if(!this.activeContactInfo.taAvatarRandom) this.activeContactInfo.taAvatarRandom = {enable:false,intervalHour:4,lastChangeTs:0};
-    if(!this.activeContactInfo.taNickRandom) this.activeContactInfo.taNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
-    if(!this.activeContactInfo.myAvatarRandom) this.activeContactInfo.myAvatarRandom = {enable:false,intervalHour:4,lastChangeTs:0};
-    if(!this.activeContactInfo.myNickRandom) this.activeContactInfo.myNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
+    // 修改轮换：minHour / maxHour 随机区间，不再是单一intervalHour
+    if(!this.activeContactInfo.taAvatarRandom) this.activeContactInfo.taAvatarRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
+    if(!this.activeContactInfo.taNickRandom) this.activeContactInfo.taNickRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
+    if(!this.activeContactInfo.myAvatarRandom) this.activeContactInfo.myAvatarRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
+    if(!this.activeContactInfo.myNickRandom) this.activeContactInfo.myNickRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
     if(!this.activeContactInfo.taApplyIntervalHours) this.activeContactInfo.taApplyIntervalHours = 4;
 
     this.messageList = Store.get(`chat-contact-${contactId}`, []);
@@ -254,9 +253,15 @@ export const ChatModule = {
 
     if (!this.msgListEl) return;
     this.msgListEl.innerHTML = "";
-    const theme = Store.get("chatTheme", {avatarShape:"circle",timePos:"avatarBottom"});
-    const avatarRadius = theme.avatarShape === "circle" ? "50%" : "8px";
-    const timePos = theme.timePos;
+    let chatTheme = Store.get("chatTheme", {avatarShape:"circle",timePos:"avatarBottom"});
+    // 兜底：旧存储读到废弃时间位置，回退 avatarBottom
+    const allowTimePos = ["avatarBottom","bubbleOuter","hide"];
+    if(!allowTimePos.includes(chatTheme.timePos)){
+      chatTheme.timePos = "avatarBottom";
+      Store.set("chatTheme",chatTheme);
+    }
+    const avatarRadius = chatTheme.avatarShape === "circle" ? "50%" : "8px";
+    const timePos = chatTheme.timePos;
 
     const headerAvatar = document.getElementById("chat-header-avatar");
     if(headerAvatar){
@@ -277,7 +282,7 @@ export const ChatModule = {
       if(msg.type === "notice"){
         const noticeEl = document.createElement("div");
         noticeEl.style.margin="10px 0";
-        noticeEl.style.padding="8px 12px";
+        noticeEl.style.padding="8px 14px";
         noticeEl.style.background="#eeeeee";
         noticeEl.style.borderRadius="999px";
         noticeEl.style.textAlign="center";
@@ -329,24 +334,16 @@ export const ChatModule = {
       }else{
         let timeHtml = "";
         if(timePos === "hide") timeHtml = "";
-        else if(timePos === "bubbleBottom"){
-          timeHtml = `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>`;
-        }else if(timePos === "bubbleOuter"){
+        else if(timePos === "bubbleOuter"){
           timeHtml = `<div style="font-size:11px;color:#999;margin-left:6px;align-self:flex-end;white-space:nowrap">${timeStr}</div>`;
-        }else if(timePos === "topCenter"){
-          timeHtml = `<div style="width:100%;text-align:center;font-size:11px;color:#999;margin:4px 0">${timeStr}</div>`;
-        }else if(timePos === "divider"){
-          timeHtml = `<div style="width:100%;display:flex;align-items:center;color:#999;font-size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
         }
         if(msg.role === "user"){
           msgItem.style.justifyContent = "flex-end";
           msgItem.style.alignItems = "flex-end";
           msgItem.innerHTML = `
-            ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
             <div style="display:flex;flex-direction:row-reverse;align-items:flex-end;gap:6px">
               <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover;flex-shrink:0">
               <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-end">
-                ${timePos==="bubbleBottom"?timeHtml:""}
                 <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
               </div>
               ${timePos==="bubbleOuter"?timeHtml:""}
@@ -356,11 +353,9 @@ export const ChatModule = {
           msgItem.style.justifyContent = "flex-start";
           msgItem.style.alignItems = "flex-end";
           msgItem.innerHTML = `
-            ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
             <div style="display:flex;align-items:flex-end;gap:6px">
               <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover;flex-shrink:0">
               <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-start">
-                ${timePos==="bubbleBottom"?timeHtml:""}
                 <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
               </div>
               ${timePos==="bubbleOuter"?timeHtml:""}
