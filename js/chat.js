@@ -47,6 +47,7 @@ export const ChatModule = {
     },30000);
   },
 
+  // 检测待处理申请：超时自动同意，写入notice消息
   checkPendingApply(){
     if(!this.activeContactId) return;
     const list = Store.get("contactList",[]);
@@ -62,7 +63,7 @@ export const ChatModule = {
         apply.status = "autoAccept";
         this.executeApply(apply, contact);
         changed = true;
-        this.pushNoticeMessage(`申请超时未处理，已自动同意：${apply.desc}`);
+        this.pushNoticeMessage(`【${apply.from==="ta"?"对方":"我"}发起】${apply.desc} —— 超时未处理，已自动同意`, apply.from);
         return false;
       }
       return true;
@@ -91,10 +92,12 @@ export const ChatModule = {
     }
   },
 
-  pushNoticeMessage(text){
+  // type:notice 聊天系统通知，携带来源 from:"me"/"ta"
+  pushNoticeMessage(text, from="me"){
     this.messageList.push({
       type:"notice",
       content:text,
+      from: from,
       time:Date.now()
     });
     this.saveHistory();
@@ -113,6 +116,7 @@ export const ChatModule = {
     }
     this.activeContactId = contactId;
     this.activeContactInfo = findItem;
+    // 初始化全部池子、轮换配置，新增taApplyIntervalHours对方申请间隔
     if(!this.activeContactInfo.taAvatarPool) this.activeContactInfo.taAvatarPool = [];
     if(!this.activeContactInfo.myAvatarPool) this.activeContactInfo.myAvatarPool = [];
     if(!this.activeContactInfo.taNickPool) this.activeContactInfo.taNickPool = [];
@@ -122,6 +126,7 @@ export const ChatModule = {
     if(!this.activeContactInfo.taNickRandom) this.activeContactInfo.taNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
     if(!this.activeContactInfo.myAvatarRandom) this.activeContactInfo.myAvatarRandom = {enable:false,intervalHour:4,lastChangeTs:0};
     if(!this.activeContactInfo.myNickRandom) this.activeContactInfo.myNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
+    if(!this.activeContactInfo.taApplyIntervalHours) this.activeContactInfo.taApplyIntervalHours = 4;
 
     this.messageList = Store.get(`chat-contact-${contactId}`, []);
     this.render();
@@ -300,9 +305,11 @@ export const ChatModule = {
       }
 
       const d = new Date(msg.time);
+      // 24小时制 精确到秒 hh:mm:ss
       const hh = String(d.getHours()).padStart(2,'0');
       const mm = String(d.getMinutes()).padStart(2,'0');
-      const timeStr = `${hh}:${mm}`;
+      const ss = String(d.getSeconds()).padStart(2,'0');
+      const timeStr = `${hh}:${mm}:${ss}`;
 
       const msgItem = document.createElement("div");
       msgItem.style.marginBottom = "14px";
@@ -323,6 +330,7 @@ export const ChatModule = {
       }
 
       if (msg.role === "user") {
+        //我方消息：头像在右侧，气泡在左侧 flex‑direction:row‑reverse
         msgItem.style.justifyContent = "flex‑end";
         msgItem.innerHTML = `
           ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
@@ -337,6 +345,7 @@ export const ChatModule = {
           </div>
         `;
       } else {
+        //对方消息：头像在左侧，气泡在右侧
         msgItem.style.justifyContent = "flex‑start";
         msgItem.innerHTML = `
           ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
