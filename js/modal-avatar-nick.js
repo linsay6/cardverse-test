@@ -74,7 +74,6 @@ export const ModalAvatarNick = {
     modal.style.borderRadius = "14px";
     modal.style.padding = "20px";
     let count = 5;
-    // 判断是谁发起申请：from == me 我发给TA，隐藏同意拒绝按钮
     const isMeSend = applyObj.from === "me";
     const btnHtml = isMeSend ? "" : `
       <div style="display:flex;gap:10px;margin-top:10px">
@@ -124,20 +123,20 @@ export const ModalAvatarNick = {
     const idx = list.findIndex(x=>x.id === this.contactId);
     if(idx === -1) return;
     const contact = list[idx];
+    let logText = "";
     if(action === "accept"){
       switch(applyObj.targetType){
-        case "taAvatar": contact.avatar = applyObj.newVal; break;
-        case "taNick": contact.name = applyObj.newVal; break;
-        case "myAvatar": contact.myAvatar = applyObj.newVal; break;
-        case "myNick": contact.myNick = applyObj.newVal; break;
-      }
-      if(this.chatModuleRef?.pushNoticeMessage){
-        this.chatModuleRef.pushNoticeMessage(`${applyObj.desc} —— 已同意`,"me");
+        case "taAvatar": contact.avatar = applyObj.newVal; logText = `【我发起】${applyObj.desc} —— 已同意`; break;
+        case "taNick": contact.name = applyObj.newVal; logText = `【我发起】${applyObj.desc} —— 已同意`; break;
+        case "myAvatar": contact.myAvatar = applyObj.newVal; logText = `【我发起】${applyObj.desc} —— 已同意`; break;
+        case "myNick": contact.myNick = applyObj.newVal; logText = `【我发起】${applyObj.desc} —— 已同意`; break;
       }
     }else{
-      if(this.chatModuleRef?.pushNoticeMessage){
-        this.chatModuleRef.pushNoticeMessage(`${applyObj.desc} —— 已拒绝`,"me");
-      }
+      logText = `【我发起】${applyObj.desc} —— 已拒绝`;
+    }
+    // 推送聊天系统通知消息（图5效果）
+    if(this.chatModuleRef?.pushSystemNotice){
+      this.chatModuleRef.pushSystemNotice(logText);
     }
     Store.set("contactList",list);
     this.contactInfo = contact;
@@ -166,7 +165,6 @@ export const ModalAvatarNick = {
     head.innerHTML = `<span style="font-weight:bold;font-size:16px">头像昵称互动</span><button id="modal-an-close" style="border:none;background:none;font-size:20px">×</button>`;
     panel.appendChild(head);
 
-    //一级tab：头像 / 昵称
     let mainTab = "avatar";
     let subTab = "ta";
     const mainTabWrap = document.createElement("div");
@@ -194,7 +192,6 @@ export const ModalAvatarNick = {
     })
     panel.appendChild(mainTabWrap);
 
-    //二级tab TA /我的
     const subTabWrap = document.createElement("div");
     subTabWrap.style.display = "flex";
     subTabWrap.style.margin = "12px 16px";
@@ -228,7 +225,6 @@ export const ModalAvatarNick = {
     const contentWrap = document.createElement("div");
     contentWrap.style.padding = "0 16px 18px 16px";
 
-    //轮换设置 + 间隔小时输入框
     const randBox = document.createElement("div");
     randBox.style.marginBottom = "14px";
     randBox.style.borderBottom = "1px solid #eee";
@@ -250,10 +246,7 @@ export const ModalAvatarNick = {
       rowDiv.style.justifyContent = "space-between";
       rowDiv.style.alignItems = "center";
       rowDiv.style.padding = "8px 0";
-      rowDiv.innerHTML = `
-        <span style="font-size:13px">${subTab==="ta"?"TA头像随机轮换":"我的头像随机轮换"}</span>
-        <label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>
-      `;
+      rowDiv.innerHTML = `<span style="font-size:13px">${subTab==="ta"?"TA头像随机轮换":"我的头像随机轮换"}</span><label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>`;
       const ck = rowDiv.querySelector("input");
       ck.onchange = ()=>{
         this.contactInfo[key].enable = ck.checked;
@@ -262,15 +255,14 @@ export const ModalAvatarNick = {
         this.render();
       };
       randBox.appendChild(rowDiv);
-      //间隔时长输入
       const hourRow = document.createElement("div");
       hourRow.style.display = "flex";
       hourRow.style.alignItems = "center";
-      hourRow.style.justifyContent = "space-between";
+      hourRow.style.justifyContent = "space‑between";
       hourRow.style.padding = "6px 0 8px 0";
       hourRow.innerHTML = `
-        <span style="font-size:13px">轮换间隔（小时）</span>
-        <input type="number" min="1" value="${cfg.intervalHour}" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+        <span style="font‑size:13px">轮换间隔（小时）</span>
+        <input type="number" min="1" value="${cfg.intervalHour}" style="width:70px;padding:6px;border:1px solid #ddd;border‑radius:6px;text‑align:center">
       `;
       const hourInput = hourRow.querySelector("input");
       hourInput.onchange = ()=>{
@@ -287,13 +279,10 @@ export const ModalAvatarNick = {
       const cfg = this.contactInfo[key];
       const rowDiv = document.createElement("div");
       rowDiv.style.display = "flex";
-      rowDiv.style.justifyContent = "space-between";
+      rowDiv.style.justifyContent = "space‑between";
       rowDiv.style.alignItems = "center";
       rowDiv.style.padding = "8px 0";
-      rowDiv.innerHTML = `
-        <span style="font-size:13px">${subTab==="ta"?"TA昵称随机轮换":"我的昵称随机轮换"}</span>
-        <label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>
-      `;
+      rowDiv.innerHTML = `<span style="font‑size:13px">${subTab==="ta"?"TA昵称随机轮换":"我的昵称随机轮换"}</span><label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>`;
       const ck = rowDiv.querySelector("input");
       ck.onchange = ()=>{
         this.contactInfo[key].enable = ck.checked;
@@ -305,11 +294,11 @@ export const ModalAvatarNick = {
       const hourRow = document.createElement("div");
       hourRow.style.display = "flex";
       hourRow.style.alignItems = "center";
-      hourRow.style.justifyContent = "space-between";
+      hourRow.style.justifyContent = "space‑between";
       hourRow.style.padding = "6px 0 8px 0";
       hourRow.innerHTML = `
-        <span style="font-size:13px">轮换间隔（小时）</span>
-        <input type="number" min="1" value="${cfg.intervalHour}" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+        <span style="font‑size:13px">轮换间隔（小时）</span>
+        <input type="number" min="1" value="${cfg.intervalHour}" style="width:70px;padding:6px;border:1px solid #ddd;border‑radius:6px;text‑align:center">
       `;
       const hourInput = hourRow.querySelector("input");
       hourInput.onchange = ()=>{
@@ -328,19 +317,11 @@ export const ModalAvatarNick = {
     const taName = this.contactInfo.name;
     const myName = "我";
     if(mainTab==="avatar"){
-      if(subTab==="ta"){
-        poolArr=this.contactInfo.taAvatarPool;poolKey="taAvatarPool";targetType="taAvatar";
-      }
-      else{
-        poolArr=this.contactInfo.myAvatarPool;poolKey="myAvatarPool";targetType="myAvatar";
-      }
+      if(subTab==="ta"){poolArr=this.contactInfo.taAvatarPool;poolKey="taAvatarPool";targetType="taAvatar";}
+      else{poolArr=this.contactInfo.myAvatarPool;poolKey="myAvatarPool";targetType="myAvatar";}
     }else{
-      if(subTab==="ta"){
-        poolArr=this.contactInfo.taNickPool;poolKey="taNickPool";targetType="taNick";
-      }
-      else{
-        poolArr=this.contactInfo.myNickPool;poolKey="myNickPool";targetType="myNick";
-      }
+      if(subTab==="ta"){poolArr=this.contactInfo.taNickPool;poolKey="taNickPool";targetType="taNick";}
+      else{poolArr=this.contactInfo.myNickPool;poolKey="myNickPool";targetType="myNick";}
     }
 
     const poolArea = document.createElement("div");
@@ -409,12 +390,12 @@ export const ModalAvatarNick = {
         itemDiv.style.overflow = "hidden";
         itemDiv.style.border = "1px solid #ddd";
         itemDiv.innerHTML = `
-          <img src="${src}" style="width:100%;height:100%;object-fit:cover">
-          <button data-del-idx="${idx}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;font-size:10px">×</button>
+          <img src="${src}" style="width:100%;height:100%;object‑fit:cover">
+          <button data‑del‑idx="${idx}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,0.6);color:#fff;border:none;border‑radius:50%;font‑size:10px">×</button>
         `;
         itemDiv.onclick = (e)=>{
           if(e.target.tagName==="BUTTON") return;
-          const desc = subTab==="ta" ? `${myName}申请变更${taName}头像` : `${myName}申请变更自己头像`;
+          const desc = `申请变更${subTab==="ta"?"对方头像":"我的头像"}`;
           const applyObj = {targetType,newVal:src,desc,from:"me"};
           this.openApplyCountdownModal(applyObj);
         };
@@ -470,15 +451,15 @@ export const ModalAvatarNick = {
       poolArr.forEach((text,idx)=>{
         const row = document.createElement("div");
         row.style.display = "flex";
-        row.style.justifyContent = "space-between";
+        row.style.justifyContent = "space‑between";
         row.style.alignItems = "center";
         row.style.padding = "9px 0";
         row.style.borderBottom = "1px solid #f1f1f1";
         row.innerHTML = `
-          <span style="font-size:13px">${text}</span>
+          <span style="font‑size:13px">${text}</span>
           <div style="display:flex;gap:6px">
-            <button data-apply-idx="${idx}" style="border:none;background:${this.primaryColor};color:#fff;border-radius:4px;padding:4px 7px;font-size:11px">发起申请</button>
-            <button data-del-idx="${idx}" style="border:none;background:#f44336;color:#fff;border-radius:4px;padding:4px 7px;font-size:11px">删除</button>
+            <button data‑apply‑idx="${idx}" style="border:none;background:${this.primaryColor};color:#fff;border‑radius:4px;padding:4px 7px;font‑size:11px">发起申请</button>
+            <button data‑del‑idx="${idx}" style="border:none;background:#f44336;color:#fff;border‑radius:4px;padding:4px 7px;font‑size:11px">删除</button>
           </div>
         `;
         listWrap.appendChild(row);
@@ -489,7 +470,7 @@ export const ModalAvatarNick = {
     panel.appendChild(contentWrap);
     this.maskDom.appendChild(panel);
 
-    panel.querySelectorAll("[data-del-idx]").forEach(btn=>{
+    panel.querySelectorAll("[data‑del‑idx]").forEach(btn=>{
       btn.onclick = (e)=>{
         e.stopPropagation();
         const idx = Number(btn.dataset.delIdx);
@@ -499,17 +480,17 @@ export const ModalAvatarNick = {
         this.render();
       };
     })
-    panel.querySelectorAll("[data-apply-idx]").forEach(btn=>{
+    panel.querySelectorAll("[data‑apply‑idx]").forEach(btn=>{
       btn.onclick = ()=>{
         const idx = Number(btn.dataset.applyIdx);
         const val = poolArr[idx];
-        const desc = subTab==="ta" ? `${myName}申请变更${taName}昵称为：${val}` : `${myName}申请变更自己昵称为：${val}`;
+        const desc = `申请变更${subTab==="ta"?"对方昵称":"我的昵称为："+val}`;
         const applyObj = {targetType,newVal:val,desc,from:"me"};
         this.openApplyCountdownModal(applyObj);
       };
     });
 
-    const closeBtn = panel.querySelector("#modal-an-close");
+    const closeBtn = panel.querySelector("#modal‑an‑close");
     if(closeBtn) closeBtn.onclick = ()=>this.close();
     this.maskDom.onclick = (e)=>{if(e.target === this.maskDom) this.close();};
   }
