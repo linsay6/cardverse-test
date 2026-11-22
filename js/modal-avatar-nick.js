@@ -243,19 +243,46 @@ export const ModalAvatarNick = {
     const idx = list.findIndex(x=>x.id === this.contactId);
     if(idx === -1) return;
     const contact = list[idx];
-    let logText = "";
     const taNick = contact?.name||"TA";
-    const whoText = applyObj.from==="ta"?taNick:"我";
+    let logText = "";
+
+    // 文案对齐图2，自然语言描述
     if(action === "accept"){
       switch(applyObj.targetType){
-        case "taAvatar": contact.avatar = applyObj.newVal; logText = `【${whoText}发起】${applyObj.desc} —— 已同意`; break;
-        case "taNick": contact.name = applyObj.newVal; logText = `【${whoText}发起】${applyObj.desc} —— 已同意`; break;
-        case "myAvatar": contact.myAvatar = applyObj.newVal; logText = `【${whoText}发起】${applyObj.desc} —— 已同意`; break;
-        case "myNick": contact.myNick = applyObj.newVal; logText = `【${whoText}发起】${applyObj.desc} —— 已同意`; break;
+        case "taAvatar": 
+          contact.avatar = applyObj.newVal; 
+          logText = applyObj.from==="ta" ? `TA更换了自己的头像` : `TA同意了我的换头像邀请`;
+          break;
+        case "taNick": 
+          contact.name = applyObj.newVal; 
+          logText = applyObj.from==="ta" ? `TA更换了自己的昵称为：${applyObj.newVal}` : `TA同意了我的换昵称邀请，昵称换成了「${applyObj.newVal}」`;
+          break;
+        case "myAvatar": 
+          contact.myAvatar = applyObj.newVal; 
+          logText = applyObj.from==="ta" ? `我同意了TA的换头像邀请` : `我更换了自己的头像`;
+          break;
+        case "myNick": 
+          contact.myNick = applyObj.newVal; 
+          logText = applyObj.from==="ta" ? `我同意了TA的换昵称邀请，我的昵称换成了「${applyObj.newVal}」` : `我更换了自己的昵称为：${applyObj.newVal}`;
+          break;
       }
     }else{
-      logText = `【${whoText}发起】${applyObj.desc} —— 已拒绝`;
+      switch(applyObj.targetType){
+        case "taAvatar": 
+          logText = applyObj.from==="ta" ? `TA取消了换头像申请` : `TA拒绝了我的换头像邀请`;
+          break;
+        case "taNick": 
+          logText = applyObj.from==="ta" ? `TA取消了换昵称申请` : `TA拒绝了我的换昵称邀请，昵称保持不变`;
+          break;
+        case "myAvatar": 
+          logText = applyObj.from==="ta" ? `我拒绝了TA的换头像邀请` : `我取消了换头像申请`;
+          break;
+        case "myNick": 
+          logText = applyObj.from==="ta" ? `我拒绝了TA的换昵称邀请，我的昵称保持不变` : `我取消了换昵称申请`;
+          break;
+      }
     }
+    // 写入聊天记录，持久化保存
     if(this.chatModuleRef?.pushSystemNotice){
       this.chatModuleRef.pushSystemNotice(logText);
     }
@@ -276,6 +303,14 @@ export const ModalAvatarNick = {
     panel.style.background = "#fff";
     panel.style.borderRadius = "16px";
     panel.style.overflow = "auto";
+    // 隐藏弹窗滚动条，保留滚轮功能
+    panel.style.scrollbarWidth = "none";
+    panel.style.msOverflowStyle = "none";
+    panel.id = "modal-panel";
+    const panelScrollStyle = document.createElement("style");
+    panelScrollStyle.textContent = `#modal-panel::-webkit-scrollbar{display:none}`;
+    document.head.appendChild(panelScrollStyle);
+
     const head = document.createElement("div");
     head.style.padding = "14px 16px";
     head.style.display = "flex";
@@ -563,14 +598,13 @@ export const ModalAvatarNick = {
         `;
         itemDiv.onclick = (e)=>{
           if(e.target.tagName==="BUTTON") return;
-          //====业务分支：mine我的池子直接生效；ta池子弹出申请====
+          // 我的池子直接生效，不弹申请框
           if(this.subTab === "mine"){
-            //直接修改，不弹申请弹窗
-            this.contactInfo[targetType==="myAvatar"?"myAvatar":"myNick"] = src;
-            const logText = `我直接更换了自己的头像`;
+            this.contactInfo.myAvatar = src;
+            const logText = `我更换了自己的头像`;
             if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(logText);
             this.saveContact();
-            Toast.show("已直接更换我的头像");
+            Toast.show("已更换我的头像");
             this.render();
           }else{
             const desc = `申请变更对方头像`;
@@ -704,13 +738,12 @@ export const ModalAvatarNick = {
       btn.onclick = ()=>{
         const idx = Number(btn.dataset.applyIdx);
         const val = poolArr[idx];
-        //昵称池子点击发起申请按钮
+        // 我的昵称池直接生效
         if(this.subTab === "mine"){
-          //我的昵称池，直接修改
           this.contactInfo.myNick = val;
-          if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(`我直接更换了自己的昵称为：${val}`);
+          if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(`我更换了自己的昵称为：${val}`);
           this.saveContact();
-          Toast.show("已直接更换我的昵称");
+          Toast.show("已更换我的昵称");
           this.render();
         }else{
           const desc = `申请变更对方昵称为：${val}`;
