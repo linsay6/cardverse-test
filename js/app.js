@@ -4,6 +4,8 @@ import { DesktopModule } from './desktop.js';
 import { CardEditorModule } from './card-editor.js';
 import { ChatModule } from './chat.js';
 import { SettingModule } from './setting.js';
+// 新增导入头像昵称模块，用于后台轮换定时器
+import { ModalAvatarNick } from './modal-avatar-nick.js';
 
 window.$Toast = Toast;
 window.$Theme = ThemeManager;
@@ -17,7 +19,6 @@ const TabManager = {
     { key: "setting", selector: "#tab-setting", module: SettingModule }
   ],
   activeKey: "desktop",
-
   init() {
     this.tabs.forEach(tabItem => {
       tabItem.module.init(tabItem.selector);
@@ -25,7 +26,6 @@ const TabManager = {
     this.bindTabClick();
     this.switchTab(this.activeKey);
   },
-
   bindTabClick() {
     document.querySelectorAll(".tab-btn").forEach(btn => {
       btn.onclick = () => {
@@ -34,7 +34,6 @@ const TabManager = {
       };
     });
   },
-
   switchTab(key) {
     this.activeKey = key;
     // 隐藏所有面板
@@ -61,10 +60,14 @@ const TabManager = {
   }
 };
 window.TabManager = TabManager;
+
 async function bootstrap() {
   console.log("应用开始初始化");
   ThemeManager.load();
   TabManager.init();
+  // 新增：启动头像昵称后台轮换轮询定时器（30秒扫描一次全部联系人）
+  ModalAvatarNick.startBackgroundRotate();
+
   console.log("所有模块初始化完成");
   Toast.show("初始化完成");
 }
