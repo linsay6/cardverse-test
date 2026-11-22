@@ -12,11 +12,11 @@ export const Toast = {
       toastEl.style.cssText = `
         position: fixed;
         left: 50%;
-        bottom: 140px;
+        top: 24px;
         transform: translateX(-50%);
-        background: rgba(0,0,0,0.72);
-        color: #fff;
-        padding: 8px 18px;
+        background: #222222;
+        color: #ffffff;
+        padding: 10px 22px;
         border‑radius: 999px;
         font‑size:14px;
         z‑index: 999999;
@@ -24,6 +24,7 @@ export const Toast = {
         pointer‑events: none;
         transition: opacity 0.2s ease;
         opacity: 1;
+        box‑shadow:0 2px 12px rgba(0,0,0,0.15);
       `;
       document.body.appendChild(toastEl);
     }
