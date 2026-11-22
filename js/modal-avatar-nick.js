@@ -66,109 +66,109 @@ export const ModalAvatarNick = {
   },
 
   openApplyCountdownModal(applyObj){
-  const mask = document.createElement("div");
-  mask.style.position = "fixed";
-  mask.style.inset = "0";
-  mask.style.background = "rgba(0,0,0,0.4)";
-  mask.style.zIndex = "10001";
-  mask.style.display = "flex";
-  mask.style.alignItems = "center";
-  mask.style.justifyContent = "center";
-  const modal = document.createElement("div");
-  modal.style.width = "85%";
-  modal.style.maxWidth = "340px";
-  modal.style.background = "#fff";
-  modal.style.borderRadius = "14px";
-  modal.style.padding = "20px";
-  let count = 5;
-  const isMeSend = applyObj.from === "me";
+    const mask = document.createElement("div");
+    mask.style.position = "fixed";
+    mask.style.inset = "0";
+    mask.style.background = "rgba(0,0,0,0.4)";
+    mask.style.zIndex = "10001";
+    mask.style.display = "flex";
+    mask.style.alignItems = "center";
+    mask.style.justifyContent = "center";
+    const modal = document.createElement("div");
+    modal.style.width = "85%";
+    modal.style.maxWidth = "340px";
+    modal.style.background = "#fff";
+    modal.style.borderRadius = "14px";
+    modal.style.padding = "20px";
+    let count = 5;
+    const isMeSend = applyObj.from === "me";
 
-  let titleText = "";
-  let descText = "";
-  let previewHtml = "";
-  const taNick = this.contactInfo?.name || "TA";
-  const myNick = "我";
-  if(isMeSend){
-    if(applyObj.targetType === "taAvatar"){
-      titleText = `${myNick} 的换头像邀请`;
-      descText = `你邀请${taNick}更换头像`;
-      previewHtml = `<div style="margin:10px 0;text-align:center"><img src="${applyObj.newVal}" style="width:80px;height:80px;border-radius:8px;object‑fit:cover"></div>`;
-    }else if(applyObj.targetType === "taNick"){
-      titleText = `${myNick} 的换昵称邀请`;
-      descText = `你邀请${taNick}更换昵称`;
-      previewHtml = `<div style="margin:10px 0;text-align:center;font‑size:16px;color:#333">目标昵称：${applyObj.newVal}</div>`;
-    }else if(applyObj.targetType === "myAvatar"){
-      titleText = `${myNick} 的换头像邀请`;
-      descText = `你申请变更自己的头像`;
-      previewHtml = `<div style="margin:10px 0;text-align:center"><img src="${applyObj.newVal}" style="width:80px;height:80px;border‑radius:8px;object‑fit:cover"></div>`;
-    }else if(applyObj.targetType === "myNick"){
-      titleText = `${myNick} 的换昵称邀请`;
-      descText = `你申请变更自己的昵称`;
-      previewHtml = `<div style="margin:10px 0;text‑align:center;font‑size:16px;color:#333">目标昵称：${applyObj.newVal}</div>`;
+    let titleText = "";
+    let descText = "";
+    let previewHtml = "";
+    const taNick = this.contactInfo?.name || "TA";
+    const myNick = "我";
+    if(isMeSend){
+      if(applyObj.targetType === "taAvatar"){
+        titleText = `${myNick} 的换头像邀请`;
+        descText = `你邀请${taNick}更换头像`;
+        previewHtml = `<div style="margin:10px 0;text-align:center"><img src="${applyObj.newVal}" style="width:80px;height:80px;border-radius:8px;object-fit:cover"></div>`;
+      }else if(applyObj.targetType === "taNick"){
+        titleText = `${myNick} 的换昵称邀请`;
+        descText = `你邀请${taNick}更换昵称`;
+        previewHtml = `<div style="margin:10px 0;text-align:center;font-size:16px;color:#333">目标昵称：${applyObj.newVal}</div>`;
+      }else if(applyObj.targetType === "myAvatar"){
+        titleText = `${myNick} 的换头像邀请`;
+        descText = `你申请变更自己的头像`;
+        previewHtml = `<div style="margin:10px 0;text-align:center"><img src="${applyObj.newVal}" style="width:80px;height:80px;border-radius:8px;object-fit:cover"></div>`;
+      }else if(applyObj.targetType === "myNick"){
+        titleText = `${myNick} 的换昵称邀请`;
+        descText = `你申请变更自己的昵称`;
+        previewHtml = `<div style="margin:10px 0;text-align:center;font-size:16px;color:#333">目标昵称：${applyObj.newVal}</div>`;
+      }
+    }else{
+      if(applyObj.targetType === "myAvatar"){
+        titleText = `${taNick} 的换头像邀请`;
+        descText = `${taNick} 邀请你换上这个头像`;
+        previewHtml = `<div style="margin:10px 0;text-align:center"><img src="${applyObj.newVal}" style="width:80px;height:80px;border-radius:8px;object-fit:cover"></div>`;
+      }else if(applyObj.targetType === "myNick"){
+        titleText = `${taNick} 的换昵称邀请`;
+        descText = `${taNick} 邀请你换上这个昵称`;
+        previewHtml = `<div style="margin:10px 0;text-align:center;font-size:16px;color:#333">目标昵称：${applyObj.newVal}</div>`;
+      }else if(applyObj.targetType === "taAvatar"){
+        titleText = `${taNick} 的换头像邀请`;
+        descText = `${taNick}申请变更自己头像`;
+        previewHtml = `<div style="margin:10px 0;text-align:center"><img src="${applyObj.newVal}" style="width:80px;height:80px;border-radius:8px;object-fit:cover"></div>`;
+      }else if(applyObj.targetType === "taNick"){
+        titleText = `${taNick} 的换昵称邀请`;
+        descText = `${taNick}申请变更自己昵称为：${applyObj.newVal}`;
+        previewHtml = `<div style="margin:10px 0;text-align:center;font-size:16px;color:#333">目标昵称：${applyObj.newVal}</div>`;
+      }
     }
-  }else{
-    if(applyObj.targetType === "myAvatar"){
-      titleText = `${taNick} 的换头像邀请`;
-      descText = `${taNick} 邀请你换上这个头像`;
-      previewHtml = `<div style="margin:10px 0;text‑align:center"><img src="${applyObj.newVal}" style="width:80px;height:80px;border‑radius:8px;object‑fit:cover"></div>`;
-    }else if(applyObj.targetType === "myNick"){
-      titleText = `${taNick} 的换昵称邀请`;
-      descText = `${taNick} 邀请你换上这个昵称`;
-      previewHtml = `<div style="margin:10px 0;text‑align:center;font‑size:16px;color:#333">目标昵称：${applyObj.newVal}</div>`;
-    }else if(applyObj.targetType === "taAvatar"){
-      titleText = `${taNick} 的换头像邀请`;
-      descText = `${taNick}申请变更自己头像`;
-      previewHtml = `<div style="margin:10px 0;text‑align:center"><img src="${applyObj.newVal}" style="width:80px;height:80px;border‑radius:8px;object‑fit:cover"></div>`;
-    }else if(applyObj.targetType === "taNick"){
-      titleText = `${taNick} 的换昵称邀请`;
-      descText = `${taNick}申请变更自己昵称为：${applyObj.newVal}`;
-      previewHtml = `<div style="margin:10px 0;text‑align:center;font‑size:16px;color:#333">目标昵称：${applyObj.newVal}</div>`;
-    }
-  }
 
-  const btnHtml = isMeSend ? "" : `
-    <div style="display:flex;gap:10px;margin‑top:10px">
-      <button id="apply‑reject" style="flex:1;padding:9px;border:1px solid #ccc;background:#fff;border‑radius:8px">拒绝</button>
-      <button id="apply‑accept" style="flex:1;padding:9px;background:${this.primaryColor};color:#fff;border:none;border‑radius:8px">同意</button>
-    </div>
-  `;
-  modal.innerHTML = `
-    <div style="font‑weight:bold;font‑size:16px;margin‑bottom:12px">${titleText}</div>
-    <div style="font‑size:14px;color:#444;margin‑bottom:12px">${descText}</div>
-    ${previewHtml}
-    <div id="count‑text" style="font‑size:13px;color:#777;margin‑bottom:16px">等待判断，剩余 ${count} 秒</div>
-    ${btnHtml}
-  `;
-  mask.appendChild(modal);
-  document.body.appendChild(mask);
-  const countText = modal.querySelector("#count‑text");
-  let timer = setInterval(()=>{
-    count--;
-    countText.textContent = `等待判断，剩余 ${count} 秒`;
-    if(count <=0){
+    const btnHtml = isMeSend ? "" : `
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button id="apply-reject" style="flex:1;padding:9px;border:1px solid #ccc;background:#fff;border-radius:8px">拒绝</button>
+        <button id="apply-accept" style="flex:1;padding:9px;background:${this.primaryColor};color:#fff;border:none;border-radius:8px">同意</button>
+      </div>
+    `;
+    modal.innerHTML = `
+      <div style="font-weight:bold;font-size:16px;margin-bottom:12px">${titleText}</div>
+      <div style="font-size:14px;color:#444;margin-bottom:12px">${descText}</div>
+      ${previewHtml}
+      <div id="count-text" style="font-size:13px;color:#777;margin-bottom:16px">等待判断，剩余 ${count} 秒</div>
+      ${btnHtml}
+    `;
+    mask.appendChild(modal);
+    document.body.appendChild(mask);
+    const countText = modal.querySelector("#count-text");
+    let timer = setInterval(()=>{
+      count--;
+      countText.textContent = `等待判断，剩余 ${count} 秒`;
+      if(count <=0){
+        clearInterval(timer);
+        const autoResult = Math.random()>0.5 ? "accept":"reject";
+        countText.textContent = autoResult==="accept" ? "自动判定：已同意申请" : "自动判定：拒绝申请";
+        this.doApplyResult(applyObj, autoResult);
+        setTimeout(()=>mask.remove(),1200);
+      }
+    },1000);
+    const clean = ()=>{
       clearInterval(timer);
-      const autoResult = Math.random()>0.5 ? "accept":"reject";
-      countText.textContent = autoResult==="accept" ? "自动判定：已同意申请" : "自动判定：拒绝申请";
-      this.doApplyResult(applyObj, autoResult);
-      setTimeout(()=>mask.remove(),1200);
+      mask.remove();
+    };
+    if(!isMeSend){
+      modal.querySelector("#apply-accept").onclick = ()=>{
+        clean();
+        this.doApplyResult(applyObj,"accept");
+      };
+      modal.querySelector("#apply-reject").onclick = ()=>{
+        clean();
+        this.doApplyResult(applyObj,"reject");
+      };
     }
-  },1000);
-  const clean = ()=>{
-    clearInterval(timer);
-    mask.remove();
-  };
-  if(!isMeSend){
-    modal.querySelector("#apply‑accept").onclick = ()=>{
-      clean();
-      this.doApplyResult(applyObj,"accept");
-    };
-    modal.querySelector("#apply‑reject").onclick = ()=>{
-      clean();
-      this.doApplyResult(applyObj,"reject");
-    };
-  }
-  mask.onclick = (e)=>{if(e.target===mask) clean();};
-},
+    mask.onclick = (e)=>{if(e.target===mask) clean();};
+  },
 
   doApplyResult(applyObj,action){
     const list = Store.get("contactList",[]);
@@ -367,8 +367,8 @@ export const ModalAvatarNick = {
       hourRow.style.padding = "6px 0 8px 0";
       const minVal = Number(cfg.minHour ??2);
       hourRow.innerHTML = `
-        <span style="font‑size:13px">最小小时</span>
-        <input id="rand‑min" type="number" min="1" value="${minVal}" style="width:60px;padding:6px;border:1px solid #ddd;border‑radius:6px;text‑align:center">
+        <span style="font-size:13px">最小小时</span>
+        <input id="rand-min" type="number" min="1" value="${minVal}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
       `;
       randBox.appendChild(hourRow);
       const hourRow2 = document.createElement("div");
@@ -492,7 +492,7 @@ export const ModalAvatarNick = {
         itemDiv.style.overflow = "hidden";
         itemDiv.style.border = "1px solid #ddd";
         itemDiv.innerHTML = `
-          <img src="${src}" style="width:100%;height:100%;object‑fit:cover">
+          <img src="${src}" style="width:100%;height:100%;object-fit:cover">
           <button data‑del‑idx="${idx}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,0.6);color:#fff;border:none;border‑radius:50%;font‑size:10px">×</button>
         `;
         itemDiv.onclick = (e)=>{
@@ -574,12 +574,12 @@ export const ModalAvatarNick = {
         row.style.padding = "9px 0";
         row.style.borderBottom = "1px solid #f1f1f1";
         row.innerHTML = `
-  <span style="font‑size:13px">${text}</span>
-  <div style="display:flex;gap:6px;margin‑left:auto">
-    <button data‑apply‑idx="${idx}" style="border:none;background:${this.primaryColor};color:#fff;border‑radius:4px;padding:4px 7px;font‑size:11px">发起申请</button>
-    <button data‑del‑idx="${idx}" style="border:none;background:#f44336;color:#fff;border‑radius:4px;padding:4px 7px;font‑size:11px">删除</button>
-  </div>
-`;
+          <span style="font‑size:13px">${text}</span>
+          <div style="display:flex;gap:6px;margin‑left:auto">
+            <button data‑apply‑idx="${idx}" style="border:none;background:${this.primaryColor};color:#fff;border‑radius:4px;padding:4px 7px;font‑size:11px">发起申请</button>
+            <button data‑del‑idx="${idx}" style="border:none;background:#f44336;color:#fff;border‑radius:4px;padding:4px 7px;font‑size:11px">删除</button>
+          </div>
+        `;
         listWrap.appendChild(row);
       })
       poolArea.appendChild(listWrap);
@@ -635,9 +635,11 @@ export const ModalAvatarNick = {
     });
 
     const closeBtn = panel.querySelector("#modal‑an‑close");
-if(closeBtn){
-  closeBtn.onclick = (e)=>{
-    e.stopPropagation();
-    this.close();
-  };
-}
+    if(closeBtn){
+      closeBtn.onclick = (e)=>{
+        e.stopPropagation();
+        this.close();
+      };
+    }
+  }
+};
