@@ -11,11 +11,6 @@ export const ChatSettingSubModule = {
   tab2List: ["形象", "消息", "显示"],
   activeTab2: "形象",
 
-  /**
-   * @param {HTMLElement} parentDom #tab‑chat DOM对象，在聊天tab内部渲染子页面
-   * @param {string} cid 联系人id
-   * @param {Function} cbBack 返回聊天对话界面回调
-   */
   open(parentDom, cid, cbBack) {
     this.parentContainer = parentDom;
     this.contactId = cid;
@@ -34,7 +29,7 @@ export const ChatSettingSubModule = {
     wrap.style.flexDirection = "column";
     wrap.style.background = "#fff";
 
-    // 顶部头部栏
+    // 头部
     const header = document.createElement("div");
     header.style.display = "flex";
     header.style.alignItems = "center";
@@ -42,12 +37,12 @@ export const ChatSettingSubModule = {
     header.style.padding = "14px 16px";
     header.style.borderBottom = "1px solid #eee";
     header.innerHTML = `
-      <button id="csub‑back" style="border:none;background:none;font‑size:20px;cursor:pointer">←</button>
-      <span style="font‑size:18px;font‑weight:500;color:#222">聊天设置</span>
+      <button id="csub-back" style="border:none;background:none;font-size:20px;cursor:pointer">←</button>
+      <span style="font-size:18px;font-weight:500;color:#222">聊天设置</span>
     `;
     wrap.appendChild(header);
 
-    // 一级tab栏：美化｜功能｜数据
+    // 一级tab栏
     const tab1Wrap = document.createElement("div");
     tab1Wrap.style.display = "flex";
     tab1Wrap.style.borderBottom = "1px solid #eee";
@@ -78,7 +73,7 @@ export const ChatSettingSubModule = {
     });
     wrap.appendChild(tab1Wrap);
 
-    // 功能tab才渲染二级子tab
+    // 功能tab才渲染二级tab
     if (this.activeTab1 === "功能") {
       const tab2Wrap = document.createElement("div");
       tab2Wrap.style.display = "flex";
@@ -111,28 +106,70 @@ export const ChatSettingSubModule = {
       wrap.appendChild(tab2Wrap);
     }
 
-    // 内容区
+    // 内容区：方案B 卡片居中，和设置首页UI统一
     const contentWrap = document.createElement("div");
     contentWrap.style.flex = "1";
-    contentWrap.style.padding = "16px";
     contentWrap.style.overflowY = "auto";
+    contentWrap.style.padding = "16px";
+    contentWrap.style.display = "flex";
+    contentWrap.style.flexDirection = "column";
+    contentWrap.style.alignItems = "center";
+
     if (this.activeTab1 === "功能" && this.activeTab2 === "形象") {
       contentWrap.innerHTML = `
-        <style>.item‑row{display:flex;justify‑content:space‑between;padding:14px 0;border‑bottom:1px solid #eee;font‑size:14px;color:#222}</style>
-        <div style="font‑size:13px;color:#777;margin‑bottom:16px">昵称与头像（聊天专用 · 与桌面各自独立，互不同步）</div>
-        <div class="item‑row"><span>联系人昵称</span><span style="color:#666">${this.contactInfo?.name || "‑"}</span></div>
-        <div class="item‑row"><span>我的昵称</span><span style="color:#666">未设置（默认 我）</span></div>
-        <div class="item‑row"><span>联系人头像</span><span style="color:#666">${this.contactInfo?.avatar ? "已设置" : "未设置"}</span></div>
-        <div class="item‑row"><span>我的头像</span><span style="color:#666">未设置</span></div>
+        <style>
+        .setting-card{
+          background:#fff;
+          border-radius:14px;
+          padding:16px;
+          margin:0 auto 12px auto;
+          max-width:90%;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          width:100%;
+        }
+        .item-row{
+          display:flex;
+          justify-content:space-between;
+          padding:10px 0;
+          border-bottom:1px solid #eee;
+          font-size:14px;
+          color:#222
+        }
+        .item-row:last-child{border-bottom:none;}
+        .tip-text{
+          font-size:13px;color:#777;margin-bottom:12px;text-align:center
+        }
+        </style>
+        <div class="setting-card">
+          <div class="tip-text">昵称与头像（聊天专用 · 与桌面各自独立，互不同步）</div>
+          <div class="item-row"><span>联系人昵称</span><span style="color:#666">${this.contactInfo?.name || "-"}</span></div>
+          <div class="item-row"><span>我的昵称</span><span style="color:#666">未设置（默认 我）</span></div>
+          <div class="item-row"><span>联系人头像</span><span style="color:#666">${this.contactInfo?.avatar ? "已设置" : "未设置"}</span></div>
+          <div class="item-row"><span>我的头像</span><span style="color:#666">未设置</span></div>
+        </div>
       `;
     } else {
-      contentWrap.innerHTML = `<div style="text‑align:center;margin‑top:40px;color:#888">页面待开发</div>`;
+      contentWrap.innerHTML = `
+      <style>
+        .setting-card{
+          background:#fff;
+          border-radius:14px;
+          padding:30px 16px;
+          margin:0 auto 12px auto;
+          max-width:90%;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          width:100%;
+          text-align:center;
+          color:#888;
+        }
+      </style>
+      <div class="setting-card">页面待开发</div>
+      `;
     }
     wrap.appendChild(contentWrap);
     this.parentContainer.appendChild(wrap);
 
-    // 返回按钮，执行回调切回聊天对话界面
-    document.getElementById("csub‑back").onclick = () => {
+    document.getElementById("csub-back").onclick = () => {
       if (typeof this.callbackBack === "function") {
         this.callbackBack();
       }
