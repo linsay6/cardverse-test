@@ -1,17 +1,14 @@
 import { Store } from './core/store.js';
 import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
-
 export const ChatSettingSubModule = {
   parentContainer: null,
   contactId: null,
   contactInfo: null,
-
   tab1List: ["美化", "功能", "数据"],
   activeTab1: "功能",
   tab2List: ["形象", "消息", "显示"],
   activeTab2: "形象",
-
   open(parentDom, cid, cbBack) {
     this.parentContainer = parentDom;
     this.contactId = cid;
@@ -20,7 +17,6 @@ export const ChatSettingSubModule = {
     this.callbackBack = cbBack;
     this.render();
   },
-
   openRadioModal(title, optionList, currentVal, onSelect) {
     const mask = document.createElement("div");
     mask.style.position = "fixed";
@@ -30,21 +26,19 @@ export const ChatSettingSubModule = {
     mask.style.display = "flex";
     mask.style.alignItems = "center";
     mask.style.justifyContent = "center";
-
     const modal = document.createElement("div");
     modal.style.width = "85%";
     modal.style.maxWidth = "360px";
     modal.style.background = "#fff";
     modal.style.borderRadius = "14px";
     modal.style.overflow = "hidden";
-
     modal.innerHTML = `<div style="padding:16px 16px 8px;font-weight:bold;font-size:16px">${title}</div>`;
     optionList.forEach(opt => {
       const itemDiv = document.createElement("div");
       itemDiv.style.padding = "14px 16px";
       itemDiv.style.cursor = "pointer";
       itemDiv.style.display = "flex";
-      itemDiv.style.justifyContent = "space-between";
+      itemDiv.style.justifyContent = "space‑between";
       itemDiv.style.alignItems = "center";
       itemDiv.style.borderBottom = "1px solid #eee";
       itemDiv.innerHTML = `<span>${opt.label}</span> ${opt.value === currentVal ? `<span style="color:#7c68ee">✓</span>` : ""}`;
@@ -54,19 +48,19 @@ export const ChatSettingSubModule = {
       };
       modal.appendChild(itemDiv);
     });
-
     mask.appendChild(modal);
     document.body.appendChild(mask);
     mask.onclick = (e) => {
       if(e.target === mask) mask.remove();
     };
   },
-
   render() {
     if (!this.parentContainer) return;
     this.parentContainer.innerHTML = "";
     const wrap = document.createElement("div");
-    wrap.style.height = "100%";
+    // =========关键修复空白：wrap不再用flex拉伸填充剩余空间，改为自动高度=========
+    wrap.style.height = "auto";
+    wrap.style.minHeight = "100%";
     wrap.style.display = "flex";
     wrap.style.flexDirection = "column";
     wrap.style.background = "#f7f7f7";
@@ -79,20 +73,19 @@ export const ChatSettingSubModule = {
     header.style.borderBottom = "1px solid #eee";
     header.style.background = "#fff";
     header.innerHTML = `
-      <button id="csub-back" style="border:none;background:none;font-size:20px;cursor:pointer">←</button>
-      <span style="font-size:18px;font-weight:500;color:#222">聊天设置</span>
+      <button id="csub‑back" style="border:none;background:none;font‑size:20px;cursor:pointer">←</button>
+      <span style="font‑size:18px;font‑weight:500;color:#222">聊天设置</span>
     `;
     wrap.appendChild(header);
 
     const contentWrap = document.createElement("div");
-    contentWrap.style.flex = "1";
-    contentWrap.style.overflowY = "auto";
+    // contentWrap不再flex:1抢占剩余高度
+    contentWrap.style.flex = "0 0 auto";
     contentWrap.style.padding = "16px";
-    contentWrap.style.boxSizing = "border-box";
+    contentWrap.style.boxSizing = "border‑box";
     contentWrap.style.display = "flex";
     contentWrap.style.flexDirection = "column";
     contentWrap.style.alignItems = "center";
-    contentWrap.style.justifyContent = "flex-start";   // 关键：内容从顶部开始排列
 
     const mainCard = document.createElement("div");
     mainCard.style.width = "100%";
@@ -101,7 +94,6 @@ export const ChatSettingSubModule = {
     mainCard.style.borderRadius = "14px";
     mainCard.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)";
     mainCard.style.overflow = "hidden";
-    mainCard.style.flex = "0 0 auto";   // 关键：不撑高，只按内容高度显示
 
     const tab1Wrap = document.createElement("div");
     tab1Wrap.style.display = "flex";
@@ -174,24 +166,24 @@ export const ChatSettingSubModule = {
     if (this.activeTab1 === "美化") {
       cardContent.innerHTML = `
       <style>
-      .setting-row{
+      .setting‑row{
         display:flex;
-        justify-content:space-between;
-        align-items:center;
+        justify‑content:space‑between;
+        align‑items:center;
         padding:14px 0;
-        border-bottom:1px solid #eee;
+        border‑bottom:1px solid #eee;
         cursor:pointer;
       }
-      .row-label{font-size:14px;color:#222}
-      .row-value{font-size:13px;color:#888;margin-left:auto}
+      .row‑label{font‑size:14px;color:#222}
+      .row‑value{font‑size:13px;color:#888;margin‑left:auto}
       </style>
-      <div class="setting-row" id="row-avatar-shape">
-        <span class="row-label">头像形状</span>
-        <span class="row-value">${chatTheme.avatarShape === "circle" ? "圆形" : "方形"} ></span>
+      <div class="setting‑row" id="row‑avatar‑shape">
+        <span class="row‑label">头像形状</span>
+        <span class="row‑value">${chatTheme.avatarShape === "circle" ? "圆形" : "方形"} ></span>
       </div>
-      <div class="setting-row" id="row-time-pos">
-        <span class="row-label">消息时间位置</span>
-        <span class="row-value">${
+      <div class="setting‑row" id="row‑time‑pos">
+        <span class="row‑label">消息时间位置</span>
+        <span class="row‑value">${
           {
             avatarBottom:"头像下方",
             bubbleBottom:"气泡下方",
@@ -210,49 +202,49 @@ export const ChatSettingSubModule = {
       const hasMyAvatar = !!this.contactInfo?.myAvatar;
       cardContent.innerHTML = `
       <style>
-      .setting-row{
+      .setting‑row{
         display:flex;
-        justify-content:space-between;
-        align-items:center;
+        justify‑content:space‑between;
+        align‑items:center;
         padding:14px 0;
-        border-bottom:1px solid #eee;
+        border‑bottom:1px solid #eee;
         cursor:pointer;
       }
-      .row-label{font-size:14px;color:#222;display:flex;align-items:center;gap:8px}
-      .row-value{font-size:13px;color:#888;margin-left:auto}
-      .tip-text{font-size:12px;color:#999;padding:8px 0 12px}
+      .row‑label{font‑size:14px;color:#222;display:flex;align‑items:center;gap:8px}
+      .row‑value{font‑size:13px;color:#888;margin‑left:auto}
+      .tip‑text{font‑size:12px;color:#999;padding:8px 0 12px}
       </style>
-      <div class="tip-text">昵称与头像（聊天专用 · 与桌面各自独立，互不同步）</div>
+      <div class="tip‑text">昵称与头像（聊天专用 · 与桌面各自独立，互不同步）</div>
 
-      <div class="setting-row" id="row-contact-nick">
-        <span class="row-label">联系人昵称</span>
-        <span class="row-value">${nick} ></span>
+      <div class="setting‑row" id="row‑contact‑nick">
+        <span class="row‑label">联系人昵称</span>
+        <span class="row‑value">${nick} ></span>
       </div>
-      <div class="setting-row" id="row-my-nick">
-        <span class="row-label">我的昵称</span>
-        <span class="row-value">${myNick} ></span>
+      <div class="setting‑row" id="row‑my‑nick">
+        <span class="row‑label">我的昵称</span>
+        <span class="row‑value">${myNick} ></span>
       </div>
-      <div class="setting-row" id="row-contact-avatar">
-        <span class="row-label">联系人头像</span>
-        <span class="row-value">${hasAvatar ? "已设置" : "未设置"} ></span>
+      <div class="setting‑row" id="row‑contact‑avatar">
+        <span class="row‑label">联系人头像</span>
+        <span class="row‑value">${hasAvatar ? "已设置" : "未设置"} ></span>
       </div>
-      <div class="setting-row" id="row-clear-contact-avatar">
-        <span class="row-label">清空联系人头像</span>
-        <span class="row-value"></span>
+      <div class="setting‑row" id="row‑clear‑contact‑avatar">
+        <span class="row‑label">清空联系人头像</span>
+        <span class="row‑value"></span>
       </div>
-      <div class="setting-row" id="row-my-avatar">
-        <span class="row-label">我的头像</span>
-        <span class="row-value">${hasMyAvatar ? "已设置" : "未设置"} ></span>
+      <div class="setting‑row" id="row‑my‑avatar">
+        <span class="row‑label">我的头像</span>
+        <span class="row‑value">${hasMyAvatar ? "已设置" : "未设置"} ></span>
       </div>
-      <div class="setting-row" id="row-clear-my-avatar">
-        <span class="row-label">清空我的头像</span>
-        <span class="row-value"></span>
+      <div class="setting‑row" id="row‑clear‑my‑avatar">
+        <span class="row‑label">清空我的头像</span>
+        <span class="row‑value"></span>
       </div>
-      <input type="file" id="avatar-file" accept="image/*" style="display:none">
-      <input type="file" id="myavatar-file" accept="image/*" style="display:none">
+      <input type="file" id="avatar‑file" accept="image/*" style="display:none">
+      <input type="file" id="myavatar‑file" accept="image/*" style="display:none">
       `;
     } else {
-      cardContent.innerHTML = `<div style="padding:30px 0;text-align:center;color:#888">页面待开发</div>`;
+      cardContent.innerHTML = `<div style="padding:30px 0;text‑align:center;color:#888">页面待开发</div>`;
     }
     mainCard.appendChild(cardContent);
 
@@ -260,14 +252,14 @@ export const ChatSettingSubModule = {
     wrap.appendChild(contentWrap);
     this.parentContainer.appendChild(wrap);
 
-    document.getElementById("csub-back").onclick = () => {
+    document.getElementById("csub‑back").onclick = () => {
       if (typeof this.callbackBack === "function") {
         this.callbackBack();
       }
     };
 
     // ======美化tab事件======
-    const rowAvatarShape = document.getElementById("row-avatar-shape");
+    const rowAvatarShape = document.getElementById("row‑avatar‑shape");
     if(rowAvatarShape){
       rowAvatarShape.onclick = ()=>{
         this.openRadioModal("选择头像形状",
@@ -285,7 +277,7 @@ export const ChatSettingSubModule = {
         )
       }
     }
-    const rowTimePos = document.getElementById("row-time-pos");
+    const rowTimePos = document.getElementById("row‑time‑pos");
     if(rowTimePos){
       rowTimePos.onclick = ()=>{
         this.openRadioModal("选择消息时间位置",
@@ -309,7 +301,7 @@ export const ChatSettingSubModule = {
     }
 
     // ======形象tab：联系人昵称======
-    const rowContactNick = document.getElementById("row-contact-nick");
+    const rowContactNick = document.getElementById("row‑contact‑nick");
     if(rowContactNick){
       rowContactNick.onclick = ()=>{
         const newName = prompt("输入联系人昵称", this.contactInfo?.name || "");
@@ -333,7 +325,7 @@ export const ChatSettingSubModule = {
     }
 
     // ======形象tab：我的昵称======
-    const rowMyNick = document.getElementById("row-my-nick");
+    const rowMyNick = document.getElementById("row‑my‑nick");
     if(rowMyNick){
       rowMyNick.onclick = ()=>{
         const newName = prompt("输入我的昵称", this.contactInfo?.myNick || "我");
@@ -357,8 +349,8 @@ export const ChatSettingSubModule = {
     }
 
     // ======形象tab：联系人头像======
-    const rowContactAvatar = document.getElementById("row-contact-avatar");
-    const fileInput = document.getElementById("avatar-file");
+    const rowContactAvatar = document.getElementById("row‑contact‑avatar");
+    const fileInput = document.getElementById("avatar‑file");
     if(rowContactAvatar && fileInput){
       rowContactAvatar.onclick = ()=> fileInput.click();
       fileInput.onchange = (ev)=>{
@@ -383,7 +375,7 @@ export const ChatSettingSubModule = {
     }
 
     // ======形象tab：清空联系人头像======
-    const rowClearContactAvatar = document.getElementById("row-clear-contact-avatar");
+    const rowClearContactAvatar = document.getElementById("row‑clear‑contact‑avatar");
     if(rowClearContactAvatar){
       rowClearContactAvatar.onclick = ()=>{
         if(!confirm("确认清空联系人头像？")) return;
@@ -401,8 +393,8 @@ export const ChatSettingSubModule = {
     }
 
     // ======形象tab：我的头像======
-    const rowMyAvatar = document.getElementById("row-my-avatar");
-    const myFileInput = document.getElementById("myavatar-file");
+    const rowMyAvatar = document.getElementById("row‑my‑avatar");
+    const myFileInput = document.getElementById("myavatar‑file");
     if(rowMyAvatar && myFileInput){
       rowMyAvatar.onclick = ()=> myFileInput.click();
       myFileInput.onchange = (ev)=>{
@@ -427,7 +419,7 @@ export const ChatSettingSubModule = {
     }
 
     // ======形象tab：清空我的头像======
-    const rowClearMyAvatar = document.getElementById("row-clear-my-avatar");
+    const rowClearMyAvatar = document.getElementById("row‑clear‑my‑avatar");
     if(rowClearMyAvatar){
       rowClearMyAvatar.onclick = ()=>{
         if(!confirm("确认清空我的头像？")) return;
