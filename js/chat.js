@@ -66,13 +66,13 @@ export const ChatModule = {
     chatHeader.style.borderBottom = "1px solid #e5e5e5";
     chatHeader.style.background = "#fff";
     chatHeader.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px">
-        <button id="chat-back-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;">←</button>
-        <img id="chat-header-avatar" src="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:#eee">
-        <div id="chat-title" style="font-weight:bold;color:#222">未选择联系人</div>
-      </div>
-      <button id="chat-more-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:18px">⋯</button>
-    `;
+  <div style="display:flex;align-items:center;gap:8px">
+    <button id="chat-back-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;">←</button>
+    <img id="chat-header-avatar" src="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:#eee">
+    <div id="chat-title" style="font-weight:bold;color:#222">未选择联系人</div>
+  </div>
+  <button id="chat-more-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:18px">⋯</button>
+`;
     wrap.appendChild(chatHeader);
 
     this.msgListEl = document.createElement('div');
@@ -118,15 +118,16 @@ export const ChatModule = {
 
     // 右上角更多菜单弹窗
     const moreBtn = document.getElementById("chat-more-btn");
-    moreBtn.onclick = ()=>{
-      this.showChatMenu();
-    }
-    const backBtn = document.getElementById("chat-back-btn");
-    backBtn.onclick = ()=>{
-      // 这里后续可以切回联系人列表tab，暂时toast
-      Toast.show("返回联系人列表");
-    }
-  },
+moreBtn.onclick = ()=>{
+  // 跳转到聊天设置页面，传入当前选中联系人id
+  EventBus.emit("openChatSetting", { contactId: this.activeContactId });
+}
+const backBtn = document.getElementById("chat-back-btn");
+backBtn.onclick = ()=>{
+  // 切回联系人列表，这里用事件通知主框架切换tab
+  EventBus.emit("switchTab", "setting");
+  Toast.show("返回联系人列表");
+}
 
   showChatMenu(){
     if(document.getElementById("chat-menu-mask")) return;
@@ -298,17 +299,17 @@ export const ChatModule = {
     // 模拟对方正在输入
     this.isTyping = true;
     this.renderMessages();
-    setTimeout(()=>{
-      this.isTyping = false;
-      this.messageList.push({
-        role: "bot",
-        content: `${content}`,
-        time: Date.now()
-      });
-      this.saveHistory();
-      this.renderMessages();
-    },1200)
-  },
+   setTimeout(()=>{
+  this.isTyping = false;
+  // 现在是原样复述，仅临时看气泡效果，后面对接字卡会改掉这里
+  this.messageList.push({
+    role: "bot",
+    content: `${content}`,
+    time: Date.now()
+  });
+  this.saveHistory();
+  this.renderMessages();
+},1200)
 
   saveHistory() {
     if(!this.activeContactId) return;
