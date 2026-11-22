@@ -68,7 +68,8 @@ export const ChatSettingSubModule = {
     wrap.style.height = "100%";
     wrap.style.display = "flex";
     wrap.style.flexDirection = "column";
-    wrap.style.background = "#f7f7f7";
+    const appTheme = Store.get("app-theme",{});
+    wrap.style.background = appTheme.colorBg || "#f7f7f7";
 
     const header = document.createElement("div");
     header.style.display = "flex";
