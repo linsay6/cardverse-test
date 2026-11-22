@@ -1,72 +1,82 @@
-import { Store } from './core/store.js';
-import { EventBus } from './core/context.js';
-import { Toast } from './core/toast.js';
-
-export const DesktopModule = {
-  rootEl: null,
-  cardList: [],
-
-  init(containerSelector) {
-    this.rootEl = document.querySelector(containerSelector);
-    if (!this.rootEl) {
-      console.error("桌面容器找不到", containerSelector);
-      return;
-    }
-    // 读取保存的字卡
-    this.cardList = Store.get("card-list", []);
-    this.render();
-
-    // 监听主题变化，自动重绘
-    EventBus.on("themeChange", () => {
-      this.render();
-    });
-
-    // 监听新增字卡事件
-    EventBus.on("card:add", (newCard) => {
-      this.cardList.push(newCard);
-      this.saveCardList();
-      this.render();
-      Toast.show("字卡添加成功");
-    });
-  },
-
-  // 渲染桌面卡片列表
-  render() {
-    if (!this.rootEl) return;
-    this.rootEl.innerHTML = "";
-
-    if (this.cardList.length === 0) {
-      this.rootEl.innerHTML = `
-        <div style="padding:20px;text-align:center;color:var(--color-text-2)">
-          暂无字卡，去字卡页面添加
+// js/desktop.js
+export function initDesktop(container) {
+  container.innerHTML = `
+    <div class="desktop-page">
+      <div class="grid-9">
+        <div class="app-item" data-target="chat">
+          <div class="app-icon">💬</div>
+          <div class="app-name">聊天</div>
         </div>
-      `;
-      return;
+        <div class="app-item" data-target="card">
+          <div class="app-icon">📜</div>
+          <div class="app-name">字卡库</div>
+        </div>
+        <div class="app-item" data-target="setting-contact">
+          <div class="app-icon">👤</div>
+          <div class="app-name">联系人</div>
+        </div>
+        <div class="app-item">
+          <div class="app-icon">🌳</div>
+          <div class="app-name">树洞</div>
+        </div>
+        <div class="app-item">
+          <div class="app-icon">🔮</div>
+          <div class="app-name">塔罗</div>
+        </div>
+        <div class="app-item">
+          <div class="app-icon">🏠</div>
+          <div class="app-name">小屋</div>
+        </div>
+        <div class="app-item">
+          <div class="app-icon">✅</div>
+          <div class="app-name">审核</div>
+        </div>
+        <div class="app-item" data-target="setting">
+          <div class="app-icon">⚙️</div>
+          <div class="app-name">设置</div>
+        </div>
+      </div>
+    </div>
+    <style>
+      .desktop-page{padding:20px 12px;box-sizing:border-box;}
+      .grid-9{
+        display:grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap:18px;
+      }
+      .app-item{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        gap:6px;
+        padding:10px;
+      }
+      .app-icon{
+        width:52px;height:52px;
+        display:grid;place-items:center;
+        font-size:26px;
+        background:#f4f4f6;
+        border-radius:14px;
+      }
+      .app-name{font-size:13px;color:#333;}
+    </style>
+  `;
+
+  // 图标点击跳转Tab事件，通知app主模块切换tab
+  container.querySelectorAll('.app-item').forEach(el=>{
+    el.onclick = ()=>{
+      const target = el.dataset.target;
+      if(!target) return;
+      if(target === 'chat'){
+        window.$bus.emit('tab:switch','chat');
+      }else if(target === 'card'){
+        window.$bus.emit('tab:switch','card');
+      }else if(target === 'setting' || target === 'setting-contact'){
+        window.$bus.emit('tab:switch','setting');
+        if(target === 'setting-contact'){
+          window.$bus.emit('setting:open-contact');
+        }
+      }
     }
-
-    this.cardList.forEach((card) => {
-      const cardDom = document.createElement("div");
-      cardDom.style.cssText = `
-        background: var(--color-bg);
-        border:1px solid var(--color-border);
-        border-radius: var(--radius-card);
-        padding:14px;
-        margin-bottom:10px;
-      `;
-      cardDom.innerHTML = `
-        <div style="font-weight:bold;color:var(--color-main);margin-bottom:6px;">${card.name}</div>
-        <div style="font-size:13px;color:var(--color-text-2)">${card.desc || ""}</div>
-      `;
-      // 点击卡片，进入对话
-     cardDom.onclick = () => {
-  EventBus.emit("session:switch", {sessionId: card.id, card});
-  EventBus.emit("tab:switch", "chat");
-};
-      this.rootEl.appendChild(cardDom);
-    });
-  },
-
-  saveCardList() {
-    Store.set("card-list", this.cardList);
-  }
-};
+  })
+}
