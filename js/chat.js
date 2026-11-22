@@ -15,7 +15,6 @@ export const ChatModule = {
   viewMode: "chat",
   primaryColor: "#7c68ee",
   bgColor: "#ffffff",
-
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
@@ -25,7 +24,6 @@ export const ChatModule = {
     const theme = Store.get("app-theme", {});
     this.primaryColor = theme.colorMain || "#7c68ee";
     this.bgColor = theme.colorBg || "#ffffff";
-
     this.render();
     document.addEventListener("contact:change", (ev) => {
       this.loadContactSession(ev.detail);
@@ -57,7 +55,6 @@ export const ChatModule = {
       }
     });
   },
-
   executeApply(apply, contactObj){
     switch(apply.targetType){
       case "taAvatar":
@@ -74,8 +71,7 @@ export const ChatModule = {
         break;
     }
   },
-
-  // 对外接口：写入系统通知（图4聊天居中记录，modal‑avatar‑nick调用）
+  // 对外接口：写入系统通知（图5聊天系统记录）
   pushSystemNotice(text){
     this.messageList.push({
       type:"notice",
@@ -85,11 +81,9 @@ export const ChatModule = {
     this.saveHistory();
     this.renderMessages();
   },
-
   pushNoticeMessage(text, from="me"){
     this.pushSystemNotice(text);
   },
-
   loadContactSession(contactId) {
     const contactList = Store.get("contactList", []);
     const findItem = contactList.find(c => c.id === contactId);
@@ -107,13 +101,11 @@ export const ChatModule = {
     if(!this.activeContactInfo.taNickPool) this.activeContactInfo.taNickPool = [];
     if(!this.activeContactInfo.myNickPool) this.activeContactInfo.myNickPool = [];
     if(!this.activeContactInfo.pendingApplyList) this.activeContactInfo.pendingApplyList = [];
-    // 修改轮换：minHour / maxHour 随机区间，不再是单一intervalHour
     if(!this.activeContactInfo.taAvatarRandom) this.activeContactInfo.taAvatarRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
     if(!this.activeContactInfo.taNickRandom) this.activeContactInfo.taNickRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
     if(!this.activeContactInfo.myAvatarRandom) this.activeContactInfo.myAvatarRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
     if(!this.activeContactInfo.myNickRandom) this.activeContactInfo.myNickRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
     if(!this.activeContactInfo.taApplyIntervalHours) this.activeContactInfo.taApplyIntervalHours = 4;
-
     this.messageList = Store.get(`chat-contact-${contactId}`, []);
     this.render();
     Toast.show(`进入对话：${findItem.name}`);
@@ -138,7 +130,6 @@ export const ChatModule = {
     wrap.style.background = this.bgColor;
     wrap.style.position = "relative";
     wrap.style.overflow = "hidden";
-
     const chatHeader = document.createElement("div");
     chatHeader.style.padding = "10px 12px";
     chatHeader.style.display = "flex";
@@ -158,15 +149,23 @@ export const ChatModule = {
     this.msgListEl = document.createElement('div');
     this.msgListEl.style.flex = "1";
     this.msgListEl.style.overflowY = "auto";
+    /* 保留滚轮滚动，隐藏滚动条轨道（Chrome/Safari/Firefox） */
+    this.msgListEl.style.scrollbarWidth = "none";
+    this.msgListEl.style.msOverflowStyle = "none";
     this.msgListEl.style.padding = "12px";
     this.msgListEl.style.boxSizing = "border-box";
+    // webkit隐藏滚动条
+    const styleHideScroll = document.createElement("style");
+    styleHideScroll.textContent = `#msg-list::-webkit-scrollbar{display:none}`;
+    this.msgListEl.id = "msg-list";
+    document.head.appendChild(styleHideScroll);
+
     const inputWrap = document.createElement('div');
     inputWrap.style.padding = "10px 12px";
     inputWrap.style.borderTop = "1px solid #e5e5e5";
     inputWrap.style.display = "flex";
     inputWrap.style.gap = "8px";
     inputWrap.style.background = this.bgColor;
-
     const extendBtn = document.createElement("button");
     extendBtn.id = "chat-extend-btn";
     extendBtn.innerText = "···";
@@ -175,7 +174,6 @@ export const ChatModule = {
     extendBtn.style.fontSize = "20px";
     extendBtn.style.cursor = "pointer";
     extendBtn.style.padding = "0 4px";
-
     this.inputEl = document.createElement('input');
     this.inputEl.style.flex = "1";
     this.inputEl.style.padding = "10px 12px";
@@ -198,11 +196,9 @@ export const ChatModule = {
     inputWrap.appendChild(extendBtn);
     inputWrap.appendChild(this.inputEl);
     inputWrap.appendChild(sendBtn);
-
     wrap.appendChild(this.msgListEl);
     wrap.appendChild(inputWrap);
     this.rootEl.appendChild(wrap);
-
     document.getElementById("chat-more-btn").onclick = ()=>{
       if(!this.activeContactId){
         Toast.show("请先选中联系人");
@@ -217,7 +213,6 @@ export const ChatModule = {
       }
       Toast.show("返回联系人列表");
     };
-
     document.getElementById("chat-extend-btn").onclick = ()=>{
       if(!this.activeContactId){
         Toast.show("请先选中联系人");
@@ -225,7 +220,6 @@ export const ChatModule = {
       }
       ChatExtendPanel.open(this.rootEl, this.activeContactId, ()=>{});
     };
-
     this.renderMessages();
   },
   updateContact(patch){
@@ -250,11 +244,9 @@ export const ChatModule = {
         avatarDom.src = "";
       }
     }
-
     if (!this.msgListEl) return;
     this.msgListEl.innerHTML = "";
     let chatTheme = Store.get("chatTheme", {avatarShape:"circle",timePos:"avatarBottom"});
-    // 兜底：旧存储读到废弃时间位置，回退 avatarBottom
     const allowTimePos = ["avatarBottom","bubbleOuter","hide"];
     if(!allowTimePos.includes(chatTheme.timePos)){
       chatTheme.timePos = "avatarBottom";
@@ -262,12 +254,10 @@ export const ChatModule = {
     }
     const avatarRadius = chatTheme.avatarShape === "circle" ? "50%" : "8px";
     const timePos = chatTheme.timePos;
-
     const headerAvatar = document.getElementById("chat-header-avatar");
     if(headerAvatar){
       headerAvatar.style.borderRadius = avatarRadius;
     }
-
     if (!this.activeContactId) {
       this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
       return;
@@ -277,20 +267,18 @@ export const ChatModule = {
       return;
     }
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
-
     this.messageList.forEach(msg => {
+      //====图5样式系统notice消息，取消胶囊999px圆角====
       if(msg.type === "notice"){
         const noticeEl = document.createElement("div");
-        noticeEl.style.margin="10px 0";
-        noticeEl.style.padding="8px 14px";
-        noticeEl.style.background="#eeeeee";
-        noticeEl.style.borderRadius="999px";
+        noticeEl.style.margin="8px auto";
+        noticeEl.style.padding="9px 16px";
+        noticeEl.style.background="#f0f1f3";
+        noticeEl.style.borderRadius="8px";
         noticeEl.style.textAlign="center";
-        noticeEl.style.fontSize="12px";
-        noticeEl.style.color="#555";
-        noticeEl.style.maxWidth="88%";
-        noticeEl.style.marginLeft="auto";
-        noticeEl.style.marginRight="auto";
+        noticeEl.style.fontSize="13px";
+        noticeEl.style.color="#444";
+        noticeEl.style.maxWidth="85%";
         noticeEl.textContent = msg.content;
         this.msgListEl.appendChild(noticeEl);
         return;
@@ -301,7 +289,6 @@ export const ChatModule = {
       const mm = String(d.getMinutes()).padStart(2,'0');
       const ss = String(d.getSeconds()).padStart(2,'0');
       const timeStr = `${hh}:${mm}:${ss}`;
-
       const msgItem = document.createElement("div");
       msgItem.style.marginBottom = "14px";
       msgItem.style.display = "flex";
@@ -365,7 +352,6 @@ export const ChatModule = {
       }
       this.msgListEl.appendChild(msgItem);
     });
-
     if(this.isTyping){
       const tip = document.createElement("div");
       tip.style.color="#777";
@@ -375,7 +361,6 @@ export const ChatModule = {
     }
     this.msgListEl.scrollTop = this.msgListEl.scrollHeight;
   },
-
   sendMessage() {
     const content = this.inputEl.value.trim();
     if (!content) return;
@@ -406,7 +391,6 @@ export const ChatModule = {
       this.renderMessages();
     },1200);
   },
-
   saveHistory() {
     if(!this.activeContactId) return;
     Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
