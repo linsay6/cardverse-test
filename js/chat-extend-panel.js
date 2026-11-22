@@ -30,7 +30,7 @@ export const ChatExtendPanel = {
       tabWrap.style.display = "flex";
       tabWrap.style.gap = "4px";
       tabWrap.style.borderBottom = "1px solid #eee";
-      tabWrap.style.marginBottom = "12px";
+      tabWrap.style.marginBottom = "16px";
       const tabs = ["互动","工具","小游戏","TA的提问"];
       tabs.forEach((t,ti)=>{
         const tabEl = document.createElement("div");
@@ -56,8 +56,8 @@ export const ChatExtendPanel = {
         const grid = document.createElement("div");
         grid.style.display = "grid";
         grid.style.gridTemplateColumns = "repeat(4, 1fr)";
-        grid.style.gap = "18px 10px";
-        grid.style.padding = "6px 2px";
+        grid.style.gap = "20px 12px";
+        grid.style.padding = "8px 4px";
         const items = [
           {label:"通话",icon:"📞"},
           {label:"拍一拍",icon:"👏"},
@@ -73,11 +73,11 @@ export const ChatExtendPanel = {
           itemDom.style.display = "flex";
           itemDom.style.flexDirection = "column";
           itemDom.style.alignItems = "center";
-          itemDom.style.gap = "6px";
+          itemDom.style.gap = "8px";
           itemDom.style.cursor = "pointer";
           itemDom.innerHTML = `
-            <div style="width:60px;height:60px;background:#f5f5f5;border‑radius:14px;display:flex;align‑items:center;justify‑content:center;font‑size:26px">${it.icon}</div>
-            <span style="font‑size:12px;text‑align:center">${it.label}</span>
+            <div style="width:64px;height:64px;background:#f5f5f5;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px">${it.icon}</div>
+            <span style="font-size:12px;text-align:center;line-height:1.3">${it.label}</span>
           `;
           if(it.label === "头像和昵称互动"){
             itemDom.onclick = ()=>{
@@ -90,7 +90,7 @@ export const ChatExtendPanel = {
         })
         contentBox.appendChild(grid);
       }else{
-        contentBox.innerHTML = `<div style="text‑align:center;color:#888;padding:30px 0">功能待开发</div>`;
+        contentBox.innerHTML = `<div style="text-align:center;color:#888;padding:30px 0">功能待开发</div>`;
       }
       panel.appendChild(tabWrap);
       panel.appendChild(contentBox);
