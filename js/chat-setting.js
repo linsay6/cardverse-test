@@ -131,6 +131,8 @@ export const ChatSettingSubModule = {
     // 卡片内容区
     const cardContent = document.createElement("div");
     cardContent.style.padding = "16px";
+    const chatTheme = Store.get("chatTheme", {avatarShape:"circle"});
+    const avatarRadius = chatTheme.avatarShape === "circle" ? "50%" : "8px";
 
     if (this.activeTab1 === "功能" && this.activeTab2 === "形象") {
       cardContent.innerHTML = `
@@ -138,23 +140,23 @@ export const ChatSettingSubModule = {
 
       <div style="margin-bottom:14px">
         <div style="font-size:14px;margin-bottom:6px;color:#222">联系人昵称</div>
-        <input id="edit‑nick" value="${this.contactInfo?.name || ""}" style="width:100%;box‑sizing:border‑box;padding:8px;border:1px solid var(--color‑border);border‑radius:var(--radius‑btn);background:var(--color‑bg);color:var(--color‑text)">
-        <button id="btn‑save‑nick" style="margin‑top:8px;width:100%;padding:7px;background:var(--color‑main);color:#fff;border:none;border‑radius:var(--radius‑btn)">保存昵称</button>
+        <input id="edit-nick" value="${this.contactInfo?.name || ""}" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ddd;border-radius:8px;background:#f6f6f6;color:#222">
+        <button id="btn-save-nick" style="margin-top:8px;width:100%;padding:7px;background:#673ab7;color:#fff;border:none;border-radius:8px">保存昵称</button>
       </div>
 
-      <div style="margin‑bottom:14px">
-        <div style="font‑size:14px;margin‑bottom:6px;color:#222">联系人头像</div>
-        <div id="avatar‑preview" style="width:64px;height:64px;border‑radius:50%;background:#eee;margin‑bottom:8px;overflow:hidden">
-          ${this.contactInfo?.avatar ? `<img src="${this.contactInfo.avatar}" style="width:100%;height:100%;object‑fit:cover">` : ""}
+      <div style="margin-bottom:14px">
+        <div style="font-size:14px;margin-bottom:6px;color:#222">联系人头像</div>
+        <div id="avatar-preview" style="width:64px;height:64px;border-radius:${avatarRadius};background:#eee;margin-bottom:8px;overflow:hidden">
+          ${this.contactInfo?.avatar ? `<img src="${this.contactInfo.avatar}" style="width:100%;height:100%;object-fit:cover">` : ""}
         </div>
-        <button id="btn‑upload‑avatar" style="width:100%;padding:7px;background:var(--color‑main);color:#fff;border:none;border‑radius:var(--radius‑btn)">上传头像图片</button>
-        <input type="file" id="avatar‑file" accept="image/*" style="display:none">
+        <button id="btn-upload-avatar" style="width:100%;padding:7px;background:#673ab7;color:#fff;border:none;border-radius:8px">上传头像图片</button>
+        <input type="file" id="avatar-file" accept="image/*" style="display:none">
       </div>
 
-      <div style="margin‑top:10px;color:#888;font‑size:12px;text‑align:center">我的昵称、我的头像 待开发</div>
+      <div style="margin-top:10px;color:#888;font-size:12px;text-align:center">我的昵称、我的头像 待开发</div>
       `;
     } else {
-      cardContent.innerHTML = `<div style="padding:30px 0;text‑align:center;color:#888">页面待开发</div>`;
+      cardContent.innerHTML = `<div style="padding:30px 0;text-align:center;color:#888">页面待开发</div>`;
     }
     mainCard.appendChild(cardContent);
 
@@ -163,7 +165,7 @@ export const ChatSettingSubModule = {
     this.parentContainer.appendChild(wrap);
 
     // 返回按钮
-    document.getElementById("csub‑back").onclick = () => {
+    document.getElementById("csub-back").onclick = () => {
       if (typeof this.callbackBack === "function") {
         this.callbackBack();
       }
@@ -179,7 +181,6 @@ export const ChatSettingSubModule = {
           Toast.show("昵称不能为空");
           return;
         }
-        // 调用chat模块暴露的updateContact更新联系人
         const list = Store.get("contactList",[]);
         const idx = list.findIndex(x=>x.id === this.contactId);
         if(idx !== -1){
