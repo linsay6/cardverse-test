@@ -92,6 +92,7 @@ export const ChatSettingSubModule = {
     contentWrap.style.display = "flex";
     contentWrap.style.flexDirection = "column";
     contentWrap.style.alignItems = "center";
+    contentWrap.style.justifyContent = "flex-start";   // 关键：内容从顶部开始排列
 
     const mainCard = document.createElement("div");
     mainCard.style.width = "100%";
@@ -100,6 +101,7 @@ export const ChatSettingSubModule = {
     mainCard.style.borderRadius = "14px";
     mainCard.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)";
     mainCard.style.overflow = "hidden";
+    mainCard.style.flex = "0 0 auto";   // 关键：不撑高，只按内容高度显示
 
     const tab1Wrap = document.createElement("div");
     tab1Wrap.style.display = "flex";
