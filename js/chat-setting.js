@@ -417,17 +417,16 @@ export const ChatSettingSubModule = {
       }
     }
     // =========【数据tab】清空会话记录====
-    const btnClearChatLog = document.getElementById("btn-clear-chat-log");
-    if(btnClearChatLog){
-      btnClearChatLog.onclick = ()=>{
-        if(!confirm("确定清空当前联系人全部聊天记录？不可恢复！")) return;
-        Store.set(`chat-contact-${this.contactId}`,[]);
-        const list = Store.get("contactList",[]);
-        const idx = list.findIndex(x=>x.id === this.contactId);
-        this.contactInfo = list[idx];
-        Toast.show("聊天记录已清空，请返回聊天页");
-        this.render();
-      }
-    }
+const btnClearChatLog = document.getElementById("btn-clear-chat-log");
+if(btnClearChatLog){
+  btnClearChatLog.onclick = ()=>{
+    if(!confirm("确定清空当前联系人全部聊天记录？不可恢复！")) return;
+    Store.set(`chat-contact-${this.contactId}`,[]);
+    // 广播事件，通知聊天页清空
+    EventBus.emit("chatLogClear", this.contactId);
+    Toast.show("聊天记录已清空");
+    this.render();
+  }
+}
   }
 };
