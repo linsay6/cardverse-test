@@ -1,99 +1,112 @@
-import { AvatarNickModal } from './modal-avatar-nick.js';
+import { ModalAvatarNick } from './modal-avatar-nick.js';
 import { Toast } from './core/toast.js';
-
 export const ChatExtendPanel = {
-  container: null,
+  rootDom: null,
+  parentContainer: null,
   contactId: null,
-  closeCb: null,
-  activeTab: "互动",
-  tabList: ["互动","工具","小游戏","TA的提问"],
-
-  open(parentDom, cid, cbClose){
-    this.container = parentDom;
+  callbackClose: null,
+  open(parentDom, cid, cbClose) {
+    this.parentContainer = parentDom;
     this.contactId = cid;
-    this.closeCb = cbClose;
+    this.callbackClose = cbClose;
+    this.rootDom = document.createElement("div");
+    this.rootDom.style.position = "fixed";
+    this.rootDom.style.inset = "0";
+    this.rootDom.style.zIndex = "9998";
+    this.rootDom.style.display = "flex";
+    this.rootDom.style.flexDirection = "column-reverse";
     this.render();
+    parentDom.appendChild(this.rootDom);
   },
-
-  close(){
-    if(this.container) this.container.innerHTML = "";
-    if(typeof this.closeCb === "function") this.closeCb();
+  close() {
+    if(this.rootDom) this.rootDom.remove();
+    if(typeof this.callbackClose === "function") this.callbackClose();
   },
-
-  render(){
-    if(!this.container) return;
-    this.container.innerHTML = "";
-    // 弹窗固定在父容器（手机框）内部，relative定位
-    const wrap = document.createElement("div");
-    wrap.style.position = "absolute";
-    wrap.style.inset = "0";
-    wrap.style.zIndex = "90";
-    wrap.style.display = "flex";
-    wrap.style.flexDirection = "column-reverse";
-
+  render() {
+    if(!this.rootDom) return;
+    this.rootDom.innerHTML = "";
     const panel = document.createElement("div");
     panel.style.background = "#fff";
     panel.style.borderRadius = "16px 16px 0 0";
     panel.style.padding = "16px";
-
-    // tab栏
-    let html = `<div style="display:flex;gap:4px;border-bottom:1px solid #eee;margin-bottom:14px">`;
-    this.tabList.forEach(t=>{
-      html += `<div data-tab="${t}" style="padding:8px 10px;font-size:14px;cursor:pointer;${this.activeTab===t?'font-weight:bold;border-bottom:2px solid #222':''}">${t}</div>`
-    })
-    html += `</div>`;
-
-    // 图标网格
-    if(this.activeTab === "互动"){
-      html += `
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
-        ${this.iconItem("通话","📞","call")}
-        ${this.iconItem("拍一拍","👋","tap")}
-        ${this.iconItem("红包","🧧","red")}
-        ${this.iconItem("邀请TA","➕","invite")}
-        ${this.iconItem("心意集市","🎁","market")}
-        ${this.iconItem("心意柜","🗄️","cabinet")}
-        ${this.iconItem("头像和昵称互动","👤","avatarnick")}
-        ${this.iconItem("漂流瓶","🍶","bottle")}
-      </div>
-      `
-    }else{
-      html += `<div style="text-align:center;padding:30px 0;color:#777">该板块待开发</div>`
+    const tabWrap = document.createElement("div");
+    tabWrap.style.display = "flex";
+    tabWrap.style.gap = "4px";
+    tabWrap.style.borderBottom = "1px solid #eee";
+    tabWrap.style.marginBottom = "12px";
+    const tabs = ["互动","工具","小游戏","TA的提问"];
+    let activeTab = 0;
+    const renderTabContent = ()=>{
+      const contentBox = document.getElementById("extend-panel-content");
+      if(!contentBox) return;
+      contentBox.innerHTML = "";
+      if(activeTab === 0){
+        const grid = document.createElement("div");
+        grid.style.display = "grid";
+        grid.style.gridTemplateColumns = "repeat(4, 1fr)";
+        grid.style.gap = "14px 6px";
+        grid.style.padding = "4px";
+        const items = [
+          {label:"通话",icon:"📞"},
+          {label:"拍一拍",icon:"👏"},
+          {label:"红包",icon:"🧧"},
+          {label:"邀请TA",icon:"➕"},
+          {label:"心意集市",icon:"🎁"},
+          {label:"心意柜",icon:"🗄️"},
+          {label:"头像和昵称互动",icon:"👤"},
+          {label:"漂流瓶",icon:"🍶"}
+        ];
+        items.forEach(it=>{
+          const itemDom = document.createElement("div");
+          itemDom.style.display = "flex";
+          itemDom.style.flexDirection = "column";
+          itemDom.style.alignItems = "center";
+          itemDom.style.gap = "6px";
+          itemDom.style.cursor = "pointer";
+          itemDom.innerHTML = `
+            <div style="width:48px;height:48px;background:#f5f5f5;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">${it.icon}</div>
+            <span style="font-size:12px;text-align:center">${it.label}</span>
+          `;
+          if(it.label === "头像和昵称互动"){
+            itemDom.onclick = ()=>{
+              ModalAvatarNick.open(this.parentContainer, this.contactId, ()=>{});
+            }
+          }else{
+            itemDom.onclick = ()=> Toast.show(`${it.label} 功能开发中`);
+          }
+          grid.appendChild(itemDom);
+        })
+        contentBox.appendChild(grid);
+      }else{
+        contentBox.innerHTML = `<div style="text-align:center;color:#888;padding:30px 0">功能待开发</div>`
+      }
     }
-    panel.innerHTML = html;
-    wrap.appendChild(panel);
-    this.container.appendChild(wrap);
-
-    // tab切换
-    panel.querySelectorAll('[data-tab]').forEach(el=>{
-      el.onclick = ()=>{
-        this.activeTab = el.dataset.tab;
+    tabs.forEach((t,ti)=>{
+      const tabEl = document.createElement("div");
+      tabEl.innerText = t;
+      tabEl.style.padding = "10px 8px";
+      tabEl.style.flex = "1";
+      tabEl.style.textAlign = "center";
+      tabEl.style.fontSize = "14px";
+      tabEl.style.cursor = "pointer";
+      if(ti === activeTab) {
+        tabEl.style.fontWeight = "bold";
+        tabEl.style.borderBottom = "2px solid #222";
+      }
+      tabEl.onclick = ()=>{
+        activeTab = ti;
         this.render();
       }
+      tabWrap.appendChild(tabEl);
     })
-    // 图标点击
-    panel.querySelectorAll(".ext-item").forEach(el=>{
-      el.onclick = ()=>{
-        const action = el.dataset.action;
-        if(action === "avatarnick"){
-          AvatarNickModal.open(wrap, this.contactId);
-        }else{
-          Toast.show(`${el.dataset.name}：待开发`);
-        }
-      }
-    })
-    // 点击空白关闭拓展面板
-    wrap.onclick = (e)=>{
-      if(e.target === wrap) this.close();
+    const contentBox = document.createElement("div");
+    contentBox.id = "extend-panel-content";
+    panel.appendChild(tabWrap);
+    panel.appendChild(contentBox);
+    this.rootDom.appendChild(panel);
+    renderTabContent();
+    this.rootDom.onclick = (e)=>{
+      if(e.target === this.rootDom) this.close();
     }
-  },
-
-  iconItem(name,icon,action){
-    return `
-    <div class="ext-item" data-action="${action}" data-name="${name}" style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer">
-      <div style="width:48px;height:48px;background:#f3f3f3;border-radius:12px;display:grid;place-items:center;font-size:22px">${icon}</div>
-      <div style="font-size:12px;color:#333">${name}</div>
-    </div>
-    `
   }
 }
