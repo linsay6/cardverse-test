@@ -15,6 +15,7 @@ export const ChatModule = {
   viewMode: "chat",
   primaryColor: "#7c68ee",
   bgColor: "#ffffff",
+
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
@@ -55,6 +56,7 @@ export const ChatModule = {
       }
     });
   },
+
   executeApply(apply, contactObj){
     switch(apply.targetType){
       case "taAvatar":
@@ -71,7 +73,8 @@ export const ChatModule = {
         break;
     }
   },
-  // 对外接口：写入系统通知（图5聊天系统记录）
+
+  // 对外接口：写入系统通知，自动持久化保存
   pushSystemNotice(text){
     this.messageList.push({
       type:"notice",
@@ -81,9 +84,11 @@ export const ChatModule = {
     this.saveHistory();
     this.renderMessages();
   },
+
   pushNoticeMessage(text, from="me"){
     this.pushSystemNotice(text);
   },
+
   loadContactSession(contactId) {
     const contactList = Store.get("contactList", []);
     const findItem = contactList.find(c => c.id === contactId);
@@ -110,6 +115,7 @@ export const ChatModule = {
     this.render();
     Toast.show(`进入对话：${findItem.name}`);
   },
+
   render() {
     if(this.viewMode === "setting"){
       ChatSettingSubModule.open(this.rootEl, this.activeContactId, ()=>{
@@ -120,6 +126,7 @@ export const ChatModule = {
     }
     this.renderChatLayout();
   },
+
   renderChatLayout() {
     if (!this.rootEl) return;
     this.rootEl.innerHTML = "";
@@ -149,15 +156,14 @@ export const ChatModule = {
     this.msgListEl = document.createElement('div');
     this.msgListEl.style.flex = "1";
     this.msgListEl.style.overflowY = "auto";
-    /* 保留滚轮滚动，隐藏滚动条轨道（Chrome/Safari/Firefox） */
+    // 隐藏滚动条，保留滚轮功能
     this.msgListEl.style.scrollbarWidth = "none";
     this.msgListEl.style.msOverflowStyle = "none";
     this.msgListEl.style.padding = "12px";
     this.msgListEl.style.boxSizing = "border-box";
-    // webkit隐藏滚动条
+    this.msgListEl.id = "msg-list";
     const styleHideScroll = document.createElement("style");
     styleHideScroll.textContent = `#msg-list::-webkit-scrollbar{display:none}`;
-    this.msgListEl.id = "msg-list";
     document.head.appendChild(styleHideScroll);
 
     const inputWrap = document.createElement('div');
@@ -222,6 +228,7 @@ export const ChatModule = {
     };
     this.renderMessages();
   },
+
   updateContact(patch){
     const list = Store.get("contactList", []);
     const idx = list.findIndex(x=>x.id === this.activeContactId);
@@ -232,6 +239,7 @@ export const ChatModule = {
     this.renderMessages();
     Toast.show("已更新");
   },
+
   renderMessages() {
     const titleDom = document.getElementById("chat-title");
     const avatarDom = document.getElementById("chat-header-avatar");
@@ -267,18 +275,20 @@ export const ChatModule = {
       return;
     }
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
+
     this.messageList.forEach(msg => {
-      //====图5样式系统notice消息，取消胶囊999px圆角====
+      // 系统通知消息，对齐图2样式
       if(msg.type === "notice"){
         const noticeEl = document.createElement("div");
-        noticeEl.style.margin="8px auto";
-        noticeEl.style.padding="9px 16px";
-        noticeEl.style.background="#f0f1f3";
-        noticeEl.style.borderRadius="8px";
-        noticeEl.style.textAlign="center";
-        noticeEl.style.fontSize="13px";
-        noticeEl.style.color="#444";
-        noticeEl.style.maxWidth="85%";
+        noticeEl.style.margin = "10px auto";
+        noticeEl.style.padding = "8px 16px";
+        noticeEl.style.background = "#f3f4f6";
+        noticeEl.style.borderRadius = "12px";
+        noticeEl.style.textAlign = "center";
+        noticeEl.style.fontSize = "13px";
+        noticeEl.style.color = "#4b5563";
+        noticeEl.style.maxWidth = "85%";
+        noticeEl.style.wordBreak = "break-all";
         noticeEl.textContent = msg.content;
         this.msgListEl.appendChild(noticeEl);
         return;
@@ -352,6 +362,7 @@ export const ChatModule = {
       }
       this.msgListEl.appendChild(msgItem);
     });
+
     if(this.isTyping){
       const tip = document.createElement("div");
       tip.style.color="#777";
@@ -361,6 +372,7 @@ export const ChatModule = {
     }
     this.msgListEl.scrollTop = this.msgListEl.scrollHeight;
   },
+
   sendMessage() {
     const content = this.inputEl.value.trim();
     if (!content) return;
@@ -391,6 +403,7 @@ export const ChatModule = {
       this.renderMessages();
     },1200);
   },
+
   saveHistory() {
     if(!this.activeContactId) return;
     Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
