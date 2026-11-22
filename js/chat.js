@@ -2,6 +2,7 @@ import { Store } from './core/store.js';
 import { EventBus } from './core/context.js';
 import { Toast } from './core/toast.js';
 import { ChatSettingSubModule } from './chat-setting.js';
+
 export const ChatModule = {
   rootEl: null,
   msgListEl: null,
@@ -11,6 +12,8 @@ export const ChatModule = {
   messageList: [],
   isTyping: false,
   viewMode: "chat",
+  applyCheckTimer: null,
+
    init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
@@ -39,7 +42,72 @@ export const ChatModule = {
         this.renderMessages();
       }
     });
+    // 启动申请超时检测定时器 30s扫描一次
+    this.applyCheckTimer = setInterval(()=>{
+      this.checkPendingApply();
+    },30000);
   },
+
+  // 检查待处理申请，处理超时自动同意
+  checkPendingApply(){
+    if(!this.activeContactId) return;
+    const list = Store.get("contactList",[]);
+    const idx = list.findIndex(i=>i.id === this.activeContactId);
+    if(idx === -1) return;
+    const contact = list[idx];
+    if(!Array.isArray(contact.pendingApplyList)) return;
+
+    const now = Date.now();
+    let changed = false;
+    contact.pendingApplyList = contact.pendingApplyList.filter(apply=>{
+      if(apply.status !== "pending") return true;
+      // 超时：超过expireMs，自动同意
+      if(now > apply.createTs + apply.expireMs){
+        apply.status = "autoAccept";
+        this.executeApply(apply, contact);
+        changed = true;
+        // 写入notice消息
+        this.pushNoticeMessage(`申请超时未处理，已自动同意：${apply.desc}`);
+        return false;
+      }
+      return true;
+    });
+    if(changed){
+      Store.set("contactList",list);
+      this.activeContactInfo = contact;
+      this.renderMessages();
+    }
+  },
+
+  // 执行申请变更，修改对应头像/昵称
+  executeApply(apply, contactObj){
+    switch(apply.targetType){
+      case "taAvatar":
+        contactObj.avatar = apply.newVal;
+        break;
+      case "taNick":
+        contactObj.name = apply.newVal;
+        break;
+      case "myAvatar":
+        contactObj.myAvatar = apply.newVal;
+        break;
+      case "myNick":
+        contactObj.myNick = apply.newVal;
+        break;
+    }
+  },
+
+  // 插入通知类型消息
+  pushNoticeMessage(text){
+    this.messageList.push({
+      type:"notice",
+      content:text,
+      time:Date.now()
+    });
+    this.saveHistory();
+    this.renderMessages();
+  },
+
   loadContactSession(contactId) {
     const contactList = Store.get("contactList", []);
     const findItem = contactList.find(c => c.id === contactId);
@@ -52,6 +120,17 @@ export const ChatModule = {
     }
     this.activeContactId = contactId;
     this.activeContactInfo = findItem;
+    // 初始化池子，兼容旧联系人数据
+    if(!this.activeContactInfo.taAvatarPool) this.activeContactInfo.taAvatarPool = [];
+    if(!this.activeContactInfo.myAvatarPool) this.activeContactInfo.myAvatarPool = [];
+    if(!this.activeContactInfo.taNickPool) this.activeContactInfo.taNickPool = [];
+    if(!this.activeContactInfo.myNickPool) this.activeContactInfo.myNickPool = [];
+    if(!this.activeContactInfo.pendingApplyList) this.activeContactInfo.pendingApplyList = [];
+    if(!this.activeContactInfo.taAvatarRandom) this.activeContactInfo.taAvatarRandom = {enable:false,intervalHour:4,lastChangeTs:0};
+    if(!this.activeContactInfo.taNickRandom) this.activeContactInfo.taNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
+    if(!this.activeContactInfo.myAvatarRandom) this.activeContactInfo.myAvatarRandom = {enable:false,intervalHour:4,lastChangeTs:0};
+    if(!this.activeContactInfo.myNickRandom) this.activeContactInfo.myNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
+
     this.messageList = Store.get(`chat-contact-${contactId}`, []);
     this.render();
     Toast.show(`进入对话：${findItem.name}`);
@@ -188,6 +267,24 @@ export const ChatModule = {
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
 
     this.messageList.forEach(msg => {
+      // notice通知消息渲染，灰色居中通栏，区别普通气泡
+      if(msg.type === "notice"){
+        const noticeEl = document.createElement("div");
+        noticeEl.style.margin="10px 0";
+        noticeEl.style.padding="8px 12px";
+        noticeEl.style.background="#eeeeee";
+        noticeEl.style.borderRadius="8px";
+        noticeEl.style.textAlign="center";
+        noticeEl.style.fontSize="12px";
+        noticeEl.style.color="#555";
+        noticeEl.style.maxWidth="85%";
+        noticeEl.style.marginLeft="auto";
+        noticeEl.style.marginRight="auto";
+        noticeEl.textContent = msg.content;
+        this.msgListEl.appendChild(noticeEl);
+        return;
+      }
+
       const d = new Date(msg.time);
       const hh = String(d.getHours()).padStart(2,'0');
       const mm = String(d.getMinutes()).padStart(2,'0');
