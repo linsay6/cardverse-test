@@ -2,7 +2,6 @@ import { Store } from './core/store.js';
 import { EventBus } from './core/context.js';
 import { Toast } from './core/toast.js';
 import { ChatSettingSubModule } from './chat-setting.js';
-
 export const ChatModule = {
   rootEl: null,
   msgListEl: null,
@@ -12,7 +11,6 @@ export const ChatModule = {
   messageList: [],
   isTyping: false,
   viewMode: "chat",
-
    init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
@@ -42,7 +40,6 @@ export const ChatModule = {
       }
     });
   },
-
   loadContactSession(contactId) {
     const contactList = Store.get("contactList", []);
     const findItem = contactList.find(c => c.id === contactId);
@@ -59,7 +56,6 @@ export const ChatModule = {
     this.render();
     Toast.show(`进入对话：${findItem.name}`);
   },
-
   render() {
     if(this.viewMode === "setting"){
       ChatSettingSubModule.open(this.rootEl, this.activeContactId, ()=>{
@@ -70,7 +66,6 @@ export const ChatModule = {
     }
     this.renderChatLayout();
   },
-
   renderChatLayout() {
     if (!this.rootEl) return;
     this.rootEl.innerHTML = "";
@@ -79,7 +74,6 @@ export const ChatModule = {
     wrap.style.display = "flex";
     wrap.style.flexDirection = "column";
     wrap.style.background = "#f7f7f7";
-
     const chatHeader = document.createElement("div");
     chatHeader.style.padding = "10px 12px";
     chatHeader.style.display = "flex";
@@ -90,26 +84,23 @@ export const ChatModule = {
     chatHeader.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px">
         <button id="chat-back-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;">←</button>
-        <img id="chat-header-avatar" src="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:#eee">
+        <img id="chat-header-avatar" src="" style="width:36px;height:36px;object-fit:cover;background:#eee">
         <div id="chat-title" style="font-weight:bold;color:#222">未选择联系人</div>
       </div>
       <button id="chat-more-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:18px">⋯</button>
     `;
     wrap.appendChild(chatHeader);
-
     this.msgListEl = document.createElement('div');
     this.msgListEl.style.flex = "1";
     this.msgListEl.style.overflowY = "auto";
     this.msgListEl.style.padding = "12px";
     this.msgListEl.style.boxSizing = "border-box";
-
     const inputWrap = document.createElement('div');
     inputWrap.style.padding = "10px 12px";
     inputWrap.style.borderTop = "1px solid #e5e5e5";
     inputWrap.style.display = "flex";
     inputWrap.style.gap = "8px";
     inputWrap.style.background = "#fff";
-
     this.inputEl = document.createElement('input');
     this.inputEl.style.flex = "1";
     this.inputEl.style.padding = "10px 12px";
@@ -118,7 +109,6 @@ export const ChatModule = {
     this.inputEl.style.background = "#f6f6f6";
     this.inputEl.style.outline = "none";
     this.inputEl.placeholder = "说点什么...";
-
     const sendBtn = document.createElement('button');
     sendBtn.innerText = "发送";
     sendBtn.style.padding = "10px 16px";
@@ -130,14 +120,11 @@ export const ChatModule = {
     this.inputEl.onkeydown = (e) => {
       if (e.key === "Enter") this.sendMessage();
     };
-
     inputWrap.appendChild(this.inputEl);
     inputWrap.appendChild(sendBtn);
-
     wrap.appendChild(this.msgListEl);
     wrap.appendChild(inputWrap);
     this.rootEl.appendChild(wrap);
-
     document.getElementById("chat-more-btn").onclick = ()=>{
       if(!this.activeContactId){
         Toast.show("请先选中联系人");
@@ -146,17 +133,14 @@ export const ChatModule = {
       this.viewMode = "setting";
       this.render();
     };
-
     document.getElementById("chat-back-btn").onclick = ()=>{
       if(window.TabManager){
         window.TabManager.switchTab("setting");
       }
       Toast.show("返回联系人列表");
     };
-
     this.renderMessages();
   },
-
   updateContact(patch){
     const list = Store.get("contactList", []);
     const idx = list.findIndex(x=>x.id === this.activeContactId);
@@ -167,7 +151,6 @@ export const ChatModule = {
     this.renderMessages();
     Toast.show("已更新");
   },
-
   renderMessages() {
     const titleDom = document.getElementById("chat-title");
     const avatarDom = document.getElementById("chat-header-avatar");
@@ -187,15 +170,22 @@ export const ChatModule = {
     const avatarRadius = theme.avatarShape === "circle" ? "50%" : "8px";
     const timePos = theme.timePos;
 
+    // 同步顶部头部头像圆角
+    const headerAvatar = document.getElementById("chat-header-avatar");
+    if(headerAvatar){
+      headerAvatar.style.borderRadius = avatarRadius;
+    }
+
     if (!this.activeContactId) {
       this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
       return;
     }
-
     if (this.messageList.length === 0) {
       this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">暂无消息，发送第一条消息吧</div>`;
       return;
     }
+    // 我方头像：实时读取当前配置，历史消息统一跟随设置变化
+    const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
 
     this.messageList.forEach(msg => {
       const d = new Date(msg.time);
@@ -210,7 +200,7 @@ export const ChatModule = {
           <div style="marginBottom:14px;display:flex;justify-content:flex-end">
             <div style="max-width:70%;display:flex;align-items:flex-end;gap:6px;justify-content:flex-end">
               <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
-              <img src="${msg.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+              <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
             </div>
           </div>`
         }else{
@@ -224,7 +214,6 @@ export const ChatModule = {
         }
         return;
       }
-
       if (msg.role === "user") {
         let timeHtml = "";
         if(timePos === "avatarBottom"){
@@ -244,7 +233,7 @@ export const ChatModule = {
             <div style="width:100%">${timeHtml}</div>
             <div style="display:flex;justify-content:flex-end;gap:6px;align-items:flex-end">
               <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
-              <img src="${msg.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+              <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
             </div>
             ${timePos === "avatarBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
           `
@@ -257,7 +246,7 @@ export const ChatModule = {
               ${timePos === "bubbleBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>` : ""}
               <div style="display:flex;align-items:flex-end;gap:6px;justify-content:flex-end">
                 <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
-                <img src="${msg.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
+                <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
                 ${timePos === "bubbleOuter" ? `<div style="font-size:11px;color:#999;align-self:flex-end">${timeStr}</div>` : ""}
               </div>
               ${timePos === "avatarBottom" ? `<div style="text-align:right;font-size:11px;color:#999;margin-top:4px">${timeStr}</div>` : ""}
@@ -325,19 +314,16 @@ export const ChatModule = {
       this.messageList.push({
         role: "user",
         content,
-        time: Date.now(),
-        avatar: ""
+        time: Date.now()
       });
       this.saveHistory();
     }
     this.inputEl.value = "";
     this.renderMessages();
-
     if(!this.activeContactId){
       Toast.show("提示：未选中联系人，消息不会保存");
       return;
     }
-
     this.isTyping = true;
     this.renderMessages();
     setTimeout(()=>{
