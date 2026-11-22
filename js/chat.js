@@ -11,7 +11,6 @@ export const ChatModule = {
   activeContactInfo: null,
   messageList: [],
   isTyping: false,
-  // 内部视图模式 chat=聊天对话  setting=聊天设置子页面
   viewMode: "chat",
 
   init(containerSelector) {
@@ -47,21 +46,19 @@ export const ChatModule = {
     }
     this.activeContactId = contactId;
     this.activeContactInfo = findItem;
-    this.messageList = Store.get(`chat‑contact‑${contactId}`, []);
+    this.messageList = Store.get(`chat-contact-${contactId}`, []);
     this.render();
     Toast.show(`进入对话：${findItem.name}`);
   },
 
   render() {
     if(this.viewMode === "setting"){
-      // 打开聊天设置子页面，传入返回回调
       ChatSettingSubModule.open(this.rootEl, this.activeContactId, ()=>{
         this.viewMode = "chat";
         this.render();
       });
       return;
     }
-    // viewMode === chat：渲染正常聊天对话界面
     this.renderChatLayout();
   },
 
@@ -77,17 +74,17 @@ export const ChatModule = {
     const chatHeader = document.createElement("div");
     chatHeader.style.padding = "10px 12px";
     chatHeader.style.display = "flex";
-    chatHeader.style.justifyContent = "space‑between";
+    chatHeader.style.justifyContent = "space-between";
     chatHeader.style.alignItems = "center";
     chatHeader.style.borderBottom = "1px solid #e5e5e5";
     chatHeader.style.background = "#fff";
     chatHeader.innerHTML = `
-      <div style="display:flex;align‑items:center;gap:8px">
-        <button id="chat‑back‑btn" style="width:32px;height:32px;border‑radius:50%;border:1px solid #ddd;background:#fff;">←</button>
-        <img id="chat‑header‑avatar" src="" style="width:36px;height:36px;border‑radius:50%;object‑fit:cover;background:#eee">
-        <div id="chat‑title" style="font‑weight:bold;color:#222">未选择联系人</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="chat-back-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;">←</button>
+        <img id="chat-header-avatar" src="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:#eee">
+        <div id="chat-title" style="font-weight:bold;color:#222">未选择联系人</div>
       </div>
-      <button id="chat‑more‑btn" style="width:32px;height:32px;border‑radius:50%;border:1px solid #ddd;background:#fff;font‑size:18px">⋯</button>
+      <button id="chat-more-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:18px">⋯</button>
     `;
     wrap.appendChild(chatHeader);
 
@@ -95,7 +92,7 @@ export const ChatModule = {
     this.msgListEl.style.flex = "1";
     this.msgListEl.style.overflowY = "auto";
     this.msgListEl.style.padding = "12px";
-    this.msgListEl.style.boxSizing = "border‑box";
+    this.msgListEl.style.boxSizing = "border-box";
 
     const inputWrap = document.createElement('div');
     inputWrap.style.padding = "10px 12px";
@@ -132,8 +129,7 @@ export const ChatModule = {
     wrap.appendChild(inputWrap);
     this.rootEl.appendChild(wrap);
 
-    // 右上角三点：切换到聊天设置子视图
-    document.getElementById("chat‑more‑btn").onclick = ()=>{
+    document.getElementById("chat-more-btn").onclick = ()=>{
       if(!this.activeContactId){
         Toast.show("请先选中联系人");
         return;
@@ -141,10 +137,12 @@ export const ChatModule = {
       this.viewMode = "setting";
       this.render();
     };
-    // 左上角返回：切到底部设置tab（联系人列表）
-    document.getElementById("chat‑back‑btn").onclick = ()=>{
-      const tabBtn = document.querySelector(`.tab‑btn[data‑tab="setting"]`);
-      if(tabBtn) tabBtn.click();
+
+    // 修复返回按钮：直接调用TabManager切换tab，不使用querySelector点击模拟
+    document.getElementById("chat-back-btn").onclick = ()=>{
+      if(window.TabManager){
+        window.TabManager.switchTab("setting");
+      }
       Toast.show("返回联系人列表");
     };
 
@@ -163,8 +161,8 @@ export const ChatModule = {
   },
 
   renderMessages() {
-    const titleDom = document.getElementById("chat‑title");
-    const avatarDom = document.getElementById("chat‑header‑avatar");
+    const titleDom = document.getElementById("chat-title");
+    const avatarDom = document.getElementById("chat-header-avatar");
     if(titleDom && avatarDom){
       if(this.activeContactInfo){
         titleDom.innerText = this.activeContactInfo.name;
@@ -179,40 +177,45 @@ export const ChatModule = {
     this.msgListEl.innerHTML = "";
 
     if (!this.activeContactId) {
-      this.msgListEl.innerHTML = `<div style="text‑align:center;margin‑top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
+      this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
       return;
     }
 
     if (this.messageList.length === 0) {
-      this.msgListEl.innerHTML = `<div style="text‑align:center;margin‑top:40px;color:#777">暂无消息，发送第一条消息吧</div>`;
+      this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">暂无消息，发送第一条消息吧</div>`;
       return;
     }
 
     this.messageList.forEach(msg => {
-      const timeStr = new Date(msg.time).toLocaleTimeString("zh‑CN",{hour:"2‑digit",minute:"2‑digit"});
+      // 修复时间，弃用toLocaleTimeString
+      const d = new Date(msg.time);
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mm = String(d.getMinutes()).padStart(2,'0');
+      const timeStr = `${hh}:${mm}`;
+
       const msgWrap = document.createElement('div');
       msgWrap.style.marginBottom = "14px";
       msgWrap.style.display = "flex";
       if (msg.role === "user") {
-        msgWrap.style.justifyContent = "flex‑end";
+        msgWrap.style.justifyContent = "flex-end";
         msgWrap.innerHTML = `
-          <div style="max‑width:70%;">
-            <div style="text‑align:right;font‑size:11px;color:#999;margin‑bottom:4px">${timeStr}</div>
-            <div style="display:flex;align‑items:flex‑end;gap:6px;justify‑content:flex‑end">
-              <div style="background:#fff;color:#222;padding:8px 12px;border‑radius:12px;box‑shadow:0 1px 3px rgba(0,0,0,0.08);word‑break:break‑all">${msg.content}</div>
-              <img src="${msg.avatar || ''}" style="width:34px;height:34px;border‑radius:50%;background:#eee;object‑fit:cover">
+          <div style="max-width:70%;">
+            <div style="text-align:right;font-size:11px;color:#999;margin-bottom:4px">${timeStr}</div>
+            <div style="display:flex;align-items:flex-end;gap:6px;justify-content:flex-end">
+              <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
+              <img src="${msg.avatar || ''}" style="width:34px;height:34px;border-radius:50%;background:#eee;object-fit:cover">
             </div>
           </div>
         `;
       } else {
-        msgWrap.style.justifyContent = "flex‑start";
+        msgWrap.style.justifyContent = "flex-start";
         msgWrap.innerHTML = `
-          <div style="max‑width:70%;">
-            <div style="display:flex;align‑items:flex‑end;gap:6px">
-              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border‑radius:50%;background:#eee;object‑fit:cover">
-              <div style="background:#222;color:#fff;padding:8px 12px;border‑radius:12px;word‑break:break‑all">${msg.content}</div>
+          <div style="max-width:70%;">
+            <div style="display:flex;align-items:flex-end;gap:6px">
+              <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:50%;background:#eee;object-fit:cover">
+              <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
             </div>
-            <div style="font‑size:11px;color:#999;margin‑top:4px">${timeStr}</div>
+            <div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>
           </div>
         `;
       }
@@ -265,6 +268,6 @@ export const ChatModule = {
 
   saveHistory() {
     if(!this.activeContactId) return;
-    Store.set(`chat‑contact‑${this.activeContactId}`, this.messageList);
+    Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
   }
 };
