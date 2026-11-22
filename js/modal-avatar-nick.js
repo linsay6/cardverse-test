@@ -8,11 +8,13 @@ export const ModalAvatarNick = {
   contactInfo: null,
   callbackClose: null,
   chatModuleRef: null,
+  primaryColor: "#4caf50",
 
   open(parentDom, cid, closeCb) {
     this.contactId = cid;
     this.callbackClose = closeCb;
     this.chatModuleRef = window.ChatModule;
+    this.primaryColor = Store.get("theme")?.primaryColor || "#4caf50";
     const list = Store.get("contactList", []);
     this.contactInfo = list.find(i => i.id === cid);
     if (!this.contactInfo) {
@@ -56,7 +58,6 @@ export const ModalAvatarNick = {
     EventBus.emit("contactInfoChange", this.contactId);
   },
 
-  // 用户提交申请弹窗：5秒倒计时，超时随机同意/拒绝
   openApplyCountdownModal(applyObj){
     const mask = document.createElement("div");
     mask.style.position = "fixed";
@@ -73,25 +74,29 @@ export const ModalAvatarNick = {
     modal.style.borderRadius = "14px";
     modal.style.padding = "20px";
     let count = 5;
+    // 判断是谁发起申请：from == me 我发给TA，隐藏同意拒绝按钮
+    const isMeSend = applyObj.from === "me";
+    const btnHtml = isMeSend ? "" : `
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button id="apply-reject" style="flex:1;padding:9px;border:1px solid #ccc;background:#fff;border-radius:8px">拒绝</button>
+        <button id="apply-accept" style="flex:1;padding:9px;background:${this.primaryColor};color:#fff;border:none;border-radius:8px">同意</button>
+      </div>
+    `;
     modal.innerHTML = `
       <div style="font-weight:bold;font-size:16px;margin-bottom:12px">提交变更申请</div>
       <div style="font-size:14px;color:#444;margin-bottom:12px">${applyObj.desc}</div>
-      <div id="count-text" style="font-size:13px;color:#777;margin-bottom:16px">等待对方判断，剩余 ${count} 秒</div>
-      <div style="display:flex;gap:10px">
-        <button id="apply-reject" style="flex:1;padding:9px;border:1px solid #ccc;background:#fff;border-radius:8px">拒绝</button>
-        <button id="apply-accept" style="flex:1;padding:9px;background:#4caf50;color:#fff;border:none;border-radius:8px">同意</button>
-      </div>
+      <div id="count-text" style="font-size:13px;color:#777;margin-bottom:16px">等待判断，剩余 ${count} 秒</div>
+      ${btnHtml}
     `;
     mask.appendChild(modal);
     document.body.appendChild(mask);
     const countText = modal.querySelector("#count-text");
     let timer = setInterval(()=>{
       count--;
-      countText.textContent = `等待对方判断，剩余 ${count} 秒`;
+      countText.textContent = `等待判断，剩余 ${count} 秒`;
       if(count <=0){
         clearInterval(timer);
         mask.remove();
-        //5秒超时随机
         const autoResult = Math.random()>0.5 ? "accept":"reject";
         this.doApplyResult(applyObj, autoResult);
       }
@@ -101,14 +106,16 @@ export const ModalAvatarNick = {
       clearInterval(timer);
       mask.remove();
     };
-    modal.querySelector("#apply-accept").onclick = ()=>{
-      clean();
-      this.doApplyResult(applyObj,"accept");
-    };
-    modal.querySelector("#apply-reject").onclick = ()=>{
-      clean();
-      this.doApplyResult(applyObj,"reject");
-    };
+    if(!isMeSend){
+      modal.querySelector("#apply-accept").onclick = ()=>{
+        clean();
+        this.doApplyResult(applyObj,"accept");
+      };
+      modal.querySelector("#apply-reject").onclick = ()=>{
+        clean();
+        this.doApplyResult(applyObj,"reject");
+      };
+    }
     mask.onclick = (e)=>{if(e.target===mask) clean();};
   },
 
@@ -122,14 +129,14 @@ export const ModalAvatarNick = {
         case "taAvatar": contact.avatar = applyObj.newVal; break;
         case "taNick": contact.name = applyObj.newVal; break;
         case "myAvatar": contact.myAvatar = applyObj.newVal; break;
-        case "myNick": contact.myNick = applyObj.myNick; break;
+        case "myNick": contact.myNick = applyObj.newVal; break;
       }
       if(this.chatModuleRef?.pushNoticeMessage){
-        this.chatModuleRef.pushNoticeMessage(`【我发起】${applyObj.desc} —— 已同意`,"me");
+        this.chatModuleRef.pushNoticeMessage(`${applyObj.desc} —— 已同意`,"me");
       }
     }else{
       if(this.chatModuleRef?.pushNoticeMessage){
-        this.chatModuleRef.pushNoticeMessage(`【我发起】${applyObj.desc} —— 已拒绝`,"me");
+        this.chatModuleRef.pushNoticeMessage(`${applyObj.desc} —— 已拒绝`,"me");
       }
     }
     Store.set("contactList",list);
@@ -160,8 +167,8 @@ export const ModalAvatarNick = {
     panel.appendChild(head);
 
     //一级tab：头像 / 昵称
-    let mainTab = "avatar"; // avatar / nick
-    let subTab = "ta"; // ta / mine
+    let mainTab = "avatar";
+    let subTab = "ta";
     const mainTabWrap = document.createElement("div");
     mainTabWrap.style.display = "flex";
     mainTabWrap.style.borderBottom = "1px solid #eee";
@@ -194,8 +201,8 @@ export const ModalAvatarNick = {
     subTabWrap.style.borderRadius = "8px";
     subTabWrap.style.overflow = "hidden";
     const subItems = mainTab==="avatar"
-      ?[{k:"ta",label:"TA头像池("+this.contactInfo.taAvatarPool.length+")"},{k:"mine",label:"我的头像池("+this.contactInfo.myAvatarPool.length+")"}]
-      :[{k:"ta",label:"TA昵称池("+this.contactInfo.taNickPool.length+")"},{k:"mine",label:"我的昵称池("+this.contactInfo.myNickPool.length+")"}];
+      ?[{k:"ta",label:`TA头像池(${this.contactInfo.taAvatarPool.length})`},{k:"mine",label:`我的头像池(${this.contactInfo.myAvatarPool.length})`}]
+      :[{k:"ta",label:`TA昵称池(${this.contactInfo.taNickPool.length})`},{k:"mine",label:`我的昵称池(${this.contactInfo.myNickPool.length})`}];
     subItems.forEach(s=>{
       const btn = document.createElement("div");
       btn.innerText = s.label;
@@ -221,7 +228,7 @@ export const ModalAvatarNick = {
     const contentWrap = document.createElement("div");
     contentWrap.style.padding = "0 16px 18px 16px";
 
-    //轮换设置
+    //轮换设置 + 间隔小时输入框
     const randBox = document.createElement("div");
     randBox.style.marginBottom = "14px";
     randBox.style.borderBottom = "1px solid #eee";
@@ -231,7 +238,7 @@ export const ModalAvatarNick = {
     .switch input{display:none}
     .switch span{width:40px;height:20px;background:#ccc;border-radius:20px;display:block;position:relative}
     .switch span:after{content:"";width:16px;height:16px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:0.2s}
-    .switch input:checked+span{background:#7c68ee}
+    .switch input:checked+span{background:${this.primaryColor}}
     .switch input:checked+span:after{left:22px}
     `;
     randBox.appendChild(switchCss);
@@ -243,7 +250,10 @@ export const ModalAvatarNick = {
       rowDiv.style.justifyContent = "space-between";
       rowDiv.style.alignItems = "center";
       rowDiv.style.padding = "8px 0";
-      rowDiv.innerHTML = `<span style="font-size:13px">${subTab==="ta"?"TA头像随机轮换":"我的头像随机轮换"}</span><label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>`;
+      rowDiv.innerHTML = `
+        <span style="font-size:13px">${subTab==="ta"?"TA头像随机轮换":"我的头像随机轮换"}</span>
+        <label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>
+      `;
       const ck = rowDiv.querySelector("input");
       ck.onchange = ()=>{
         this.contactInfo[key].enable = ck.checked;
@@ -252,6 +262,26 @@ export const ModalAvatarNick = {
         this.render();
       };
       randBox.appendChild(rowDiv);
+      //间隔时长输入
+      const hourRow = document.createElement("div");
+      hourRow.style.display = "flex";
+      hourRow.style.alignItems = "center";
+      hourRow.style.justifyContent = "space-between";
+      hourRow.style.padding = "6px 0 8px 0";
+      hourRow.innerHTML = `
+        <span style="font-size:13px">轮换间隔（小时）</span>
+        <input type="number" min="1" value="${cfg.intervalHour}" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+      `;
+      const hourInput = hourRow.querySelector("input");
+      hourInput.onchange = ()=>{
+        const val = Number(hourInput.value);
+        if(val >= 1) {
+          this.contactInfo[key].intervalHour = val;
+          this.saveContact();
+          Toast.show("间隔已更新");
+        }
+      }
+      randBox.appendChild(hourRow);
     }else{
       const key = subTab==="ta"?"taNickRandom":"myNickRandom";
       const cfg = this.contactInfo[key];
@@ -260,7 +290,10 @@ export const ModalAvatarNick = {
       rowDiv.style.justifyContent = "space-between";
       rowDiv.style.alignItems = "center";
       rowDiv.style.padding = "8px 0";
-      rowDiv.innerHTML = `<span style="font-size:13px">${subTab==="ta"?"TA昵称随机轮换":"我的昵称随机轮换"}</span><label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>`;
+      rowDiv.innerHTML = `
+        <span style="font-size:13px">${subTab==="ta"?"TA昵称随机轮换":"我的昵称随机轮换"}</span>
+        <label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>
+      `;
       const ck = rowDiv.querySelector("input");
       ck.onchange = ()=>{
         this.contactInfo[key].enable = ck.checked;
@@ -269,22 +302,49 @@ export const ModalAvatarNick = {
         this.render();
       };
       randBox.appendChild(rowDiv);
+      const hourRow = document.createElement("div");
+      hourRow.style.display = "flex";
+      hourRow.style.alignItems = "center";
+      hourRow.style.justifyContent = "space-between";
+      hourRow.style.padding = "6px 0 8px 0";
+      hourRow.innerHTML = `
+        <span style="font-size:13px">轮换间隔（小时）</span>
+        <input type="number" min="1" value="${cfg.intervalHour}" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+      `;
+      const hourInput = hourRow.querySelector("input");
+      hourInput.onchange = ()=>{
+        const val = Number(hourInput.value);
+        if(val >= 1) {
+          this.contactInfo[key].intervalHour = val;
+          this.saveContact();
+          Toast.show("间隔已更新");
+        }
+      }
+      randBox.appendChild(hourRow);
     }
     contentWrap.appendChild(randBox);
 
-    //池子渲染
     let poolArr,poolKey,targetType;
+    const taName = this.contactInfo.name;
+    const myName = "我";
     if(mainTab==="avatar"){
-      if(subTab==="ta"){poolArr=this.contactInfo.taAvatarPool;poolKey="taAvatarPool";targetType="taAvatar";}
-      else{poolArr=this.contactInfo.myAvatarPool;poolKey="myAvatarPool";targetType="myAvatar";}
+      if(subTab==="ta"){
+        poolArr=this.contactInfo.taAvatarPool;poolKey="taAvatarPool";targetType="taAvatar";
+      }
+      else{
+        poolArr=this.contactInfo.myAvatarPool;poolKey="myAvatarPool";targetType="myAvatar";
+      }
     }else{
-      if(subTab==="ta"){poolArr=this.contactInfo.taNickPool;poolKey="taNickPool";targetType="taNick";}
-      else{poolArr=this.contactInfo.myNickPool;poolKey="myNickPool";targetType="myNick";}
+      if(subTab==="ta"){
+        poolArr=this.contactInfo.taNickPool;poolKey="taNickPool";targetType="taNick";
+      }
+      else{
+        poolArr=this.contactInfo.myNickPool;poolKey="myNickPool";targetType="myNick";
+      }
     }
 
     const poolArea = document.createElement("div");
     if(mainTab==="avatar"){
-      //头像池
       const fileInput = document.createElement("input");
       fileInput.type="file";
       fileInput.accept="image/*";
@@ -337,7 +397,6 @@ export const ModalAvatarNick = {
         Toast.show(`添加${files.length}张图片`);
         this.render();
       };
-      //图片预览网格
       const gridWrap = document.createElement("div");
       gridWrap.style.display = "grid";
       gridWrap.style.gridTemplateColumns = "repeat(4,1fr)";
@@ -353,10 +412,9 @@ export const ModalAvatarNick = {
           <img src="${src}" style="width:100%;height:100%;object-fit:cover">
           <button data-del-idx="${idx}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;font-size:10px">×</button>
         `;
-        //点击图片发起申请
         itemDiv.onclick = (e)=>{
           if(e.target.tagName==="BUTTON") return;
-          const desc = `申请变更${subTab==="ta"?"对方头像":"我的头像"}`;
+          const desc = subTab==="ta" ? `${myName}申请变更${taName}头像` : `${myName}申请变更自己头像`;
           const applyObj = {targetType,newVal:src,desc,from:"me"};
           this.openApplyCountdownModal(applyObj);
         };
@@ -364,7 +422,6 @@ export const ModalAvatarNick = {
       })
       poolArea.appendChild(gridWrap);
     }else{
-      //昵称池
       const inputRow = document.createElement("div");
       inputRow.style.display = "flex";
       inputRow.style.gap = "8px";
@@ -380,7 +437,7 @@ export const ModalAvatarNick = {
       addBtn.style.padding = "9px 12px";
       addBtn.style.border = "none";
       addBtn.style.borderRadius = "8px";
-      addBtn.style.background = "#7c68ee";
+      addBtn.style.background = this.primaryColor;
       addBtn.style.color = "#fff";
       addBtn.onclick = ()=>{
         const v = nickInput.value.trim();
@@ -409,7 +466,6 @@ export const ModalAvatarNick = {
       inputRow.appendChild(addBtn);
       inputRow.appendChild(clearBtn);
       poolArea.appendChild(inputRow);
-      //昵称列表
       const listWrap = document.createElement("div");
       poolArr.forEach((text,idx)=>{
         const row = document.createElement("div");
@@ -421,7 +477,7 @@ export const ModalAvatarNick = {
         row.innerHTML = `
           <span style="font-size:13px">${text}</span>
           <div style="display:flex;gap:6px">
-            <button data-apply-idx="${idx}" style="border:none;background:#7c68ee;color:#fff;border-radius:4px;padding:4px 7px;font-size:11px">发起申请</button>
+            <button data-apply-idx="${idx}" style="border:none;background:${this.primaryColor};color:#fff;border-radius:4px;padding:4px 7px;font-size:11px">发起申请</button>
             <button data-del-idx="${idx}" style="border:none;background:#f44336;color:#fff;border-radius:4px;padding:4px 7px;font-size:11px">删除</button>
           </div>
         `;
@@ -433,7 +489,6 @@ export const ModalAvatarNick = {
     panel.appendChild(contentWrap);
     this.maskDom.appendChild(panel);
 
-    //绑定删除事件
     panel.querySelectorAll("[data-del-idx]").forEach(btn=>{
       btn.onclick = (e)=>{
         e.stopPropagation();
@@ -448,7 +503,7 @@ export const ModalAvatarNick = {
       btn.onclick = ()=>{
         const idx = Number(btn.dataset.applyIdx);
         const val = poolArr[idx];
-        const desc = `申请变更${subTab==="ta"?"对方昵称":"我的昵称为："+val}`;
+        const desc = subTab==="ta" ? `${myName}申请变更${taName}昵称为：${val}` : `${myName}申请变更自己昵称为：${val}`;
         const applyObj = {targetType,newVal:val,desc,from:"me"};
         this.openApplyCountdownModal(applyObj);
       };
