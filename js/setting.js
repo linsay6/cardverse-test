@@ -1,6 +1,7 @@
 import { ThemeManager } from './core/css-theme.js';
 import { Toast } from './core/toast.js';
 import { Store } from './core/store.js';
+import { EventBus } from './core/context.js';
 
 export const SettingModule = {
   rootEl: null,
@@ -14,7 +15,6 @@ export const SettingModule = {
     { title: "导出全部数据", page: "system", key: "exportData" },
     { title: "导入数据", page: "system", key: "importData" },
   ],
-
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
@@ -25,9 +25,16 @@ export const SettingModule = {
       this.page = "contact";
       this.render();
     });
+
+    // 新增：监听联系人信息变更，若当前正在联系人列表页自动刷新
+    EventBus.on("contactInfoChange", () => {
+      if (this.page === "contact") {
+        this.render();
+      }
+    });
+
     this.render();
   },
-
   getContactList() {
     return Store.get("contactList") || [];
   },
@@ -38,7 +45,6 @@ export const SettingModule = {
     Store.set("activeContactId", id);
     document.dispatchEvent(new CustomEvent("contact:change", { detail: id }));
   },
-
   render() {
     if (!this.rootEl) return;
     this.rootEl.innerHTML = "";
@@ -46,7 +52,6 @@ export const SettingModule = {
     wrap.style.height = "100%";
     wrap.style.overflowY = "auto";
     wrap.style.padding = "14px";
-
     const searchWrap = document.createElement("div");
     searchWrap.style.marginBottom = "16px";
     searchWrap.innerHTML = `
@@ -54,7 +59,6 @@ export const SettingModule = {
     <div id="search-result" style="margin-top:8px;display:none"></div>
     `;
     wrap.appendChild(searchWrap);
-
     setTimeout(() => {
       const searchInput = document.getElementById("setting-search");
       const resultBox = document.getElementById("search-result");
@@ -82,7 +86,6 @@ export const SettingModule = {
         resultBox.style.display = "block";
       }
     }, 0);
-
     if(this.page === "home"){
       const menuList = [
         { key:"general", label:"通用", desc:"联系人、深色模式、清除数据" },
@@ -233,9 +236,7 @@ export const SettingModule = {
       html += `</div>`;
       wrap.innerHTML += html;
     }
-
     this.rootEl.appendChild(wrap);
-
     const backBtn = document.getElementById('back-home');
     if(backBtn){
       backBtn.onclick = ()=>{
