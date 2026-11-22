@@ -62,7 +62,6 @@ export const ChatModule = {
     }
   },
 
-  // 对外暴露：推送标准化系统通知消息（图5样式）
   pushSystemNotice(text){
     this.messageList.push({
       type:"notice",
@@ -135,17 +134,17 @@ export const ChatModule = {
     chatHeader.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px">
         <button id="chat-back-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;">←</button>
-        <img id="chat-header-avatar" src="" style="width:36px;height:36px;object-fit:cover;background:#eee">
-        <div id="chat-title" style="font-weight:bold;color:#222">未选择联系人</div>
+        <img id="chat-header-avatar" src="" style="width:36px;height:36px;object‑fit:cover;background:#eee">
+        <div id="chat‑title" style="font‑weight:bold;color:#222">未选择联系人</div>
       </div>
-      <button id="chat-more-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:18px">⋯</button>
+      <button id="chat‑more‑btn" style="width:32px;height:32px;border‑radius:50%;border:1px solid #ddd;background:#fff;font‑size:18px">⋯</button>
     `;
     wrap.appendChild(chatHeader);
     this.msgListEl = document.createElement('div');
     this.msgListEl.style.flex = "1";
     this.msgListEl.style.overflowY = "auto";
     this.msgListEl.style.padding = "12px";
-    this.msgListEl.style.boxSizing = "border-box";
+    this.msgListEl.style.boxSizing = "border‑box";
     const inputWrap = document.createElement('div');
     inputWrap.style.padding = "10px 12px";
     inputWrap.style.borderTop = "1px solid #e5e5e5";
@@ -154,7 +153,7 @@ export const ChatModule = {
     inputWrap.style.background = "#fff";
 
     const extendBtn = document.createElement("button");
-    extendBtn.id = "chat-extend-btn";
+    extendBtn.id = "chat‑extend‑btn";
     extendBtn.innerText = "···";
     extendBtn.style.border = "none";
     extendBtn.style.background = "transparent";
@@ -189,7 +188,7 @@ export const ChatModule = {
     wrap.appendChild(inputWrap);
     this.rootEl.appendChild(wrap);
 
-    document.getElementById("chat-more-btn").onclick = ()=>{
+    document.getElementById("chat‑more‑btn").onclick = ()=>{
       if(!this.activeContactId){
         Toast.show("请先选中联系人");
         return;
@@ -197,14 +196,14 @@ export const ChatModule = {
       this.viewMode = "setting";
       this.render();
     };
-    document.getElementById("chat-back-btn").onclick = ()=>{
+    document.getElementById("chat‑back‑btn").onclick = ()=>{
       if(window.TabManager){
         window.TabManager.switchTab("setting");
       }
       Toast.show("返回联系人列表");
     };
 
-    document.getElementById("chat-extend-btn").onclick = ()=>{
+    document.getElementById("chat‑extend‑btn").onclick = ()=>{
       if(!this.activeContactId){
         Toast.show("请先选中联系人");
         return;
@@ -225,8 +224,8 @@ export const ChatModule = {
     Toast.show("已更新");
   },
   renderMessages() {
-    const titleDom = document.getElementById("chat-title");
-    const avatarDom = document.getElementById("chat-header-avatar");
+    const titleDom = document.getElementById("chat‑title");
+    const avatarDom = document.getElementById("chat‑header‑avatar");
     if(titleDom && avatarDom){
       if(this.activeContactInfo){
         titleDom.innerText = this.activeContactInfo.name;
@@ -243,27 +242,26 @@ export const ChatModule = {
     const avatarRadius = theme.avatarShape === "circle" ? "50%" : "8px";
     const timePos = theme.timePos;
 
-    const headerAvatar = document.getElementById("chat-header-avatar");
+    const headerAvatar = document.getElementById("chat‑header‑avatar");
     if(headerAvatar){
       headerAvatar.style.borderRadius = avatarRadius;
     }
 
     if (!this.activeContactId) {
-      this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
+      this.msgListEl.innerHTML = `<div style="text‑align:center;margin‑top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
       return;
     }
     if (this.messageList.length === 0) {
-      this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">暂无消息，发送第一条消息吧</div>`;
+      this.msgListEl.innerHTML = `<div style="text‑align:center;margin‑top:40px;color:#777">暂无消息，发送第一条消息吧</div>`;
       return;
     }
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
 
     this.messageList.forEach(msg => {
-      // 系统通知消息（头像昵称变更记录，图5）
       if(msg.type === "notice"){
         const noticeEl = document.createElement("div");
         noticeEl.style.margin="10px 0";
-        noticeEl.style.padding="8px 14px";
+        noticeEl.style.padding="8px 12px";
         noticeEl.style.background="#eeeeee";
         noticeEl.style.borderRadius="999px";
         noticeEl.style.textAlign="center";
@@ -283,17 +281,17 @@ export const ChatModule = {
       const ss = String(d.getSeconds()).padStart(2,'0');
       const timeStr = `${hh}:${mm}:${ss}`;
 
-      const msgWrap = document.createElement("div");
-      msgWrap.style.marginBottom = "16px";
+      const msgItem = document.createElement("div");
+      msgItem.style.marginBottom = "14px";
+      msgItem.style.display = "flex";
+      msgItem.style.alignItems = "flex‑start";
 
-      // --------------------------头像下方模式：严格对齐参考图4
+      let timeDom = "";
       if(timePos === "avatarBottom"){
+        //头像下方：头像容器是垂直column，头像+时间居中
         if(msg.role === "user"){
-          //我方：头像在右侧，时间在头像正下方居中，气泡在头像左边
-          msgWrap.style.display = "flex";
-          msgWrap.style.justifyContent = "flex-end";
-          msgWrap.style.alignItems = "flex‑start";
-          msgWrap.innerHTML = `
+          msgItem.style.justifyContent = "flex‑end";
+          msgItem.innerHTML = `
             <div style="max‑width:70%">
               <div style="background:#fff;color:#222;padding:8px 12px;border‑radius:12px;box‑shadow:0 1px 3px rgba(0,0,0,0.08);word‑break:break‑all">${msg.content}</div>
             </div>
@@ -303,11 +301,8 @@ export const ChatModule = {
             </div>
           `;
         }else{
-          //对方：头像在左侧，时间头像正下方居中，气泡头像右边
-          msgWrap.style.display = "flex";
-          msgWrap.style.justifyContent = "flex‑start";
-          msgWrap.style.alignItems = "flex‑start";
-          msgWrap.innerHTML = `
+          msgItem.style.justifyContent = "flex‑start";
+          msgItem.innerHTML = `
             <div style="display:flex;flex‑direction:column;align‑items:center;margin‑right:8px">
               <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover">
               <div style="font‑size:11px;color:#999;margin‑top:4px">${timeStr}</div>
@@ -318,7 +313,6 @@ export const ChatModule = {
           `;
         }
       }else{
-        //其余5种时间模式逻辑保持
         let timeHtml = "";
         if(timePos === "hide") timeHtml = "";
         else if(timePos === "bubbleBottom"){
@@ -330,12 +324,10 @@ export const ChatModule = {
         }else if(timePos === "divider"){
           timeHtml = `<div style="width:100%;display:flex;align‑items:center;color:#999;font‑size:11px;margin:6px 0"><div style="flex:1;height:1px;background:#ddd"></div><span style="padding:0 8px">${timeStr}</span><div style="flex:1;height:1px;background:#ddd"></div></div>`;
         }
-
-        if (msg.role === "user") {
-          msgWrap.style.display = "flex";
-          msgWrap.style.justifyContent = "flex‑end";
-          msgWrap.style.alignItems = "flex‑end";
-          msgWrap.innerHTML = `
+        if(msg.role === "user"){
+          msgItem.style.justifyContent = "flex‑end";
+          msgItem.style.alignItems = "flex‑end";
+          msgItem.innerHTML = `
             ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
             <div style="display:flex;flex‑direction:row‑reverse;align‑items:flex‑end;gap:6px">
               <img src="${myCurrentAvatar}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover;flex‑shrink:0">
@@ -346,11 +338,10 @@ export const ChatModule = {
               ${timePos==="bubbleOuter"?timeHtml:""}
             </div>
           `;
-        } else {
-          msgWrap.style.display = "flex";
-          msgWrap.style.justifyContent = "flex‑start";
-          msgWrap.style.alignItems = "flex‑end";
-          msgWrap.innerHTML = `
+        }else{
+          msgItem.style.justifyContent = "flex‑start";
+          msgItem.style.alignItems = "flex‑end";
+          msgItem.innerHTML = `
             ${timePos==="topCenter"||timePos==="divider"?timeHtml:""}
             <div style="display:flex;align‑items:flex‑end;gap:6px">
               <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border‑radius:${avatarRadius};background:#eee;object‑fit:cover;flex‑shrink:0">
@@ -363,7 +354,7 @@ export const ChatModule = {
           `;
         }
       }
-      this.msgListEl.appendChild(msgWrap);
+      this.msgListEl.appendChild(msgItem);
     });
 
     if(this.isTyping){
@@ -409,6 +400,6 @@ export const ChatModule = {
 
   saveHistory() {
     if(!this.activeContactId) return;
-    Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
+    Store.set(`chat‑contact‑${this.activeContactId}`, this.messageList);
   }
 };
