@@ -9,7 +9,6 @@ export const ModalAvatarNick = {
   callbackClose: null,
   chatModuleRef: null,
   primaryColor: "#7c68ee",
-  // Tab状态提升到模块级，修复切换失效
   mainTab: "avatar",
   subTab: "ta",
 
@@ -17,10 +16,9 @@ export const ModalAvatarNick = {
     this.contactId = cid;
     this.callbackClose = closeCb;
     this.chatModuleRef = window.ChatModule;
-    // 正确读取主题主色字段
     const theme = Store.get("app-theme", {});
     this.primaryColor = theme.colorMain || "#7c68ee";
-    
+
     const list = Store.get("contactList", []);
     this.contactInfo = list.find(i => i.id === cid);
     if (!this.contactInfo) {
@@ -32,13 +30,12 @@ export const ModalAvatarNick = {
     if(!this.contactInfo.taNickPool) this.contactInfo.taNickPool = [];
     if(!this.contactInfo.myNickPool) this.contactInfo.myNickPool = [];
     if(!this.contactInfo.pendingApplyList) this.contactInfo.pendingApplyList = [];
-    if(!this.contactInfo.taAvatarRandom) this.contactInfo.taAvatarRandom = {enable:false,intervalHour:4,lastChangeTs:0};
-    if(!this.contactInfo.taNickRandom) this.contactInfo.taNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
-    if(!this.contactInfo.myAvatarRandom) this.contactInfo.myAvatarRandom = {enable:false,intervalHour:4,lastChangeTs:0};
-    if(!this.contactInfo.myNickRandom) this.contactInfo.myNickRandom = {enable:false,intervalHour:4,lastChangeTs:0};
+    if(!this.contactInfo.taAvatarRandom) this.contactInfo.taAvatarRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
+    if(!this.contactInfo.taNickRandom) this.contactInfo.taNickRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
+    if(!this.contactInfo.myAvatarRandom) this.contactInfo.myAvatarRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
+    if(!this.contactInfo.myNickRandom) this.contactInfo.myNickRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
     if(!this.contactInfo.taApplyIntervalHours) this.contactInfo.taApplyIntervalHours = 4;
 
-    // 重置Tab状态
     this.mainTab = "avatar";
     this.subTab = "ta";
 
@@ -135,13 +132,13 @@ export const ModalAvatarNick = {
     let logText = "";
     if(action === "accept"){
       switch(applyObj.targetType){
-        case "taAvatar": contact.avatar = applyObj.newVal; logText = `【我发起】${applyObj.desc} —— 已同意`; break;
-        case "taNick": contact.name = applyObj.newVal; logText = `【我发起】${applyObj.desc} —— 已同意`; break;
-        case "myAvatar": contact.myAvatar = applyObj.newVal; logText = `【我发起】${applyObj.desc} —— 已同意`; break;
-        case "myNick": contact.myNick = applyObj.newVal; logText = `【我发起】${applyObj.desc} —— 已同意`; break;
+        case "taAvatar": contact.avatar = applyObj.newVal; logText = `【${applyObj.from==="ta"?"对方":"我"}发起】${applyObj.desc} —— 已同意`; break;
+        case "taNick": contact.name = applyObj.newVal; logText = `【${applyObj.from==="ta"?"对方":"我"}发起】${applyObj.desc} —— 已同意`; break;
+        case "myAvatar": contact.myAvatar = applyObj.newVal; logText = `【${applyObj.from==="ta"?"对方":"我"}发起】${applyObj.desc} —— 已同意`; break;
+        case "myNick": contact.myNick = applyObj.newVal; logText = `【${applyObj.from==="ta"?"对方":"我"}发起】${applyObj.desc} —— 已同意`; break;
       }
     }else{
-      logText = `【我发起】${applyObj.desc} —— 已拒绝`;
+      logText = `【${applyObj.from==="ta"?"对方":"我"}发起】${applyObj.desc} —— 已拒绝`;
     }
     if(this.chatModuleRef?.pushSystemNotice){
       this.chatModuleRef.pushSystemNotice(logText);
@@ -172,7 +169,6 @@ export const ModalAvatarNick = {
     head.innerHTML = `<span style="font-weight:bold;font-size:16px">头像昵称互动</span><button id="modal-an-close" style="border:none;background:none;font-size:20px">×</button>`;
     panel.appendChild(head);
 
-    // 一级Tab：头像/昵称
     const mainTabWrap = document.createElement("div");
     mainTabWrap.style.display = "flex";
     mainTabWrap.style.borderBottom = "1px solid #eee";
@@ -198,7 +194,6 @@ export const ModalAvatarNick = {
     })
     panel.appendChild(mainTabWrap);
 
-    // 二级Tab：TA/我的
     const subTabWrap = document.createElement("div");
     subTabWrap.style.display = "flex";
     subTabWrap.style.margin = "12px 16px";
@@ -232,11 +227,10 @@ export const ModalAvatarNick = {
     const contentWrap = document.createElement("div");
     contentWrap.style.padding = "0 16px 18px 16px";
 
-    // 轮换设置
     const randBox = document.createElement("div");
     randBox.style.marginBottom = "14px";
     randBox.style.borderBottom = "1px solid #eee";
-    randBox.innerHTML = `<div style="font-weight:bold;font-size:14px;margin-bottom:8px">随机轮换设置</div>`;
+    randBox.innerHTML = `<div style="font-weight:bold;font-size:14px;margin-bottom:8px">随机轮换设置（最小‑最大小时区间随机触发）</div>`;
     const switchCss = document.createElement("style");
     switchCss.textContent = `
     .switch input{display:none}
@@ -264,26 +258,27 @@ export const ModalAvatarNick = {
         this.render();
       };
       randBox.appendChild(rowDiv);
-      // 间隔输入行，左右对齐
+
       const hourRow = document.createElement("div");
       hourRow.style.display = "flex";
       hourRow.style.alignItems = "center";
       hourRow.style.justifyContent = "space-between";
       hourRow.style.padding = "6px 0 8px 0";
       hourRow.innerHTML = `
-        <span style="font-size:13px">轮换间隔（小时）</span>
-        <input type="number" min="1" value="${cfg.intervalHour}" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+        <span style="font-size:13px">最小小时</span>
+        <input id="rand-min" type="number" min="1" value="${cfg.minHour}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
       `;
-      const hourInput = hourRow.querySelector("input");
-      hourInput.onchange = ()=>{
-        const val = Number(hourInput.value);
-        if(val >= 1) {
-          this.contactInfo[key].intervalHour = val;
-          this.saveContact();
-          Toast.show("间隔已更新");
-        }
-      }
       randBox.appendChild(hourRow);
+      const hourRow2 = document.createElement("div");
+      hourRow2.style.display = "flex";
+      hourRow2.style.alignItems = "center";
+      hourRow2.style.justifyContent = "space-between";
+      hourRow2.style.padding = "6px 0 8px 0";
+      hourRow2.innerHTML = `
+        <span style="font-size:13px">最大小时</span>
+        <input id="rand-max" type="number" min="1" value="${cfg.maxHour}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+      `;
+      randBox.appendChild(hourRow2);
     }else{
       const key = this.subTab==="ta"?"taNickRandom":"myNickRandom";
       const cfg = this.contactInfo[key];
@@ -301,27 +296,60 @@ export const ModalAvatarNick = {
         this.render();
       };
       randBox.appendChild(rowDiv);
+
       const hourRow = document.createElement("div");
       hourRow.style.display = "flex";
       hourRow.style.alignItems = "center";
       hourRow.style.justifyContent = "space-between";
       hourRow.style.padding = "6px 0 8px 0";
       hourRow.innerHTML = `
-        <span style="font-size:13px">轮换间隔（小时）</span>
-        <input type="number" min="1" value="${cfg.intervalHour}" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+        <span style="font-size:13px">最小小时</span>
+        <input id="rand-min" type="number" min="1" value="${cfg.minHour}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
       `;
-      const hourInput = hourRow.querySelector("input");
-      hourInput.onchange = ()=>{
-        const val = Number(hourInput.value);
-        if(val >= 1) {
-          this.contactInfo[key].intervalHour = val;
-          this.saveContact();
-          Toast.show("间隔已更新");
-        }
-      }
       randBox.appendChild(hourRow);
+      const hourRow2 = document.createElement("div");
+      hourRow2.style.display = "flex";
+      hourRow2.style.alignItems = "center";
+      hourRow2.style.justifyContent = "space-between";
+      hourRow2.style.padding = "6px 0 8px 0";
+      hourRow2.innerHTML = `
+        <span style="font-size:13px">最大小时</span>
+        <input id="rand-max" type="number" min="1" value="${cfg.maxHour}" style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center">
+      `;
+      randBox.appendChild(hourRow2);
     }
     contentWrap.appendChild(randBox);
+
+    // 保存最小最大小时
+    const inMin = panel.querySelector("#rand-min");
+    const inMax = panel.querySelector("#rand-max");
+    if(inMin&&inMax){
+      const key = this.mainTab==="avatar" ? (this.subTab==="ta"?"taAvatarRandom":"myAvatarRandom") : (this.subTab==="ta"?"taNickRandom":"myNickRandom");
+      inMin.onchange = ()=>{
+        const v1 = Number(inMin.value);
+        const v2 = Number(inMax.value);
+        if(v1>=1 && v2>=v1){
+          this.contactInfo[key].minHour = v1;
+          this.contactInfo[key].maxHour = v2;
+          this.saveContact();
+          Toast.show("区间已保存");
+        }else{
+          Toast.show("最大必须大于等于最小");
+        }
+      }
+      inMax.onchange = ()=>{
+        const v1 = Number(inMin.value);
+        const v2 = Number(inMax.value);
+        if(v1>=1 && v2>=v1){
+          this.contactInfo[key].minHour = v1;
+          this.contactInfo[key].maxHour = v2;
+          this.saveContact();
+          Toast.show("区间已保存");
+        }else{
+          Toast.show("最大必须大于等于最小");
+        }
+      }
+    }
 
     let poolArr,poolKey,targetType;
     const taName = this.contactInfo.name;
@@ -415,28 +443,42 @@ export const ModalAvatarNick = {
     }else{
       const inputRow = document.createElement("div");
       inputRow.style.display = "flex";
+      inputRow.style.flexDirection = "column";
       inputRow.style.gap = "8px";
       inputRow.style.marginBottom = "12px";
-      const nickInput = document.createElement("input");
-      nickInput.style.flex = "1";
+      const nickInput = document.createElement("textarea");
+      nickInput.rows=3;
       nickInput.style.padding = "9px";
       nickInput.style.border = "1px solid #ddd";
       nickInput.style.borderRadius = "8px";
-      nickInput.placeholder = "输入昵称";
+      nickInput.placeholder = "可粘贴多条，换行分隔不同昵称";
+      const btnLine = document.createElement("div");
+      btnLine.style.display="flex";
+      btnLine.style.gap="8px";
       const addBtn = document.createElement("button");
-      addBtn.innerText = "添加";
+      addBtn.innerText = "解析并批量添加";
       addBtn.style.padding = "9px 12px";
       addBtn.style.border = "none";
       addBtn.style.borderRadius = "8px";
       addBtn.style.background = this.primaryColor;
       addBtn.style.color = "#fff";
       addBtn.onclick = ()=>{
-        const v = nickInput.value.trim();
-        if(!v) return Toast.show("昵称不能为空");
-        if(this.contactInfo[poolKey].includes(v)) return Toast.show("已存在");
-        this.contactInfo[poolKey].push(v);
+        const raw = nickInput.value;
+        const lines = raw.split(/\r?\n/).map(s=>s.trim()).filter(s=>!!s);
+        if(lines.length===0){
+          Toast.show("没有有效昵称");
+          return;
+        }
+        let addCount = 0;
+        lines.forEach(v=>{
+          if(!this.contactInfo[poolKey].includes(v)){
+            this.contactInfo[poolKey].push(v);
+            addCount++;
+          }
+        })
         this.saveContact();
-        Toast.show("添加成功");
+        Toast.show(`成功新增${addCount}条昵称`);
+        nickInput.value="";
         this.render();
       };
       const clearBtn = document.createElement("button");
@@ -453,10 +495,12 @@ export const ModalAvatarNick = {
           this.render();
         }
       };
+      btnLine.appendChild(addBtn);
+      btnLine.appendChild(clearBtn);
       inputRow.appendChild(nickInput);
-      inputRow.appendChild(addBtn);
-      inputRow.appendChild(clearBtn);
+      inputRow.appendChild(btnLine);
       poolArea.appendChild(inputRow);
+
       const listWrap = document.createElement("div");
       poolArr.forEach((text,idx)=>{
         const row = document.createElement("div");
