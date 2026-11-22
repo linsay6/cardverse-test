@@ -4,9 +4,7 @@ import { Store } from './core/store.js';
 
 export const SettingModule = {
   rootEl: null,
-  // page: home = 设置主页；general / chat / system / tool / diagnose / about = 二级分类页；contact = 联系人详情页
   page: "home",
-  // 搜索索引，把所有可搜索配置项登记在这里，后面新增功能就在这里加
   searchIndex: [
     { title: "深色模式", page: "general", key: "darkmode" },
     { title: "联系人 / 桌面", page: "general", key: "contactEntry" },
@@ -49,7 +47,6 @@ export const SettingModule = {
     wrap.style.overflowY = "auto";
     wrap.style.padding = "14px";
 
-    // 顶部搜索框（所有页面都保留）
     const searchWrap = document.createElement("div");
     searchWrap.style.marginBottom = "16px";
     searchWrap.innerHTML = `
@@ -58,7 +55,6 @@ export const SettingModule = {
     `;
     wrap.appendChild(searchWrap);
 
-    // 绑定搜索
     setTimeout(() => {
       const searchInput = document.getElementById("setting-search");
       const resultBox = document.getElementById("search-result");
@@ -87,7 +83,6 @@ export const SettingModule = {
       }
     }, 0);
 
-    // ========== 主页：展示六大分类卡片 ==========
     if(this.page === "home"){
       const menuList = [
         { key:"general", label:"通用", desc:"联系人、深色模式、清除数据" },
@@ -115,7 +110,6 @@ export const SettingModule = {
         wrap.appendChild(card);
       })
     }
-    // ========== 二级页面：通用 ==========
     else if(this.page === "general"){
       wrap.innerHTML += `<div style="margin-bottom:12px"><button id="back-home" style="padding:6px 8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg)">← 返回设置主页</button></div>`;
       wrap.innerHTML += `
@@ -138,7 +132,6 @@ export const SettingModule = {
       </div>
       `;
     }
-    // ========== 二级页面：聊天 ==========
     else if(this.page === "chat"){
       wrap.innerHTML += `<div style="margin-bottom:12px"><button id="back-home" style="padding:6px 8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg)">← 返回设置主页</button></div>`;
       wrap.innerHTML += `
@@ -168,7 +161,6 @@ export const SettingModule = {
       </div>
       `;
     }
-    // ========== 二级页面：系统 ==========
     else if(this.page === "system"){
       wrap.innerHTML += `<div style="margin-bottom:12px"><button id="back-home" style="padding:6px 8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg)">← 返回设置主页</button></div>`;
       wrap.innerHTML += `
@@ -198,21 +190,18 @@ export const SettingModule = {
       wrap.innerHTML += `<div style="margin-bottom:12px"><button id="back-home" style="padding:6px 8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg)">← 返回设置主页</button></div>`;
       wrap.innerHTML += `<div style="padding:20px;color:var(--color-text-2)">关于本项目版本信息</div>`;
     }
-    // ========== 联系人独立子页面 ==========
     else if(this.page === "contact"){
-      wrap.innerHTML += `<div style="margin-bottom:12px"><button id="back-general" style="padding:6px 8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg)">← 返回通用设置</button></div>`;
       const list = this.getContactList();
       const activeId = Store.get("activeContactId");
       let html = `
+      <div style="margin-bottom:10px">
+        <button id="back-general" style="padding:4px 8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg)">← 返回通用设置</button>
+      </div>
       <div style="border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:12px;">
         <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">新增梦角联系人</div>
         <div style="margin-bottom:8px">
           <div style="font-size:13px;color:var(--color-text-2)">名称</div>
           <input id="c-name" placeholder="输入名字" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-text)">
-        </div>
-        <div style="margin-bottom:8px">
-          <div style="font-size:13px;color:var(--color-text-2)">头像链接</div>
-          <input id="c-avatar" placeholder="图片url，留空用默认" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-text)">
         </div>
         <div style="margin-bottom:8px">
           <div style="font-size:13px;color:var(--color-text-2)">简介</div>
@@ -247,15 +236,13 @@ export const SettingModule = {
 
     this.rootEl.appendChild(wrap);
 
-    // 通用返回主页按钮
-    const backHomeBtn = document.getElementById("back-home");
-    if(backHomeBtn){
-      backHomeBtn.onclick = ()=>{
+    const backBtn = document.getElementById('back-home');
+    if(backBtn){
+      backBtn.onclick = ()=>{
         this.page = "home";
         this.render();
       }
     }
-    // 联系人页返回通用
     const backGeneralBtn = document.getElementById("back-general");
     if(backGeneralBtn){
       backGeneralBtn.onclick = ()=>{
@@ -306,7 +293,6 @@ export const SettingModule = {
     if(addContactBtn){
       addContactBtn.onclick = ()=>{
         const nameInput = document.getElementById("c-name");
-        const avatarInput = document.getElementById("c-avatar");
         const descInput = document.getElementById("c-desc");
         const name = nameInput.value.trim();
         if(!name){
@@ -317,7 +303,6 @@ export const SettingModule = {
         const newItem = {
           id: Date.now().toString(),
           name,
-          avatar: avatarInput.value.trim(),
           desc: descInput.value.trim()
         };
         list.push(newItem);
