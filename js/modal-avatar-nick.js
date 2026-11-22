@@ -563,9 +563,20 @@ export const ModalAvatarNick = {
         `;
         itemDiv.onclick = (e)=>{
           if(e.target.tagName==="BUTTON") return;
-          const desc = `申请变更${this.subTab==="ta"?"对方头像":"我的头像"}`;
-          const applyObj = {targetType,newVal:src,desc,from:"me"};
-          this.openApplyCountdownModal(applyObj);
+          //====业务分支：mine我的池子直接生效；ta池子弹出申请====
+          if(this.subTab === "mine"){
+            //直接修改，不弹申请弹窗
+            this.contactInfo[targetType==="myAvatar"?"myAvatar":"myNick"] = src;
+            const logText = `我直接更换了自己的头像`;
+            if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(logText);
+            this.saveContact();
+            Toast.show("已直接更换我的头像");
+            this.render();
+          }else{
+            const desc = `申请变更对方头像`;
+            const applyObj = {targetType,newVal:src,desc,from:"me"};
+            this.openApplyCountdownModal(applyObj);
+          }
         };
         gridWrap.appendChild(itemDiv);
       })
@@ -693,9 +704,19 @@ export const ModalAvatarNick = {
       btn.onclick = ()=>{
         const idx = Number(btn.dataset.applyIdx);
         const val = poolArr[idx];
-        const desc = `申请变更${this.subTab==="ta"?"对方昵称为："+val:"我的昵称为："+val}`;
-        const applyObj = {targetType,newVal:val,desc,from:"me"};
-        this.openApplyCountdownModal(applyObj);
+        //昵称池子点击发起申请按钮
+        if(this.subTab === "mine"){
+          //我的昵称池，直接修改
+          this.contactInfo.myNick = val;
+          if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(`我直接更换了自己的昵称为：${val}`);
+          this.saveContact();
+          Toast.show("已直接更换我的昵称");
+          this.render();
+        }else{
+          const desc = `申请变更对方昵称为：${val}`;
+          const applyObj = {targetType,newVal:val,desc,from:"me"};
+          this.openApplyCountdownModal(applyObj);
+        }
       };
     });
 
