@@ -1,7 +1,6 @@
 import { Store } from './core/store.js';
 import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
-
 export const ChatSettingSubModule = {
   parentContainer: null,
   contactId: null,
@@ -10,6 +9,7 @@ export const ChatSettingSubModule = {
   activeTab1: "功能",
   tab2List: ["形象", "消息", "显示"],
   activeTab2: "形象",
+  _themeChangeOff: null,
 
   open(parentDom, cid, cbBack) {
     this.parentContainer = parentDom;
@@ -17,6 +17,14 @@ export const ChatSettingSubModule = {
     const list = Store.get("contactList", []);
     this.contactInfo = list.find(i => i.id === this.contactId);
     this.callbackBack = cbBack;
+
+    // 监听全局主题变化，实时重渲染更新背景色
+    this._themeChangeOff = EventBus.on("themeChange", () => {
+      if(this.parentContainer){
+        this.render();
+      }
+    });
+
     this.render();
   },
 
@@ -29,14 +37,12 @@ export const ChatSettingSubModule = {
     mask.style.display = "flex";
     mask.style.alignItems = "center";
     mask.style.justifyContent = "center";
-
     const modal = document.createElement("div");
     modal.style.width = "85%";
     modal.style.maxWidth = "360px";
     modal.style.background = "#fff";
     modal.style.borderRadius = "14px";
     modal.style.overflow = "hidden";
-
     modal.innerHTML = `<div style="padding:16px 16px 8px;font-weight:bold;font-size:16px">${title}</div>`;
     optionList.forEach(opt => {
       const itemDiv = document.createElement("div");
@@ -53,7 +59,6 @@ export const ChatSettingSubModule = {
       };
       modal.appendChild(itemDiv);
     });
-
     mask.appendChild(modal);
     document.body.appendChild(mask);
     mask.onclick = (e) => {
@@ -70,7 +75,6 @@ export const ChatSettingSubModule = {
     wrap.style.flexDirection = "column";
     const appTheme = Store.get("app-theme",{});
     wrap.style.background = appTheme.colorBg || "#f7f7f7";
-
     const header = document.createElement("div");
     header.style.display = "flex";
     header.style.alignItems = "center";
@@ -83,7 +87,6 @@ export const ChatSettingSubModule = {
       <span style="font-size:18px;font-weight:500;color:#222">聊天设置</span>
     `;
     wrap.appendChild(header);
-
     const contentWrap = document.createElement("div");
     contentWrap.style.flex = "1";
     contentWrap.style.overflowY = "auto";
@@ -92,7 +95,6 @@ export const ChatSettingSubModule = {
     contentWrap.style.display = "flex";
     contentWrap.style.flexDirection = "column";
     contentWrap.style.alignItems = "center";
-
     const mainCard = document.createElement("div");
     mainCard.style.width = "100%";
     mainCard.style.maxWidth = "420px";
@@ -100,7 +102,6 @@ export const ChatSettingSubModule = {
     mainCard.style.borderRadius = "14px";
     mainCard.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)";
     mainCard.style.overflow = "hidden";
-
     const tab1Wrap = document.createElement("div");
     tab1Wrap.style.display = "flex";
     tab1Wrap.style.borderBottom = "1px solid #eee";
@@ -131,7 +132,6 @@ export const ChatSettingSubModule = {
       tab1Wrap.appendChild(tabEl);
     });
     mainCard.appendChild(tab1Wrap);
-
     if (this.activeTab1 === "功能") {
       const tab2Wrap = document.createElement("div");
       tab2Wrap.style.display = "flex";
@@ -164,11 +164,9 @@ export const ChatSettingSubModule = {
       });
       mainCard.appendChild(tab2Wrap);
     }
-
     const cardContent = document.createElement("div");
     cardContent.style.padding = "16px";
     const chatTheme = Store.get("chatTheme", {avatarShape:"circle",timePos:"avatarBottom"});
-
     if (this.activeTab1 === "美化") {
       cardContent.innerHTML = `
       <style>
@@ -242,7 +240,7 @@ export const ChatSettingSubModule = {
          <span class="row-value"></span>
        </div>
        <input type="file" id="avatar-file" accept="image/*" style="display:none">
-       <input type="file" id="my‑avatar‑file" accept="image/*" style="display:none">
+       <input type="file" id="my-avatar-file" accept="image/*" style="display:none">
        `;
     } else if(this.activeTab1 === "数据"){
       cardContent.innerHTML = `
@@ -265,12 +263,15 @@ export const ChatSettingSubModule = {
       cardContent.innerHTML = `<div style="padding:30px 0;text-align:center;color:#888">页面待开发</div>`;
     }
     mainCard.appendChild(cardContent);
-
     contentWrap.appendChild(mainCard);
     wrap.appendChild(contentWrap);
     this.parentContainer.appendChild(wrap);
 
     document.getElementById("csub-back").onclick = () => {
+      // 关闭面板时注销主题监听，防止内存泄漏
+      if(typeof this._themeChangeOff === "function"){
+        this._themeChangeOff();
+      }
       if (typeof this.callbackBack === "function") {
         this.callbackBack();
       }
@@ -294,7 +295,6 @@ export const ChatSettingSubModule = {
         )
       }
     }
-
     const rowTimePos = document.getElementById("row-time-pos");
     if(rowTimePos){
       rowTimePos.onclick = ()=>{
@@ -314,7 +314,6 @@ export const ChatSettingSubModule = {
         )
       }
     }
-
     const btnClearChatLog = document.getElementById("btn-clear-chat-log");
     if(btnClearChatLog){
       btnClearChatLog.onclick = ()=>{
@@ -325,7 +324,6 @@ export const ChatSettingSubModule = {
         this.render();
       }
     }
-
     const rowContactNick = document.getElementById("row-contact-nick");
     if(rowContactNick){
       rowContactNick.onclick = ()=>{
@@ -348,7 +346,6 @@ export const ChatSettingSubModule = {
         }
       }
     }
-
     const rowContactAvatar = document.getElementById("row-contact-avatar");
     const fileInput = document.getElementById("avatar-file");
     if(rowContactAvatar && fileInput){
@@ -373,7 +370,6 @@ export const ChatSettingSubModule = {
         reader.readAsDataURL(file);
       }
     }
-
     const rowClearContactAvatar = document.getElementById("row-clear-contact-avatar");
     if(rowClearContactAvatar){
       rowClearContactAvatar.onclick = ()=>{
@@ -390,7 +386,6 @@ export const ChatSettingSubModule = {
         }
       }
     }
-
     // ==========【新增：我的昵称、我的头像、清空我的头像事件绑定】==========
     const rowMyNick = document.getElementById("row-my-nick");
     if(rowMyNick){
@@ -415,9 +410,8 @@ export const ChatSettingSubModule = {
         }
       }
     }
-
     const rowMyAvatar = document.getElementById("row-my-avatar");
-    const myAvatarFileInput = document.getElementById("my‑avatar‑file");
+    const myAvatarFileInput = document.getElementById("my-avatar-file");
     if(rowMyAvatar && myAvatarFileInput){
       rowMyAvatar.onclick = ()=> myAvatarFileInput.click();
       myAvatarFileInput.onchange = (ev)=>{
@@ -440,7 +434,6 @@ export const ChatSettingSubModule = {
         reader.readAsDataURL(file);
       }
     }
-
     const rowClearMyAvatar = document.getElementById("row-clear-my-avatar");
     if(rowClearMyAvatar){
       rowClearMyAvatar.onclick = ()=>{
