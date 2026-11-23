@@ -1,7 +1,6 @@
 import { Store } from './core/store.js';
 import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
-
 export const ModalAvatarNick = {
   maskDom: null,
   contactId: null,
@@ -12,7 +11,7 @@ export const ModalAvatarNick = {
   mainTab: "avatar",
   subTab: "ta",
   globalRotateTimer: null,
-
+  _clickThrottle: false, // 点击节流标记，防止华为手机快速连续点击
   startBackgroundRotate(){
     if(this.globalRotateTimer) return;
     this.globalRotateTimer = setInterval(()=>{
@@ -25,7 +24,6 @@ export const ModalAvatarNick = {
       this.globalRotateTimer = null;
     }
   },
-
   checkAllContactRotate(){
     const contactList = Store.get("contactList", []);
     const nowTs = Date.now();
@@ -79,14 +77,13 @@ export const ModalAvatarNick = {
       }
     });
   },
-
   open(parentDom, cid, closeCb) {
     this.contactId = cid;
     this.callbackClose = closeCb;
     this.chatModuleRef = window.ChatModule;
+    this._clickThrottle = false;
     const theme = Store.get("app-theme", {});
     this.primaryColor = theme.colorMain || "#7c68ee";
-
     const list = Store.get("contactList", []);
     this.contactInfo = list.find(i => i.id === cid);
     if (!this.contactInfo) {
@@ -103,10 +100,8 @@ export const ModalAvatarNick = {
     if(!this.contactInfo.myAvatarRandom) this.contactInfo.myAvatarRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
     if(!this.contactInfo.myNickRandom) this.contactInfo.myNickRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
     if(!this.contactInfo.taApplyIntervalHours) this.contactInfo.taApplyIntervalHours = 4;
-
     this.mainTab = "avatar";
     this.subTab = "ta";
-
     this.maskDom = document.createElement("div");
     this.maskDom.style.position = "absolute";
     this.maskDom.style.inset = "0";
@@ -118,21 +113,21 @@ export const ModalAvatarNick = {
     parentDom.appendChild(this.maskDom);
     this.render();
   },
-
   close() {
     if(this.maskDom) this.maskDom.remove();
     if(typeof this.callbackClose === "function") this.callbackClose();
   },
-
-  saveContact() {
+  /**
+   * ✅改为异步，等待IDB写入完成再派发事件，解决华为手机刷新丢失
+   */
+  async saveContact() {
     const list = Store.get("contactList", []);
     const idx = list.findIndex(x => x.id === this.contactId);
     if(idx === -1) return;
     list[idx] = this.contactInfo;
-    Store.set("contactList", list);
+    await Store.setAsync("contactList", list);
     EventBus.emit("contactInfoChange", this.contactId);
   },
-
   openApplyCountdownModal(applyObj){
     const mask = document.createElement("div");
     mask.style.position = "fixed";
@@ -150,7 +145,6 @@ export const ModalAvatarNick = {
     modal.style.padding = "20px";
     let count = 5;
     const isMeSend = applyObj.from === "me";
-
     let titleText = "";
     let descText = "";
     let previewHtml = "";
@@ -193,7 +187,6 @@ export const ModalAvatarNick = {
         previewHtml = `<div style="margin:10px 0;text-align:center;font-size:16px;color:#333">目标昵称：${applyObj.newVal}</div>`;
       }
     }
-
     const btnHtml = isMeSend ? "" : `
       <div style="display:flex;gap:10px;margin-top:10px">
         <button id="apply-reject" style="flex:1;padding:9px;border:1px solid #ccc;background:#fff;border-radius:8px">拒绝</button>
@@ -237,15 +230,13 @@ export const ModalAvatarNick = {
     }
     mask.onclick = (e)=>{if(e.target===mask) clean();};
   },
-
-  doApplyResult(applyObj,action){
+  async doApplyResult(applyObj,action){
     const list = Store.get("contactList",[]);
     const idx = list.findIndex(x=>x.id === this.contactId);
     if(idx === -1) return;
     const contact = list[idx];
     const taNick = contact?.name||"TA";
     let logText = "";
-
     if(action === "accept"){
       switch(applyObj.targetType){
         case "taAvatar":
@@ -281,23 +272,18 @@ export const ModalAvatarNick = {
           break;
       }
     }
-               if(this.chatModuleRef?.pushSystemNotice){
-    // 头像相关记录：自己换头像、对方换头像、申请同意/拒绝，都带预览图
-    if(applyObj.targetType === "taAvatar" || applyObj.targetType === "myAvatar"){
+    if(this.chatModuleRef?.pushSystemNotice){
+      if(applyObj.targetType === "taAvatar" || applyObj.targetType === "myAvatar"){
         this.chatModuleRef.pushSystemNotice(logText, applyObj.newVal);
-    }
-    // 昵称相关记录：只显示文字，不带图片
-    else{
+      }else{
         this.chatModuleRef.pushSystemNotice(logText);
+      }
     }
-}
-    Store.set("contactList",list);
-    this.contactInfo = contact;
-    EventBus.emit("contactInfoChange",this.contactId);
+    // 等待IDB落盘完成
+    await this.saveContact();
     Toast.show(action==="accept"?"已同意":"已拒绝");
     this.render();
   },
-
   render() {
     if(!this.maskDom) return;
     this.maskDom.innerHTML = "";
@@ -314,7 +300,6 @@ export const ModalAvatarNick = {
     const panelScrollStyle = document.createElement("style");
     panelScrollStyle.textContent = `#modal-panel::-webkit-scrollbar{display:none}`;
     document.head.appendChild(panelScrollStyle);
-
     const head = document.createElement("div");
     head.style.padding = "14px 16px";
     head.style.display = "flex";
@@ -323,8 +308,6 @@ export const ModalAvatarNick = {
     head.style.borderBottom = "1px solid #eee";
     head.innerHTML = `<span style="font-weight:bold;font-size:16px">头像昵称互动</span><button id="modal-an-close" style="border:none;background:none;font-size:20px">×</button>`;
     panel.appendChild(head);
-
-    // =========【测试按钮，正式上线务必删除整块】==========
     const testBar = document.createElement("div");
     testBar.style.padding="8px 16px";
     testBar.style.background="#fff0cc";
@@ -335,8 +318,6 @@ export const ModalAvatarNick = {
       <button id="sim-ta-nick" style="padding:4px 8px">模拟TA发起昵称申请</button>
     `;
     panel.appendChild(testBar);
-    // =====================================================
-
     const mainTabWrap = document.createElement("div");
     mainTabWrap.style.display = "flex";
     mainTabWrap.style.borderBottom = "1px solid #eee";
@@ -361,7 +342,6 @@ export const ModalAvatarNick = {
       mainTabWrap.appendChild(tabBtn);
     })
     panel.appendChild(mainTabWrap);
-
     const subTabWrap = document.createElement("div");
     subTabWrap.style.display = "flex";
     subTabWrap.style.margin = "12px 16px";
@@ -391,10 +371,8 @@ export const ModalAvatarNick = {
       subTabWrap.appendChild(btn);
     })
     panel.appendChild(subTabWrap);
-
     const contentWrap = document.createElement("div");
     contentWrap.style.padding = "0 16px 18px 16px";
-
     const randBox = document.createElement("div");
     randBox.style.marginBottom = "14px";
     randBox.style.borderBottom = "1px solid #eee";
@@ -408,7 +386,6 @@ export const ModalAvatarNick = {
     .switch input:checked+span:after{left:22px}
     `;
     randBox.appendChild(switchCss);
-
     if(this.mainTab === "avatar"){
       const key = this.subTab==="ta"?"taAvatarRandom":"myAvatarRandom";
       const cfg = this.contactInfo[key];
@@ -419,14 +396,13 @@ export const ModalAvatarNick = {
       rowDiv.style.padding = "8px 0";
       rowDiv.innerHTML = `<span style="font-size:13px">${this.subTab==="ta"?"TA头像随机轮换":"我的头像随机轮换"}</span><label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>`;
       const ck = rowDiv.querySelector("input");
-      ck.onchange = ()=>{
+      ck.onchange = async ()=>{
         this.contactInfo[key].enable = ck.checked;
-        this.saveContact();
+        await this.saveContact();
         Toast.show("已保存轮换设置");
         this.render();
       };
       randBox.appendChild(rowDiv);
-
       const hourRow = document.createElement("div");
       hourRow.style.display = "flex";
       hourRow.style.alignItems = "center";
@@ -459,14 +435,13 @@ export const ModalAvatarNick = {
       rowDiv.style.padding = "8px 0";
       rowDiv.innerHTML = `<span style="font-size:13px">${this.subTab==="ta"?"TA昵称随机轮换":"我的昵称随机轮换"}</span><label class="switch"><input type="checkbox" ${cfg.enable?"checked":""}><span></span></label>`;
       const ck = rowDiv.querySelector("input");
-      ck.onchange = ()=>{
+      ck.onchange = async ()=>{
         this.contactInfo[key].enable = ck.checked;
-        this.saveContact();
+        await this.saveContact();
         Toast.show("已保存轮换设置");
         this.render();
       };
       randBox.appendChild(rowDiv);
-
       const hourRow = document.createElement("div");
       hourRow.style.display = "flex";
       hourRow.style.alignItems = "center";
@@ -491,37 +466,37 @@ export const ModalAvatarNick = {
       randBox.appendChild(hourRow2);
     }
     contentWrap.appendChild(randBox);
-
     const inMin = panel.querySelector("#rand-min");
     const inMax = panel.querySelector("#rand-max");
     if(inMin&&inMax){
       const key = this.mainTab==="avatar" ? (this.subTab==="ta"?"taAvatarRandom":"myAvatarRandom") : (this.subTab==="ta"?"taNickRandom":"myNickRandom");
-      inMin.onchange = ()=>{
+      inMin.onchange = async ()=>{
         const v1 = Number(inMin.value);
         const v2 = Number(inMax.value);
         if(v1>=1 && v2>=v1){
           this.contactInfo[key].minHour = v1;
           this.contactInfo[key].maxHour = v2;
-          this.saveContact();
+          await this.saveContact();
           Toast.show("区间已保存");
+          this.render();
         }else{
           Toast.show("最大必须大于等于最小");
         }
       }
-      inMax.onchange = ()=>{
+      inMax.onchange = async ()=>{
         const v1 = Number(inMin.value);
         const v2 = Number(inMax.value);
         if(v1>=1 && v2>=v1){
           this.contactInfo[key].minHour = v1;
           this.contactInfo[key].maxHour = v2;
-          this.saveContact();
+          await this.saveContact();
           Toast.show("区间已保存");
+          this.render();
         }else{
           Toast.show("最大必须大于等于最小");
         }
       }
     }
-
     let poolArr,poolKey,targetType;
     if(this.mainTab==="avatar"){
       if(this.subTab==="ta"){poolArr=this.contactInfo.taAvatarPool;poolKey="taAvatarPool";targetType="taAvatar";}
@@ -530,7 +505,6 @@ export const ModalAvatarNick = {
       if(this.subTab==="ta"){poolArr=this.contactInfo.taNickPool;poolKey="taNickPool";targetType="taNick";}
       else{poolArr=this.contactInfo.myNickPool;poolKey="myNickPool";targetType="myNick";}
     }
-
     const poolArea = document.createElement("div");
     if(this.mainTab==="avatar"){
       const fileInput = document.createElement("input");
@@ -557,10 +531,10 @@ export const ModalAvatarNick = {
       clearBtn.style.border="1px solid #ddd";
       clearBtn.style.borderRadius="8px";
       clearBtn.style.background="#f7f7f7";
-      clearBtn.onclick = ()=>{
+      clearBtn.onclick = async ()=>{
         if(confirm("确定清空当前池子全部内容？")){
           this.contactInfo[poolKey] = [];
-          this.saveContact();
+          await this.saveContact();
           Toast.show("已清空");
           this.render();
         }
@@ -581,7 +555,7 @@ export const ModalAvatarNick = {
             this.contactInfo[poolKey].push(b64);
           }
         }
-        this.saveContact();
+        await this.saveContact();
         Toast.show(`添加${files.length}张图片`);
         this.render();
       };
@@ -600,16 +574,20 @@ export const ModalAvatarNick = {
           <img src="${src}" style="width:100%;height:100%;object-fit:cover">
           <button data-del-idx="${idx}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;font-size:10px">×</button>
         `;
-        itemDiv.onclick = (e)=>{
+        itemDiv.onclick = async (e)=>{
           if(e.target.tagName==="BUTTON") return;
-            if(this.subTab === "mine"){
-              // 我的头像池：直接设置，完整持久化保存
-              this.contactInfo.myAvatar = src;
-              const logText = `我更换了自己的头像`;
-              if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(logText, src);
-              this.saveContact();
-              Toast.show("已更换我的头像");
-              this.render();
+          // ✅节流：防止华为手机疯狂点击，并发IDB事务被丢弃
+          if(this._clickThrottle) return;
+          this._clickThrottle = true;
+          setTimeout(()=>{this._clickThrottle=false;},400);
+
+          if(this.subTab === "mine"){
+            this.contactInfo.myAvatar = src;
+            const logText = `我更换了自己的头像`;
+            if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(logText, src);
+            await this.saveContact();
+            Toast.show("已更换我的头像");
+            this.render();
           }else{
             const desc = `申请变更对方头像`;
             const applyObj = {targetType,newVal:src,desc,from:"me"};
@@ -641,7 +619,7 @@ export const ModalAvatarNick = {
       addBtn.style.borderRadius = "8px";
       addBtn.style.background = this.primaryColor;
       addBtn.style.color = "#fff";
-      addBtn.onclick = ()=>{
+      addBtn.onclick = async ()=>{
         const raw = nickInput.value;
         const lines = raw.split(/\r?\n/).map(s=>s.trim()).filter(s=>!!s);
         if(lines.length===0){
@@ -655,7 +633,7 @@ export const ModalAvatarNick = {
             addCount++;
           }
         })
-        this.saveContact();
+        await this.saveContact();
         Toast.show(`成功新增${addCount}条昵称`);
         nickInput.value="";
         this.render();
@@ -666,10 +644,10 @@ export const ModalAvatarNick = {
       clearBtn.style.border = "1px solid #ddd";
       clearBtn.style.borderRadius = "8px";
       clearBtn.style.background="#f7f7f7";
-      clearBtn.onclick = ()=>{
+      clearBtn.onclick = async ()=>{
         if(confirm("确定清空当前池子全部昵称？")){
           this.contactInfo[poolKey] = [];
-          this.saveContact();
+          await this.saveContact();
           Toast.show("已清空");
           this.render();
         }
@@ -679,7 +657,6 @@ export const ModalAvatarNick = {
       inputRow.appendChild(nickInput);
       inputRow.appendChild(btnLine);
       poolArea.appendChild(inputRow);
-
       const listWrap = document.createElement("div");
       poolArr.forEach((text,idx)=>{
         const row = document.createElement("div");
@@ -702,7 +679,6 @@ export const ModalAvatarNick = {
     contentWrap.appendChild(poolArea);
     panel.appendChild(contentWrap);
     this.maskDom.appendChild(panel);
-
     const simAvatarBtn = panel.querySelector("#sim-ta-avatar");
     const simNickBtn = panel.querySelector("#sim-ta-nick");
     if(simAvatarBtn){
@@ -727,13 +703,12 @@ export const ModalAvatarNick = {
         this.openApplyCountdownModal(fakeApply);
       }
     }
-
     panel.querySelectorAll("[data-del-idx]").forEach(btn=>{
-      btn.onclick = (e)=>{
+      btn.onclick = async (e)=>{
         e.stopPropagation();
         const idx = Number(btn.dataset.delIdx);
         this.contactInfo[poolKey].splice(idx,1);
-        this.saveContact();
+        await this.saveContact();
         Toast.show("已删除");
         this.render();
       };
@@ -743,7 +718,10 @@ export const ModalAvatarNick = {
         const idx = Number(btn.dataset.applyIdx);
         const val = poolArr[idx];
         if(this.subTab === "mine"){
-          //我的昵称池，直接修改并完整持久化保存
+          if(this._clickThrottle) return;
+          this._clickThrottle = true;
+          setTimeout(()=>{this._clickThrottle=false;},400);
+
           this.contactInfo.myNick = val;
           if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(`我更换了自己的昵称为：${val}`);
           this.saveContact();
@@ -756,7 +734,6 @@ export const ModalAvatarNick = {
         }
       };
     });
-
     const closeBtn = panel.querySelector("#modal-an-close");
     if(closeBtn){
       closeBtn.onclick = (e)=>{
