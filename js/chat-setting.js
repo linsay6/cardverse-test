@@ -334,7 +334,7 @@ export const ChatSettingSubModule = {
           Store.set("contactList", list);
           this.contactInfo = list[idx];
           EventBus.emit("contactInfoChange", this.contactId);
-          // 插入聊天系统记录
+          // 昵称变更，不传头像图片
           if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
             window.ChatModule.pushSystemNotice(`我更换了TA的昵称为：${trimName}`);
           }
@@ -360,9 +360,9 @@ export const ChatSettingSubModule = {
             Store.set("contactList", list);
             this.contactInfo = list[idx];
             EventBus.emit("contactInfoChange", this.contactId);
-            // 插入聊天系统记录
+            // 更换TA头像，带上新头像base64
             if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
-              window.ChatModule.pushSystemNotice("我更换了TA的头像");
+              window.ChatModule.pushSystemNotice("我更换了TA的头像", base64Img);
             }
             Toast.show("联系人头像已更新，全部界面同步刷新");
             this.render();
@@ -382,7 +382,7 @@ export const ChatSettingSubModule = {
           Store.set("contactList", list);
           this.contactInfo = list[idx];
           EventBus.emit("contactInfoChange", this.contactId);
-          // 插入聊天系统记录
+          // 清空头像：图片传null，气泡只保留文字，不显示图
           if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
             window.ChatModule.pushSystemNotice("我清空了TA的头像");
           }
@@ -410,7 +410,7 @@ export const ChatSettingSubModule = {
           Store.set("contactList", list);
           this.contactInfo = list[idx];
           EventBus.emit("contactInfoChange", this.contactId);
-          // 插入聊天系统记录
+          // 修改自己昵称，不带图片
           if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
             window.ChatModule.pushSystemNotice(`我更换了自己的昵称为：${trimName}`);
           }
@@ -436,9 +436,9 @@ export const ChatSettingSubModule = {
             Store.set("contactList", list);
             this.contactInfo = list[idx];
             EventBus.emit("contactInfoChange", this.contactId);
-            // 插入聊天系统记录
+            // 修改自己头像，带上图片
             if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
-              window.ChatModule.pushSystemNotice("我更换了自己的头像");
+              window.ChatModule.pushSystemNotice("我更换了自己的头像", base64Img);
             }
             Toast.show("我的头像已更新，全部界面同步刷新");
             this.render();
@@ -458,7 +458,7 @@ export const ChatSettingSubModule = {
           Store.set("contactList", list);
           this.contactInfo = list[idx];
           EventBus.emit("contactInfoChange", this.contactId);
-          // 插入聊天系统记录
+          // 清空自己头像，不带图片
           if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
             window.ChatModule.pushSystemNotice("我清空了自己的头像");
           }
