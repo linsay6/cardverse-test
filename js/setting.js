@@ -2,7 +2,6 @@ import { ThemeManager } from './core/css-theme.js';
 import { Toast } from './core/toast.js';
 import { Store } from './core/store.js';
 import { EventBus } from './core/context.js';
-
 export const SettingModule = {
   rootEl: null,
   page: "home",
@@ -15,6 +14,15 @@ export const SettingModule = {
     { title: "导出全部数据", page: "system", key: "exportData" },
     { title: "导入数据", page: "system", key: "importData" },
   ],
+  // 需要导出/导入的全部存储key，新增存储在这里追加
+  backupKeys: [
+    "contactList",
+    "app-theme",
+    "cardList",
+    "desktopConfig",
+    "activeContactId"
+  ],
+
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
@@ -25,14 +33,12 @@ export const SettingModule = {
       this.page = "contact";
       this.render();
     });
-
     // 新增：监听联系人信息变更，若当前正在联系人列表页自动刷新
     EventBus.on("contactInfoChange", () => {
       if (this.page === "contact") {
         this.render();
       }
     });
-
     this.render();
   },
   getContactList() {
@@ -45,6 +51,77 @@ export const SettingModule = {
     Store.set("activeContactId", id);
     document.dispatchEvent(new CustomEvent("contact:change", { detail: id }));
   },
+
+  /** 导出全部数据 */
+  async exportAllData() {
+    try {
+      Toast.show("正在打包备份数据...");
+      const backupData = {};
+      for (const key of this.backupKeys) {
+        backupData[key] = Store.get(key, null);
+      }
+      backupData._backupMeta = {
+        createAt: new Date().toISOString(),
+        appName: "Cardverse"
+      };
+      const jsonStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const fileName = `Cardverse数据备份-${y}-${m}-${day}.json`;
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      Toast.show(`备份文件已下载：${fileName}`);
+    } catch (err) {
+      console.error('导出失败', err);
+      Toast.show('导出失败：' + err.message);
+    }
+  },
+
+  /** 导入备份数据，覆盖写入，导入完成自动刷新 */
+  async importData() {
+    try {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = async (ev) => {
+        const file = ev.target.files[0];
+        if (!file) return;
+        Toast.show('正在读取备份文件...');
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data._backupMeta || data._backupMeta.appName !== "Cardverse") {
+          Toast.show('不是Cardverse合法备份文件！');
+          return;
+        }
+        if (!confirm('确认导入？导入后会覆盖当前全部本地数据，联系人、头像、聊天配置都会替换！')) {
+          return;
+        }
+        Toast.show('正在写入数据，请不要关闭页面，鸿蒙手机耐心等待...');
+        const keys = Object.keys(data);
+        for (const k of keys) {
+          if (k === '_backupMeta') continue;
+          await Store.setAsync(k, data[k]);
+        }
+        Toast.show('✅ 导入完成，即将刷新页面');
+        setTimeout(() => location.reload(), 800);
+      };
+      input.click();
+    } catch (err) {
+      console.error('导入失败', err);
+      Toast.show('导入失败，文件损坏或者格式错误');
+    }
+  },
+
   render() {
     if (!this.rootEl) return;
     this.rootEl.innerHTML = "";
@@ -175,8 +252,8 @@ export const SettingModule = {
         <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">数据导入 / 导出</div>
         <div style="font-size:13px;color:var(--color-text-2);margin-bottom:8px">聊天记录、字卡、配置备份</div>
         <div style="display:flex;gap:8px;">
-          <button style="flex:1;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">导出全部数据</button>
-          <button style="flex:1;padding:8px;border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-text);border-radius:var(--radius-btn)">导入数据</button>
+          <button id="btn-export-all" style="flex:1;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">导出全部数据</button>
+          <button id="btn-import" style="flex:1;padding:8px;border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-text);border-radius:var(--radius-btn)">导入数据</button>
         </div>
       </div>
       `;
@@ -237,6 +314,8 @@ export const SettingModule = {
       wrap.innerHTML += html;
     }
     this.rootEl.appendChild(wrap);
+
+    // 返回按钮
     const backBtn = document.getElementById('back-home');
     if(backBtn){
       backBtn.onclick = ()=>{
@@ -251,6 +330,17 @@ export const SettingModule = {
         this.render();
       }
     }
+
+    // 导入导出按钮绑定
+    const exportBtn = document.getElementById("btn-export-all");
+    if(exportBtn){
+      exportBtn.onclick = ()=> this.exportAllData();
+    }
+    const importBtn = document.getElementById("btn-import");
+    if(importBtn){
+      importBtn.onclick = ()=> this.importData();
+    }
+
     const gotoContactBtn = document.getElementById('btn-goto-contact-list');
     if(gotoContactBtn){
       gotoContactBtn.onclick = ()=>{
