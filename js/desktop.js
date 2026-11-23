@@ -8,6 +8,8 @@ const CARD_WIDTH = 70;
 const CARD_HEIGHT = 88;
 const WIDGET_AREA_HEIGHT = 120;
 const INDICATOR_HEIGHT = 30;
+const GAP = 16;
+const SNAP_DISTANCE = 12;
 
 // ========== 36个功能卡片元数据 ==========
 const CARD_META = [
@@ -65,6 +67,8 @@ export const DesktopModule = {
   dragStartY: 0,
   cardOrigX: 0,
   cardOrigY: 0,
+  dragPageIndex: 0,
+  _uploadTargetCardId: null,
 
   init(selector) {
     this.rootEl = document.querySelector(selector);
@@ -74,10 +78,20 @@ export const DesktopModule = {
     this.render();
     this.bindGlobalEvents();
 
-    // 监听主题变化自动适配（CSS变量驱动，无需重渲染，此处预留扩展）
     EventBus.on('themeChange', () => {
-      // 样式已通过CSS变量自动同步，无需额外操作
+      this.render();
     });
+  },
+
+  enterEditMode() {
+    this.isEditMode = true;
+    this.render();
+    Toast.show('已进入桌面编辑模式');
+  },
+  exitEditMode() {
+    this.isEditMode = false;
+    this.render();
+    Toast.show('已退出编辑模式');
   },
 
   // ========== 配置读写 ==========
@@ -95,28 +109,44 @@ export const DesktopModule = {
     Store.set(STORAGE_KEY, this.config);
   },
 
+  // 自动排布全部36图标到多页
   getDefaultConfig() {
-    // 默认第一页放置8个核心功能，2行4列布局
-    const defaultCards = [
-      { id: 'chat', x: 24, y: 140, customIcon: '' },
-      { id: 'card', x: 116, y: 140, customIcon: '' },
-      { id: 'contact', x: 208, y: 140, customIcon: '' },
-      { id: 'treehole', x: 300, y: 140, customIcon: '' },
-      { id: 'tarot', x: 24, y: 250, customIcon: '' },
-      { id: 'house', x: 116, y: 250, customIcon: '' },
-      { id: 'audit', x: 208, y: 250, customIcon: '' },
-      { id: 'setting', x: 300, y: 250, customIcon: '' },
-    ];
+    const pages = [];
+    const perRow = 4;
+    const perPageRow = 4;
+    const perPage = perRow * perPageRow;
+    let pageCards = [];
 
+    CARD_META.forEach((meta, idx) => {
+      const col = idx % perRow;
+      const row = Math.floor((idx % perPage) / perRow);
+      const x = 20 + col * (CARD_WIDTH + GAP);
+      const y = 20 + row * (CARD_HEIGHT + GAP);
+      pageCards.push({
+        id: meta.id,
+        x,
+        y,
+        customIcon: ''
+      });
+      if(pageCards.length >= perPage) {
+        pages.push({
+          id: Date.now() + Math.random(),
+          widgets: [],
+          cards: pageCards
+        })
+        pageCards = [];
+      }
+    })
+    if(pageCards.length > 0) {
+      pages.push({
+        id: Date.now() + Math.random(),
+        widgets: [],
+        cards: pageCards
+      })
+    }
     return {
       currentPage: 0,
-      pages: [
-        {
-          id: 0,
-          widgets: [], // 小组件预留
-          cards: defaultCards
-        }
-      ]
+      pages
     };
   },
 
@@ -126,6 +156,28 @@ export const DesktopModule = {
 
   getCardMeta(id) {
     return CARD_META.find(item => item.id === id);
+  },
+
+  // 寻找页面中空位，返回坐标，无空位返回null
+  findEmptyPosition(page) {
+    const pageW = this.rootEl.clientWidth;
+    const pageH = this.rootEl.clientHeight - WIDGET_AREA_HEIGHT - INDICATOR_HEIGHT;
+    const maxCol = Math.floor((pageW - 20) / (CARD_WIDTH + GAP));
+    const maxRow = Math.floor((pageH - 20) / (CARD_HEIGHT + GAP));
+
+    for(let r=0; r<maxRow; r++){
+      for(let c=0; c<maxCol; c++){
+        const testX = 20 + c * (CARD_WIDTH + GAP);
+        const testY = 20 + r * (CARD_HEIGHT + GAP);
+        let occupied = false;
+        for(const cd of page.cards) {
+          const overlap = !(testX + CARD_WIDTH < cd.x || testX > cd.x + CARD_WIDTH || testY + CARD_HEIGHT < cd.y || testY > cd.y + CARD_HEIGHT)
+          if(overlap) { occupied = true; break; }
+        }
+        if(!occupied) return {x: testX, y: testY};
+      }
+    }
+    return null;
   },
 
   // ========== 主渲染 ==========
@@ -198,7 +250,7 @@ export const DesktopModule = {
         justify-content: center;
         gap: 6px;
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.25);
+        background: var(--color-bg-card, rgba(255, 255, 255, 0.25));
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         border: 1px solid var(--color-border);
@@ -252,31 +304,12 @@ export const DesktopModule = {
         justify-content: center;
         cursor: pointer;
       }
-      .desktop-edit-bar {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        z-index: 10;
-        display: flex;
-        gap: 8px;
-      }
-      .edit-mode-btn {
-        padding: 5px 12px;
-        border: 1px solid var(--color-border);
-        border-radius: 999px;
-        background: rgba(255,255,255,0.3);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        color: var(--color-text);
-        font-size: 12px;
-        cursor: pointer;
-      }
       .page-control-btn {
         padding: 4px 8px;
         font-size: 12px;
         border: 1px solid var(--color-border);
         border-radius: 6px;
-        background: rgba(255,255,255,0.3);
+        background: var(--color-bg-card, rgba(255,255,255,0.3));
         color: var(--color-text);
         cursor: pointer;
       }
@@ -312,7 +345,9 @@ export const DesktopModule = {
         flex: 1;
         overflow-y: auto;
         padding: 8px;
+        scrollbar-width: none;
       }
+      .add-card-list::-webkit-scrollbar { display: none; }
       .add-card-item {
         display: flex;
         align-items: center;
@@ -325,22 +360,26 @@ export const DesktopModule = {
       .add-card-item:hover { background: rgba(0,0,0,0.05); }
       .add-card-item .icon { font-size: 22px; }
       #icon-upload-input { display: none; }
+      .exit-edit-tip {
+        position: fixed;
+        bottom: 44px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+      }
+      .exit-edit-btn {
+        padding: 6px 14px;
+        border-radius: 999px;
+        border:1px solid var(--color-border);
+        background: var(--color-bg-card);
+        color: var(--color-text);
+      }
     `;
     document.head.appendChild(styleEl);
 
     // 主容器
     const canvas = document.createElement('div');
     canvas.id = 'desktop-canvas';
-
-    // 编辑栏
-    const editBar = document.createElement('div');
-    editBar.className = 'desktop-edit-bar';
-    editBar.innerHTML = `
-      <button class="edit-mode-btn" id="toggle-edit-btn">
-        ${this.isEditMode ? '完成' : '编辑'}
-      </button>
-    `;
-    canvas.appendChild(editBar);
 
     // 小组件预留区域
     const widgetArea = document.createElement('div');
@@ -355,7 +394,6 @@ export const DesktopModule = {
     pagesTrack.className = 'desktop-pages-track';
     pagesTrack.id = 'desktop-pages-track';
 
-    // 渲染每一页
     this.config.pages.forEach((page, idx) => {
       const pageEl = document.createElement('div');
       pageEl.className = 'desktop-page';
@@ -379,13 +417,23 @@ export const DesktopModule = {
     uploadInput.id = 'icon-upload-input';
     canvas.appendChild(uploadInput);
 
+    // 编辑模式底部退出按钮
+    if(this.isEditMode) {
+      const exitWrap = document.createElement('div');
+      exitWrap.className = 'exit-edit-tip';
+      exitWrap.innerHTML = `<button class="exit-edit-btn" id="exit-edit">完成编辑</button>`
+      canvas.appendChild(exitWrap);
+    }
+
     this.rootEl.appendChild(canvas);
 
     // 渲染卡片、指示器
     this.renderAllCards();
     this.renderPageIndicator();
     this.bindPageScroll();
-    this.bindEditButton();
+    if(this.isEditMode) {
+      document.getElementById('exit-edit').onclick = ()=>this.exitEditMode();
+    }
   },
 
   // ========== 卡片渲染 ==========
@@ -402,6 +450,7 @@ export const DesktopModule = {
         const cardEl = document.createElement('div');
         cardEl.className = 'desktop-card';
         cardEl.dataset.cardId = cardData.id;
+        cardEl.dataset.pageIndex = pageIdx;
         cardEl.style.left = `${cardData.x}px`;
         cardEl.style.top = `${cardData.y}px`;
 
@@ -415,7 +464,7 @@ export const DesktopModule = {
           ${this.isEditMode ? '<button class="card-hide-btn">×</button>' : ''}
         `;
 
-        this.bindCardEvents(cardEl, cardData);
+        this.bindCardEvents(cardEl, cardData, pageIdx);
         pageEl.appendChild(cardEl);
       });
     });
@@ -426,7 +475,6 @@ export const DesktopModule = {
     if (!indicator) return;
     indicator.innerHTML = '';
 
-    // 编辑模式显示增删页面按钮
     if (this.isEditMode) {
       const addBtn = document.createElement('button');
       addBtn.className = 'page-control-btn';
@@ -435,7 +483,6 @@ export const DesktopModule = {
       indicator.appendChild(addBtn);
     }
 
-    // 圆点
     this.config.pages.forEach((_, idx) => {
       const dot = document.createElement('div');
       dot.className = `page-dot ${idx === this.config.currentPage ? 'active' : ''}`;
@@ -443,7 +490,6 @@ export const DesktopModule = {
       indicator.appendChild(dot);
     });
 
-    // 编辑模式显示删除页面按钮
     if (this.isEditMode && this.config.pages.length > 1) {
       const delBtn = document.createElement('button');
       delBtn.className = 'page-control-btn';
@@ -452,11 +498,10 @@ export const DesktopModule = {
       indicator.appendChild(delBtn);
     }
 
-    // 编辑模式显示添加图标按钮
     if (this.isEditMode) {
       const addCardBtn = document.createElement('button');
       addCardBtn.className = 'page-control-btn';
-      addCardBtn.innerText = '+ 图标';
+      addCardBtn.innerText = '+ 添加图标';
       addCardBtn.style.marginLeft = '8px';
       addCardBtn.onclick = () => this.showAddCardModal();
       indicator.appendChild(addCardBtn);
@@ -464,43 +509,39 @@ export const DesktopModule = {
   },
 
   // ========== 事件绑定 ==========
-  bindCardEvents(cardEl, cardData) {
+  bindCardEvents(cardEl, cardData, pageIndex) {
     const cardId = cardData.id;
 
-    // 点击事件
     cardEl.onclick = (e) => {
       if (e.target.classList.contains('card-hide-btn')) return;
       if (this.isEditMode) {
-        // 编辑模式：弹出操作菜单
         this.openCardMenu(cardId, cardEl);
       } else {
-        // 正常模式：执行跳转或提示
         this.handleCardClick(cardId);
       }
     };
 
-    // 隐藏按钮
     const hideBtn = cardEl.querySelector('.card-hide-btn');
     if (hideBtn) {
       hideBtn.onclick = (e) => {
         e.stopPropagation();
-        this.hideCard(cardId);
+        this.hideCard(pageIndex, cardId);
       };
     }
 
-    // 拖拽事件（编辑模式才启用）
     if (this.isEditMode) {
-      this.bindDragEvents(cardEl, cardData);
+      this.bindDragEvents(cardEl, cardData, pageIndex);
     }
   },
 
-  bindDragEvents(cardEl, cardData) {
+  bindDragEvents(cardEl, cardData, pageIndex) {
     const startDrag = (clientX, clientY) => {
       this.draggingCardId = cardData.id;
       this.dragStartX = clientX;
       this.dragStartY = clientY;
       this.cardOrigX = cardData.x;
       this.cardOrigY = cardData.y;
+      this.dragPageIndex = pageIndex;
       cardEl.classList.add('dragging');
     };
 
@@ -509,12 +550,20 @@ export const DesktopModule = {
       const dx = clientX - this.dragStartX;
       const dy = clientY - this.dragStartY;
 
-      // 边界限制
       const pageEl = cardEl.parentElement;
       const maxX = pageEl.clientWidth - CARD_WIDTH;
       const maxY = pageEl.clientHeight - CARD_HEIGHT;
       let newX = Math.max(0, Math.min(maxX, this.cardOrigX + dx));
       let newY = Math.max(0, Math.min(maxY, this.cardOrigY + dy));
+
+      // 磁吸对齐
+      const allCards = this.config.pages[pageIndex].cards.filter(c=>c.id!==cardData.id);
+      for(const c of allCards) {
+        if(Math.abs(newX - c.x) < SNAP_DISTANCE) newX = c.x;
+        if(Math.abs(newY - c.y) < SNAP_DISTANCE) newY = c.y;
+        if(Math.abs((newX + CARD_WIDTH) - (c.x + CARD_WIDTH)) < SNAP_DISTANCE) newX = c.x;
+        if(Math.abs((newY + CARD_HEIGHT) - (c.y + CARD_HEIGHT)) < SNAP_DISTANCE) newY = c.y;
+      }
 
       cardEl.style.left = `${newX}px`;
       cardEl.style.top = `${newY}px`;
@@ -524,8 +573,7 @@ export const DesktopModule = {
       if (this.draggingCardId !== cardData.id) return;
       cardEl.classList.remove('dragging');
 
-      // 更新数据
-      const page = this.getCurrentPage();
+      const page = this.config.pages[pageIndex];
       const target = page.cards.find(c => c.id === cardData.id);
       if (target) {
         target.x = parseInt(cardEl.style.left);
@@ -537,7 +585,6 @@ export const DesktopModule = {
       this.draggingCardId = null;
     };
 
-    // 鼠标事件
     cardEl.addEventListener('mousedown', (e) => {
       e.preventDefault();
       startDrag(e.clientX, e.clientY);
@@ -553,7 +600,6 @@ export const DesktopModule = {
       document.addEventListener('mouseup', onMouseUp);
     });
 
-    // 触屏事件
     cardEl.addEventListener('touchstart', (e) => {
       const touch = e.touches[0];
       startDrag(touch.clientX, touch.clientY);
@@ -585,46 +631,39 @@ export const DesktopModule = {
     });
   },
 
-  bindEditButton() {
-    const btn = document.getElementById('toggle-edit-btn');
-    if (btn) {
-      btn.onclick = () => {
-        this.isEditMode = !this.isEditMode;
-        this.render();
-        Toast.show(this.isEditMode ? '已进入编辑模式' : '已退出编辑模式');
-      };
-    }
-  },
-
   bindGlobalEvents() {
-    // 图标上传处理
     const uploadInput = document.getElementById('icon-upload-input');
     if (uploadInput) {
-      uploadInput.onchange = (e) => {
+      uploadInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         if (!file.type.startsWith('image/')) {
           Toast.show('仅支持图片格式');
+          uploadInput.value = '';
           return;
         }
-
-        const reader = new FileReader();
-        reader.onload = (res) => {
-          const base64 = res.target.result;
+        try {
+          const reader = new FileReader();
+          await new Promise((res, rej)=>{
+            reader.onload = res;
+            reader.onerror = rej;
+            reader.readAsDataURL(file);
+          })
+          const base64 = reader.result;
           const cardId = this._uploadTargetCardId;
-          if (!cardId) return;
-
+          if (!cardId) { uploadInput.value=''; return; }
           const page = this.getCurrentPage();
           const card = page.cards.find(c => c.id === cardId);
           if (card) {
             card.customIcon = base64;
             this.saveConfig();
             this.renderAllCards();
-            Toast.show('图标已更换');
+            Toast.show('图标更换成功');
           }
-          this._uploadTargetCardId = null;
-        };
-        reader.readAsDataURL(file);
+        } catch(err) {
+          Toast.show('图片读取失败，请重试');
+        }
+        this._uploadTargetCardId = null;
         uploadInput.value = '';
       };
     }
@@ -640,7 +679,6 @@ export const DesktopModule = {
       return;
     }
 
-    // 原有跳转逻辑，完全兼容旧版
     if (meta.type === 'tab') {
       const tabBtn = document.querySelector(`.tab-btn[data-tab="${meta.target}"]`);
       if (tabBtn) tabBtn.click();
@@ -655,15 +693,14 @@ export const DesktopModule = {
   },
 
   openCardMenu(cardId, cardEl) {
-    // 简单操作：直接触发图标上传
     if (confirm('是否更换该图标？')) {
       this._uploadTargetCardId = cardId;
       document.getElementById('icon-upload-input').click();
     }
   },
 
-  hideCard(cardId) {
-    const page = this.getCurrentPage();
+  hideCard(pageIdx, cardId) {
+    const page = this.config.pages[pageIdx];
     const idx = page.cards.findIndex(c => c.id === cardId);
     if (idx > -1) {
       page.cards.splice(idx, 1);
@@ -674,12 +711,17 @@ export const DesktopModule = {
   },
 
   showAddCardModal() {
-    // 找出当前页没有的卡片
-    const currentPageIds = this.getCurrentPage().cards.map(c => c.id);
+    const currentPage = this.getCurrentPage();
+    const currentPageIds = currentPage.cards.map(c => c.id);
     const available = CARD_META.filter(m => !currentPageIds.includes(m.id));
 
     if (available.length === 0) {
-      Toast.show('所有图标都已添加到当前页');
+      Toast.show('所有图标都已经在当前页面了');
+      return;
+    }
+    const emptyPos = this.findEmptyPosition(currentPage);
+    if(!emptyPos) {
+      Toast.show('当前页面空间已满，请新建页面或者移除部分图标');
       return;
     }
 
@@ -710,25 +752,23 @@ export const DesktopModule = {
     mask.querySelectorAll('.add-card-item').forEach(item => {
       item.onclick = () => {
         const id = item.dataset.id;
-        this.addCardToPage(id);
+        this.addCardToPage(id, emptyPos);
         mask.remove();
       };
     });
   },
 
-  addCardToPage(cardId) {
+  addCardToPage(cardId, pos) {
     const page = this.getCurrentPage();
-    // 默认放到页面左上角偏移位置
-    const offsetY = 20 + page.cards.length * 10;
     page.cards.push({
       id: cardId,
-      x: 24,
-      y: 20 + offsetY,
+      x: pos.x,
+      y: pos.y,
       customIcon: ''
     });
     this.saveConfig();
     this.renderAllCards();
-    Toast.show('已添加到桌面');
+    Toast.show('已添加到当前桌面页');
   },
 
   switchPage(index) {
@@ -749,7 +789,6 @@ export const DesktopModule = {
     });
     this.saveConfig();
     this.render();
-    // 自动切到新页面
     setTimeout(() => {
       this.switchPage(this.config.pages.length - 1);
     }, 50);
@@ -761,7 +800,7 @@ export const DesktopModule = {
       Toast.show('至少保留一个桌面页');
       return;
     }
-    if (!confirm('确定删除当前桌面页？该页所有图标将被移除')) return;
+    if (!confirm('确定删除当前桌面页？页面内图标全部移除')) return;
 
     this.config.pages.splice(this.config.currentPage, 1);
     this.config.currentPage = Math.max(0, this.config.currentPage - 1);
