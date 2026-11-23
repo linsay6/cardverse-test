@@ -12,7 +12,7 @@ export const Toast = {
       toastEl.style.cssText = `
 position: fixed;
 left: 50%;
-top: 24px;
+top: 134px;
 transform: translateX(-50%);
 background: #222222;
 color: #ffffff;
@@ -30,7 +30,6 @@ box-shadow:0 2px 12px rgba(0,0,0,0.15);
     }
     toastEl.textContent = msg;
     toastEl.style.opacity = '1';
-
     toastEl._timer = setTimeout(() => {
       toastEl.style.opacity = '0';
       setTimeout(() => {
