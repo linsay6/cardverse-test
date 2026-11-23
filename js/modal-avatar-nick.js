@@ -281,8 +281,14 @@ export const ModalAvatarNick = {
           break;
       }
     }
-    if(this.chatModuleRef?.pushSystemNotice){
-      this.chatModuleRef.pushSystemNotice(logText);
+        if(this.chatModuleRef?.pushSystemNotice){
+        // 同意头像变更：带上头像base64，聊天气泡显示头像预览
+        if(action === "accept" && (applyObj.targetType === "taAvatar" || applyObj.targetType === "myAvatar")){
+            this.chatModuleRef.pushSystemNotice(logText, applyObj.newVal);
+        }else{
+            // 拒绝 / 昵称变更：仅输出文字，无预览图
+            this.chatModuleRef.pushSystemNotice(logText);
+        }
     }
     Store.set("contactList",list);
     this.contactInfo = contact;
