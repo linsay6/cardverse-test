@@ -602,14 +602,14 @@ export const ModalAvatarNick = {
         `;
         itemDiv.onclick = (e)=>{
           if(e.target.tagName==="BUTTON") return;
-          if(this.subTab === "mine"){
-            // 我的头像池：直接设置，完整持久化保存
-            this.contactInfo.myAvatar = src;
-            const logText = `我更换了自己的头像`;
-            if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(logText);
-            this.saveContact();
-            Toast.show("已更换我的头像");
-            this.render();
+            if(this.subTab === "mine"){
+              // 我的头像池：直接设置，完整持久化保存
+              this.contactInfo.myAvatar = src;
+              const logText = `我更换了自己的头像`;
+              if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(logText, src);
+              this.saveContact();
+              Toast.show("已更换我的头像");
+              this.render();
           }else{
             const desc = `申请变更对方头像`;
             const applyObj = {targetType,newVal:src,desc,from:"me"};
