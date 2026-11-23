@@ -12,7 +12,7 @@ export const Toast = {
       toastEl.style.cssText = `
 position: fixed;
 left: 50%;
-top: 500px;
+top: 350px;
 transform: translateX(-50%);
 background: #222222;
 color: #ffffff;
