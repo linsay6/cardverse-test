@@ -2,6 +2,7 @@ import { ThemeManager } from './core/css-theme.js';
 import { Toast } from './core/toast.js';
 import { Store } from './core/store.js';
 import { EventBus } from './core/context.js';
+
 export const SettingModule = {
   rootEl: null,
   page: "home",
@@ -24,12 +25,14 @@ export const SettingModule = {
       this.page = "contact";
       this.render();
     });
+
     // 新增：监听联系人信息变更，若当前正在联系人列表页自动刷新
     EventBus.on("contactInfoChange", () => {
       if (this.page === "contact") {
         this.render();
       }
     });
+
     this.render();
   },
   getContactList() {
@@ -117,15 +120,6 @@ export const SettingModule = {
         <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">联系人 / 桌面</div>
         <div style="font-size:13px;color:var(--color-text-2);margin-bottom:8px">管理多个梦角联系人，切换对话桌面</div>
         <button id="btn-goto-contact-list" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">打开联系人列表</button>
-      </div>
-      <!-- ====【新增：桌面分页管理卡片】==== -->
-      <div style="border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:12px">
-        <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">桌面分页管理</div>
-        <div style="font-size:13px;color:var(--color-text-2);margin-bottom:8px">新增空白桌面页 / 删除桌面页（最少保留1页）</div>
-        <div style="display:flex;gap:8px">
-          <button id="desktop-add-page" style="flex:1;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">+新增空白桌面页</button>
-          <button id="desktop-del-page" style="flex:1;padding:8px;background:#c92a2a;color:#fff;border:none;border-radius:var(--radius-btn)">删除当前桌面页</button>
-        </div>
       </div>
       <div style="border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:12px">
         <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">外观</div>
@@ -243,8 +237,6 @@ export const SettingModule = {
       wrap.innerHTML += html;
     }
     this.rootEl.appendChild(wrap);
-
-    // -------------------------- 原有事件绑定开始 --------------------------
     const backBtn = document.getElementById('back-home');
     if(backBtn){
       backBtn.onclick = ()=>{
@@ -344,27 +336,5 @@ export const SettingModule = {
         this.render();
       }
     })
-
-    // =========【新增：桌面分页按钮事件】=========
-    const btnAddDesktopPage = document.getElementById("desktop-add-page");
-    if(btnAddDesktopPage){
-      btnAddDesktopPage.onclick = ()=>{
-        if(window.DesktopApi && typeof window.DesktopApi.addBlankPage === "function"){
-          window.DesktopApi.addBlankPage();
-        }
-      }
-    }
-    const btnDelDesktopPage = document.getElementById("desktop-del-page");
-    if(btnDelDesktopPage){
-      btnDelDesktopPage.onclick = ()=>{
-        if(!confirm("确认删除【当前正在使用】的这个桌面页？页内所有图标布局全部丢失，不可恢复！")) return;
-        if(window.DesktopApi && typeof window.DesktopApi.removePage === "function"){
-          const cfg = Store.get("desktop-config");
-          if(cfg){
-            window.DesktopApi.removePage(cfg.currentPage);
-          }
-        }
-      }
-    }
   }
 };
