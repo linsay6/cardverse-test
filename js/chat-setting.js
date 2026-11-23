@@ -36,10 +36,10 @@ export const ChatSettingSubModule = {
     const modal = document.createElement("div");
     modal.style.width = "85%";
     modal.style.maxWidth = "360px";
-    modal.style.background = "#fff";
+    modal.style.background = "var(--color-bg)";
     modal.style.borderRadius = "14px";
     modal.style.overflow = "hidden";
-    modal.innerHTML = `<div style="padding:16px 16px 8px;font-weight:bold;font-size:16px">${title}</div>`;
+    modal.innerHTML = `<div style="padding:16px 16px 8px;font-weight:bold;font-size:16px;color:var(--color-text)">${title}</div>`;
     optionList.forEach(opt => {
       const itemDiv = document.createElement("div");
       itemDiv.style.padding = "14px 16px";
@@ -47,8 +47,8 @@ export const ChatSettingSubModule = {
       itemDiv.style.display = "flex";
       itemDiv.style.justifyContent = "space-between";
       itemDiv.style.alignItems = "center";
-      itemDiv.style.borderBottom = "1px solid #eee";
-      itemDiv.innerHTML = `<span>${opt.label}</span> ${opt.value === currentVal ? `<span style="color:#7c68ee">✓</span>` : ""}`;
+      itemDiv.style.borderBottom = "1px solid var(--color-border)";
+      itemDiv.innerHTML = `<span style="color:var(--color-text)">${opt.label}</span> ${opt.value === currentVal ? `<span style="color:var(--color-main)">✓</span>` : ""}`;
       itemDiv.onclick = () => {
         mask.remove();
         onSelect(opt.value);
@@ -69,17 +69,17 @@ export const ChatSettingSubModule = {
     wrap.style.display = "flex";
     wrap.style.flexDirection = "column";
     const appTheme = Store.get("app-theme",{});
-    wrap.style.background = appTheme.colorBg || "#f7f7f7";
+    wrap.style.background = appTheme.colorBg || "var(--color-bg)";
     const header = document.createElement("div");
     header.style.display = "flex";
     header.style.alignItems = "center";
     header.style.gap = "10px";
     header.style.padding = "14px 16px";
-    header.style.borderBottom = "1px solid #eee";
-    header.style.background = "#fff";
+    header.style.borderBottom = "1px solid var(--color-border)";
+    header.style.background = "var(--color-bg)";
     header.innerHTML = `
-      <button id="csub-back" style="border:none;background:none;font-size:20px;cursor:pointer">←</button>
-      <span style="font-size:18px;font-weight:500;color:#222">聊天设置</span>
+      <button id="csub-back" style="border:none;background:none;font-size:20px;cursor:pointer;color:var(--color-text)">←</button>
+      <span style="font-size:18px;font-weight:500;color:var(--color-text)">聊天设置</span>
     `;
     wrap.appendChild(header);
     const contentWrap = document.createElement("div");
@@ -99,7 +99,7 @@ export const ChatSettingSubModule = {
     mainCard.style.overflow = "hidden";
     const tab1Wrap = document.createElement("div");
     tab1Wrap.style.display = "flex";
-    tab1Wrap.style.borderBottom = "1px solid #eee";
+    tab1Wrap.style.borderBottom = "1px solid var(--color-border)";
     this.tab1List.forEach(tName => {
       const tabEl = document.createElement("div");
       tabEl.innerText = tName;
@@ -109,6 +109,7 @@ export const ChatSettingSubModule = {
       tabEl.style.fontSize = "15px";
       tabEl.style.position = "relative";
       tabEl.style.cursor = "pointer";
+      tabEl.style.color = "var(--color-text)";
       if (this.activeTab1 === tName) {
         tabEl.style.fontWeight = "bold";
         const botLine = document.createElement("div");
@@ -117,7 +118,7 @@ export const ChatSettingSubModule = {
         botLine.style.left = "0";
         botLine.style.width = "100%";
         botLine.style.height = "2px";
-        botLine.style.background = "#222";
+        botLine.style.background = "var(--color-main)";
         tabEl.appendChild(botLine);
       }
       tabEl.onclick = () => {
@@ -130,7 +131,7 @@ export const ChatSettingSubModule = {
     if (this.activeTab1 === "功能") {
       const tab2Wrap = document.createElement("div");
       tab2Wrap.style.display = "flex";
-      tab2Wrap.style.borderBottom = "1px solid #eee";
+      tab2Wrap.style.borderBottom = "1px solid var(--color-border)";
       this.tab2List.forEach(tName => {
         const tabEl2 = document.createElement("div");
         tabEl2.innerText = tName;
@@ -140,6 +141,7 @@ export const ChatSettingSubModule = {
         tabEl2.style.fontSize = "14px";
         tabEl2.style.position = "relative";
         tabEl2.style.cursor = "pointer";
+        tabEl2.style.color = "var(--color-text)";
         if (this.activeTab2 === tName) {
           tabEl2.style.fontWeight = "bold";
           const botLine2 = document.createElement("div");
@@ -148,7 +150,7 @@ export const ChatSettingSubModule = {
           botLine2.style.left = "0";
           botLine2.style.width = "100%";
           botLine2.style.height = "2px";
-          botLine2.style.background = "#222";
+          botLine2.style.background = "var(--color-main)";
           tabEl2.appendChild(botLine2);
         }
         tabEl2.onclick = () => {
@@ -170,11 +172,11 @@ export const ChatSettingSubModule = {
         justify-content:space-between;
         align-items:center;
         padding:14px 0;
-        border-bottom:1px solid #eee;
+        border-bottom:1px solid var(--color-border);
         cursor:pointer;
       }
-      .row-label{font-size:14px;color:#222}
-      .row-value{font-size:13px;color:#888;margin-left:auto}
+      .row-label{font-size:14px;color:var(--color-text)}
+      .row-value{font-size:13px;color:var(--color-text-2);margin-left:auto}
       </style>
       <div class="setting-row" id="row-avatar-shape">
         <span class="row-label">头像形状</span>
@@ -202,12 +204,12 @@ export const ChatSettingSubModule = {
         justify-content:space-between;
         align-items:center;
         padding:14px 0;
-        border-bottom:1px solid #eee;
+        border-bottom:1px solid var(--color-border);
         cursor:pointer;
       }
-      .row-label{font-size:14px;color:#222;display:flex;align-items:center;gap:8px}
-      .row-value{font-size:13px;color:#888;margin-left:auto}
-      .tip-text{font-size:12px;color:#999;padding:8px 0 12px}
+      .row-label{font-size:14px;color:var(--color-text);display:flex;align-items:center;gap:8px}
+      .row-value{font-size:13px;color:var(--color-text-2);margin-left:auto}
+      .tip-text{font-size:12px;color:var(--color-text-2);padding:8px 0 12px}
       </style>
       <div class="tip-text">昵称与头像（聊天专用 · 与桌面各自独立，互不同步）</div>
        <div class="setting-row" id="row-contact-nick">
@@ -245,17 +247,17 @@ export const ChatSettingSubModule = {
         justify-content:space-between;
         align-items:center;
         padding:14px 0;
-        border-bottom:1px solid #eee;
+        border-bottom:1px solid var(--color-border);
         cursor:pointer;
       }
       </style>
       <div class="setting-row" id="btn-clear-chat-log">
-        <span>清空当前会话聊天记录</span>
+        <span style="color:var(--color-text)">清空当前会话聊天记录</span>
         <span style="color:#f44336">></span>
       </div>
       `;
     } else {
-      cardContent.innerHTML = `<div style="padding:30px 0;text-align:center;color:#888">页面待开发</div>`;
+      cardContent.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--color-text-2)">页面待开发</div>`;
     }
     mainCard.appendChild(cardContent);
     contentWrap.appendChild(mainCard);
