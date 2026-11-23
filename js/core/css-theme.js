@@ -14,7 +14,8 @@ export const ThemeManager = {
     radiusGlobal: "18px",
     radiusCard: "14px",
     radiusBtn: "10px",
-    tabInactive: "#999"
+    tabInactive: "#999",
+    colorBgCard: "rgba(255,255,255,0.24)"
   },
   // 当前生效的主题
   currentTheme: {},
@@ -41,7 +42,7 @@ export const ThemeManager = {
     root.style.setProperty("--radius-btn", this.currentTheme.radiusBtn);
     root.style.setProperty("--tab-inactive", this.currentTheme.tabInactive);
     root.style.setProperty("--tab-active", this.currentTheme.colorMain);
-
+    root.style.setProperty("--color-bg-card", this.currentTheme.colorBgCard);
     // 全局：占位提示文字、时间标签跟随次要文字颜色
     let globalStyle = document.getElementById('global‑theme‑aux‑style');
     if (!globalStyle) {
@@ -59,7 +60,6 @@ export const ThemeManager = {
   font-size:11px;
 }
 `;
-
     // 触发主题变更事件，通知所有模块刷新UI
     EventBus.emit("themeChange", this.currentTheme);
   },
