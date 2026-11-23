@@ -77,7 +77,7 @@ export const DesktopModule = {
     this.render();
     this.bindGlobalEvents();
 
-    // 主题变更时自动适配样式
+    // 主题变更时自动适配样式（CSS变量原生生效，此处仅做兜底重绘）
     EventBus.on('themeChange', () => {
       this.renderCards();
     });
@@ -123,48 +123,6 @@ export const DesktopModule = {
 
   getCurrentPage() {
     return this.config.pages[this.config.currentPage];
-  },
-
-  // =========【对外API：新增空白桌面页，给setting.js调用】=========
-  addBlankPage() {
-    const newId = Date.now();
-    this.config.pages.push({
-      id: newId,
-      cards: [],
-      widgets: []
-    });
-    this.saveConfig();
-    Toast.show("已新增空白桌面页");
-    // 如果当前模块已经渲染，刷新指示器
-    if(this.rootEl){
-      this.renderPagination();
-    }
-  },
-
-  // =========【对外API：删除指定索引桌面页，禁止删最后一页】=========
-  removePage(pageIndex) {
-    if(this.config.pages.length <= 1){
-      Toast.show("至少保留1个桌面页，无法删除");
-      return false;
-    }
-    if(pageIndex <0 || pageIndex >= this.config.pages.length){
-      Toast.show("页面索引非法");
-      return false;
-    }
-    // 删除数组对应项
-    this.config.pages.splice(pageIndex,1);
-    // 如果删掉的是当前激活页，自动切到前一页
-    if(this.config.currentPage >= this.config.pages.length){
-      this.config.currentPage = this.config.pages.length - 1;
-    }
-    this.saveConfig();
-    Toast.show("桌面页已删除");
-    // 已经渲染则刷新视图
-    if(this.rootEl){
-      this.renderCards();
-      this.renderPagination();
-    }
-    return true;
   },
 
   render() {
@@ -524,6 +482,3 @@ cursor: pointer;
     });
   }
 };
-
-// 把API挂载window，给setting模块跨模块调用
-window.DesktopApi = DesktopModule;
