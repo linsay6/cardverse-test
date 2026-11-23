@@ -246,43 +246,41 @@ export const ModalAvatarNick = {
     const taNick = contact?.name||"TA";
     let logText = "";
 
-    // 文案对齐图2，自然语言描述
     if(action === "accept"){
       switch(applyObj.targetType){
-        case "taAvatar": 
-          contact.avatar = applyObj.newVal; 
+        case "taAvatar":
+          contact.avatar = applyObj.newVal;
           logText = applyObj.from==="ta" ? `TA更换了自己的头像` : `TA同意了我的换头像邀请`;
           break;
-        case "taNick": 
-          contact.name = applyObj.newVal; 
+        case "taNick":
+          contact.name = applyObj.newVal;
           logText = applyObj.from==="ta" ? `TA更换了自己的昵称为：${applyObj.newVal}` : `TA同意了我的换昵称邀请，昵称换成了「${applyObj.newVal}」`;
           break;
-        case "myAvatar": 
-          contact.myAvatar = applyObj.newVal; 
+        case "myAvatar":
+          contact.myAvatar = applyObj.newVal;
           logText = applyObj.from==="ta" ? `我同意了TA的换头像邀请` : `我更换了自己的头像`;
           break;
-        case "myNick": 
-          contact.myNick = applyObj.newVal; 
+        case "myNick":
+          contact.myNick = applyObj.newVal;
           logText = applyObj.from==="ta" ? `我同意了TA的换昵称邀请，我的昵称换成了「${applyObj.newVal}」` : `我更换了自己的昵称为：${applyObj.newVal}`;
           break;
       }
     }else{
       switch(applyObj.targetType){
-        case "taAvatar": 
+        case "taAvatar":
           logText = applyObj.from==="ta" ? `TA取消了换头像申请` : `TA拒绝了我的换头像邀请`;
           break;
-        case "taNick": 
+        case "taNick":
           logText = applyObj.from==="ta" ? `TA取消了换昵称申请` : `TA拒绝了我的换昵称邀请，昵称保持不变`;
           break;
-        case "myAvatar": 
+        case "myAvatar":
           logText = applyObj.from==="ta" ? `我拒绝了TA的换头像邀请` : `我取消了换头像申请`;
           break;
-        case "myNick": 
+        case "myNick":
           logText = applyObj.from==="ta" ? `我拒绝了TA的换昵称邀请，我的昵称保持不变` : `我取消了换昵称申请`;
           break;
       }
     }
-    // 写入聊天记录，持久化保存
     if(this.chatModuleRef?.pushSystemNotice){
       this.chatModuleRef.pushSystemNotice(logText);
     }
@@ -303,7 +301,6 @@ export const ModalAvatarNick = {
     panel.style.background = "#fff";
     panel.style.borderRadius = "16px";
     panel.style.overflow = "auto";
-    // 隐藏弹窗滚动条，保留滚轮功能
     panel.style.scrollbarWidth = "none";
     panel.style.msOverflowStyle = "none";
     panel.id = "modal-panel";
@@ -598,8 +595,8 @@ export const ModalAvatarNick = {
         `;
         itemDiv.onclick = (e)=>{
           if(e.target.tagName==="BUTTON") return;
-          // 我的池子直接生效，不弹申请框
           if(this.subTab === "mine"){
+            // 我的头像池：直接设置，完整持久化保存
             this.contactInfo.myAvatar = src;
             const logText = `我更换了自己的头像`;
             if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(logText);
@@ -738,8 +735,8 @@ export const ModalAvatarNick = {
       btn.onclick = ()=>{
         const idx = Number(btn.dataset.applyIdx);
         const val = poolArr[idx];
-        // 我的昵称池直接生效
         if(this.subTab === "mine"){
+          //我的昵称池，直接修改并完整持久化保存
           this.contactInfo.myNick = val;
           if(this.chatModuleRef?.pushSystemNotice) this.chatModuleRef.pushSystemNotice(`我更换了自己的昵称为：${val}`);
           this.saveContact();
