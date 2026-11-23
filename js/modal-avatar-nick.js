@@ -281,15 +281,16 @@ export const ModalAvatarNick = {
           break;
       }
     }
-        if(this.chatModuleRef?.pushSystemNotice){
-        // 同意头像变更：带上头像base64，聊天气泡显示头像预览
-        if(action === "accept" && (applyObj.targetType === "taAvatar" || applyObj.targetType === "myAvatar")){
-            this.chatModuleRef.pushSystemNotice(logText, applyObj.newVal);
-        }else{
-            // 拒绝 / 昵称变更：仅输出文字，无预览图
-            this.chatModuleRef.pushSystemNotice(logText);
-        }
+               if(this.chatModuleRef?.pushSystemNotice){
+    // 头像相关记录：自己换头像、对方换头像、申请同意/拒绝，都带预览图
+    if(applyObj.targetType === "taAvatar" || applyObj.targetType === "myAvatar"){
+        this.chatModuleRef.pushSystemNotice(logText, applyObj.newVal);
     }
+    // 昵称相关记录：只显示文字，不带图片
+    else{
+        this.chatModuleRef.pushSystemNotice(logText);
+    }
+}
     Store.set("contactList",list);
     this.contactInfo = contact;
     EventBus.emit("contactInfoChange",this.contactId);
