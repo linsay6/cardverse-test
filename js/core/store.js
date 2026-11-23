@@ -5,7 +5,6 @@
 const DB_NAME = "chatAppDB";
 const DB_VERSION = 1;
 const STORE_NAME = "kvStore";
-
 let dbInstance = null;
 let memoryCache = {};
 let migrateDone = false;
@@ -47,7 +46,7 @@ async function idbGet(key) {
   });
 }
 
-// IDB写入
+// IDB写入【真正等待事务完成】
 async function idbSet(key, value) {
   const db = await initDB();
   return new Promise((resolve) => {
@@ -152,22 +151,17 @@ export const Store = {
   },
 
   /**
-   * 保存数据【对外接口完全不变】
+   * 原有同步set，不等待IDB完成，旧业务继续使用
    * @param {string} key
    * @param {any} value
    * @returns {boolean}
    */
   set(key, value) {
-    // 更新内存缓存，上层同步立刻读到新值（核心兼容旧业务）
     memoryCache[key] = value;
     // 后台异步写入IndexedDB，不阻塞UI逻辑
     (async () => {
-      const ok = await idbSet(key, value);
-      if(!ok){
-        console.error(`IndexedDB写入失败 key=${key}`);
-      }
+      await idbSet(key, value);
     })();
-    // 保留写入localStorage做兼容（旧浏览器/调试可以看到），如果数据过大localStorage会失败，这里不阻断主流程
     try {
       const raw = JSON.stringify(value);
       localStorage.setItem(key, raw);
@@ -178,7 +172,27 @@ export const Store = {
   },
 
   /**
-   * 删除一条存储
+   * ✅新增：关键业务【等待IndexedDB写入完成再返回】，头像/昵称修改业务使用
+   * @param {string} key
+   * @param {any} value
+   * @returns {Promise<boolean>}
+   */
+  async setAsync(key, value) {
+    memoryCache[key] = value;
+    let localOk = true;
+    try {
+      const raw = JSON.stringify(value);
+      localStorage.setItem(key, raw);
+    } catch(err) {
+      localOk = false;
+      console.warn(`localStorage写入超限，仅使用IndexedDB存储 key=${key}`);
+    }
+    const idbOk = await idbSet(key, value);
+    return idbOk || localOk;
+  },
+
+  /**
+   * 删除一条
    * @param {string} key
    */
   remove(key) {
