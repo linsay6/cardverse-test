@@ -1,10 +1,12 @@
 import { ModalAvatarNick } from './modal-avatar-nick.js';
 import { Toast } from './core/toast.js';
+
 export const ChatExtendPanel = {
   rootDom: null,
   parentContainer: null,
   contactId: null,
   callbackClose: null,
+
   open(parentDom, cid, cbClose) {
     this.parentContainer = parentDom;
     this.contactId = cid;
@@ -13,10 +15,8 @@ export const ChatExtendPanel = {
     this.rootDom.style.position = "absolute";
     this.rootDom.style.inset = "0";
     this.rootDom.style.zIndex = "9998";
-    // 修复：移除 column‑reverse，改用正常column，靠justify‑content:flex‑end实现底部弹窗，修复移动端文字被裁切消失bug
     this.rootDom.style.display = "flex";
-    this.rootDom.style.flexDirection = "column";
-    this.rootDom.style.justifyContent = "flex‑end";
+    this.rootDom.style.flexDirection = "column-reverse";
 
     let activeTab = 0;
     const renderAll = ()=>{
@@ -25,6 +25,7 @@ export const ChatExtendPanel = {
       panel.style.background = "#fff";
       panel.style.borderRadius = "16px 16px 0 0";
       panel.style.padding = "16px";
+
       const tabWrap = document.createElement("div");
       tabWrap.style.display = "flex";
       tabWrap.style.gap = "4px";
@@ -49,7 +50,7 @@ export const ChatExtendPanel = {
         }
         tabWrap.appendChild(tabEl);
       })
-      panel.appendChild(tabWrap);
+
       const contentBox = document.createElement("div");
       if(activeTab === 0){
         const grid = document.createElement("div");
@@ -74,11 +75,9 @@ export const ChatExtendPanel = {
           itemDom.style.alignItems = "center";
           itemDom.style.gap = "8px";
           itemDom.style.cursor = "pointer";
-          // 关键修复：给flex子项设置min‑width:0，移动端允许文字收缩不被裁剪
-          itemDom.style.minWidth = "0";
           itemDom.innerHTML = `
             <div style="width:64px;height:64px;background:#f5f5f5;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px">${it.icon}</div>
-            <span style="font‑size:12px;text‑align:center;line‑height:1.3;min‑width:0;overflow‑wrap:anywhere">${it.label}</span>
+            <span style="font-size:12px;text-align:center;line-height:1.3">${it.label}</span>
           `;
           if(it.label === "头像和昵称互动"){
             itemDom.onclick = ()=>{
@@ -91,8 +90,9 @@ export const ChatExtendPanel = {
         })
         contentBox.appendChild(grid);
       }else{
-        contentBox.innerHTML = `<div style="text‑align:center;color:#888;padding:30px 0">功能待开发</div>`;
+        contentBox.innerHTML = `<div style="text-align:center;color:#888;padding:30px 0">功能待开发</div>`;
       }
+      panel.appendChild(tabWrap);
       panel.appendChild(contentBox);
       this.rootDom.appendChild(panel);
       this.rootDom.onclick = (e)=>{
@@ -102,6 +102,7 @@ export const ChatExtendPanel = {
     renderAll();
     this.parentContainer.appendChild(this.rootDom);
   },
+
   close() {
     if(this.rootDom) this.rootDom.remove();
     if(typeof this.callbackClose === "function") this.callbackClose();
