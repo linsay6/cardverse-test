@@ -23,7 +23,7 @@ export const DesktopModule = {
       </div>
       <div class="desktop-item" data-action="tarot">
         <div class="icon">🔮</div>
-        <div class="label">塔罗</div>
+        <div class="label">卜星</div>
       </div>
       <div class="desktop-item" data-action="house">
         <div class="icon">🏠</div>
