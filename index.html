@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>心笺</title>
+<title>心信笺</title>
 <style>
   * {
     box-sizing: border-box;
@@ -63,6 +63,9 @@
     height: 100%;
     display: none;
     overflow: auto;
+    /* 重点新增这两行，让桌面、字卡、聊天、设置全部读取主题背景色 */
+    background-color: var(--color-bg);
+    color: var(--color-text);
   }
 
   .tab-footer {
