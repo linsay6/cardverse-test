@@ -10,6 +10,7 @@ const WIDGET_AREA_HEIGHT = 120;
 const INDICATOR_HEIGHT = 30;
 const GAP = 16;
 const SNAP_DISTANCE = 12;
+const PAGE_SWIPE_THRESHOLD = 60; // 拖拽距离屏幕边缘多少px触发翻页
 
 // ========== 36个功能卡片元数据 ==========
 const CARD_META = [
@@ -67,8 +68,10 @@ export const DesktopModule = {
   dragStartY: 0,
   cardOrigX: 0,
   cardOrigY: 0,
-  dragPageIndex: 0,
+  dragSourcePageIndex: 0,
   _uploadTargetCardId: null,
+  dragGlobalMoveHandler: null,
+  dragGlobalUpHandler: null,
 
   init(selector) {
     this.rootEl = document.querySelector(selector);
@@ -180,6 +183,25 @@ export const DesktopModule = {
     return null;
   },
 
+  /** 网格补齐重排算法：删除卡片之后，剩余卡片按网格重新摆放，消除空位 */
+  reArrangePageCards(page) {
+    const perRow = 4;
+    const newList = [];
+    // 简单按y再x排序
+    const sorted = [...page.cards].sort((a,b)=>{
+      if(a.y !== b.y) return a.y - b.y;
+      return a.x - b.x;
+    });
+    sorted.forEach((card, idx)=>{
+      const col = idx % perRow;
+      const row = Math.floor(idx / perRow);
+      card.x = 20 + col * (CARD_WIDTH + GAP);
+      card.y = 20 + row * (CARD_HEIGHT + GAP);
+      newList.push(card);
+    });
+    page.cards = newList;
+  },
+
   // ========== 主渲染 ==========
   render() {
     if (!this.rootEl) return;
@@ -261,7 +283,7 @@ export const DesktopModule = {
       }
       .desktop-card:active { transform: scale(0.95); }
       .desktop-card.dragging {
-        z-index: 99;
+        z-index: 999;
         opacity: 0.9;
         transform: scale(1.05);
       }
@@ -287,14 +309,14 @@ export const DesktopModule = {
         line-height: 1.2;
         padding: 0 4px;
       }
-      .card-hide-btn {
+      .card-del-btn {
         position: absolute;
         top: -6px;
         right: -6px;
         width: 18px;
         height: 18px;
         border-radius: 50%;
-        background: rgba(0,0,0,0.65);
+        background: rgba(220,30,30,0.85);
         color: #fff;
         border: none;
         font-size: 12px;
@@ -362,7 +384,7 @@ export const DesktopModule = {
       #icon-upload-input { display: none; }
       .exit-edit-tip {
         position: fixed;
-        bottom: 44px;
+        bottom: 90px;
         left: 50%;
         transform: translateX(-50%);
         z-index: 999;
@@ -373,6 +395,9 @@ export const DesktopModule = {
         border:1px solid var(--color-border);
         background: var(--color-bg-card);
         color: var(--color-text);
+      }
+      .modal-footer-bar{
+        padding:10px 12px;border-top:1px solid var(--color-border);display:flex;gap:8px;
       }
     `;
     document.head.appendChild(styleEl);
@@ -417,7 +442,7 @@ export const DesktopModule = {
     uploadInput.id = 'icon-upload-input';
     canvas.appendChild(uploadInput);
 
-    // 编辑模式底部退出按钮
+    // 编辑模式底部退出按钮【位置上移 bottom:90px，避开分页按钮】
     if(this.isEditMode) {
       const exitWrap = document.createElement('div');
       exitWrap.className = 'exit-edit-tip';
@@ -461,7 +486,7 @@ export const DesktopModule = {
         cardEl.innerHTML = `
           <div class="card-icon">${iconHtml}</div>
           <div class="card-label">${meta.name}</div>
-          ${this.isEditMode ? '<button class="card-hide-btn">×</button>' : ''}
+          ${this.isEditMode ? '<button class="card-del-btn">×</button>' : ''}
         `;
 
         this.bindCardEvents(cardEl, cardData, pageIdx);
@@ -513,7 +538,7 @@ export const DesktopModule = {
     const cardId = cardData.id;
 
     cardEl.onclick = (e) => {
-      if (e.target.classList.contains('card-hide-btn')) return;
+      if (e.target.classList.contains('card-del-btn')) return;
       if (this.isEditMode) {
         this.openCardMenu(cardId, cardEl);
       } else {
@@ -521,11 +546,11 @@ export const DesktopModule = {
       }
     };
 
-    const hideBtn = cardEl.querySelector('.card-hide-btn');
-    if (hideBtn) {
-      hideBtn.onclick = (e) => {
+    const delBtn = cardEl.querySelector('.card-del-btn');
+    if (delBtn) {
+      delBtn.onclick = (e) => {
         e.stopPropagation();
-        this.hideCard(pageIndex, cardId);
+        this.deleteCard(pageIndex, cardId);
       };
     }
 
@@ -535,84 +560,129 @@ export const DesktopModule = {
   },
 
   bindDragEvents(cardEl, cardData, pageIndex) {
+    const self = this;
     const startDrag = (clientX, clientY) => {
-      this.draggingCardId = cardData.id;
-      this.dragStartX = clientX;
-      this.dragStartY = clientY;
-      this.cardOrigX = cardData.x;
-      this.cardOrigY = cardData.y;
-      this.dragPageIndex = pageIndex;
+      self.draggingCardId = cardData.id;
+      self.dragStartX = clientX;
+      self.dragStartY = clientY;
+      self.cardOrigX = cardData.x;
+      self.cardOrigY = cardData.y;
+      self.dragSourcePageIndex = pageIndex;
       cardEl.classList.add('dragging');
-    };
 
-    const moveDrag = (clientX, clientY) => {
-      if (this.draggingCardId !== cardData.id) return;
-      const dx = clientX - this.dragStartX;
-      const dy = clientY - this.dragStartY;
+      // 全局监听move / up，修复拖拽失效
+      self.dragGlobalMoveHandler = (evt)=>{
+        let cx,cy;
+        if(evt.touches){
+          cx = evt.touches[0].clientX;
+          cy = evt.touches[0].clientY;
+        }else{
+          cx = evt.clientX;
+          cy = evt.clientY;
+        }
+        self.onGlobalDragMove(cx,cy,cardEl,cardData,pageIndex);
+      };
 
-      const pageEl = cardEl.parentElement;
-      const maxX = pageEl.clientWidth - CARD_WIDTH;
-      const maxY = pageEl.clientHeight - CARD_HEIGHT;
-      let newX = Math.max(0, Math.min(maxX, this.cardOrigX + dx));
-      let newY = Math.max(0, Math.min(maxY, this.cardOrigY + dy));
+      self.dragGlobalUpHandler = ()=>{
+        self.onGlobalDragEnd(cardEl,cardData,pageIndex);
+        document.removeEventListener('mousemove', self.dragGlobalMoveHandler);
+        document.removeEventListener('mouseup', self.dragGlobalUpHandler);
+        document.removeEventListener('touchmove', self.dragGlobalMoveHandler);
+        document.removeEventListener('touchend', self.dragGlobalUpHandler);
+        self.dragGlobalMoveHandler = null;
+        self.dragGlobalUpHandler = null;
+      };
 
-      // 磁吸对齐
-      const allCards = this.config.pages[pageIndex].cards.filter(c=>c.id!==cardData.id);
-      for(const c of allCards) {
-        if(Math.abs(newX - c.x) < SNAP_DISTANCE) newX = c.x;
-        if(Math.abs(newY - c.y) < SNAP_DISTANCE) newY = c.y;
-        if(Math.abs((newX + CARD_WIDTH) - (c.x + CARD_WIDTH)) < SNAP_DISTANCE) newX = c.x;
-        if(Math.abs((newY + CARD_HEIGHT) - (c.y + CARD_HEIGHT)) < SNAP_DISTANCE) newY = c.y;
-      }
-
-      cardEl.style.left = `${newX}px`;
-      cardEl.style.top = `${newY}px`;
-    };
-
-    const endDrag = () => {
-      if (this.draggingCardId !== cardData.id) return;
-      cardEl.classList.remove('dragging');
-
-      const page = this.config.pages[pageIndex];
-      const target = page.cards.find(c => c.id === cardData.id);
-      if (target) {
-        target.x = parseInt(cardEl.style.left);
-        target.y = parseInt(cardEl.style.top);
-        this.saveConfig();
-        Toast.show('布局已保存');
-      }
-
-      this.draggingCardId = null;
+      document.addEventListener('mousemove', self.dragGlobalMoveHandler);
+      document.addEventListener('mouseup', self.dragGlobalUpHandler);
+      document.addEventListener('touchmove', self.dragGlobalMoveHandler, {passive:false});
+      document.addEventListener('touchend', self.dragGlobalUpHandler);
     };
 
     cardEl.addEventListener('mousedown', (e) => {
       e.preventDefault();
       startDrag(e.clientX, e.clientY);
-
-      const onMouseMove = (e) => moveDrag(e.clientX, e.clientY);
-      const onMouseUp = () => {
-        endDrag();
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-      };
-
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
     });
-
     cardEl.addEventListener('touchstart', (e) => {
       const touch = e.touches[0];
       startDrag(touch.clientX, touch.clientY);
     }, { passive: true });
+  },
 
-    cardEl.addEventListener('touchmove', (e) => {
-      if (this.draggingCardId !== cardData.id) return;
-      e.preventDefault();
-      const touch = e.touches[0];
-      moveDrag(touch.clientX, touch.clientY);
-    }, { passive: false });
+  /** 全局拖拽移动处理，实现边缘跨页翻页 */
+  onGlobalDragMove(clientX, clientY, cardEl, cardData, pageIndex){
+    if(this.draggingCardId !== cardData.id) return;
+    const dx = clientX - this.dragStartX;
+    const dy = clientY - this.dragStartY;
 
-    cardEl.addEventListener('touchend', endDrag);
+    const wrap = document.getElementById('desktop-pages-wrap');
+    const rect = wrap.getBoundingClientRect();
+    const maxX = rect.width - CARD_WIDTH;
+    const maxY = rect.height - CARD_HEIGHT;
+    let newX = Math.max(0, Math.min(maxX, this.cardOrigX + dx));
+    let newY = Math.max(0, Math.min(maxY, this.cardOrigY + dy));
+
+    // 磁吸对齐
+    const allCards = this.config.pages[pageIndex].cards.filter(c=>c.id!==cardData.id);
+    for(const c of allCards) {
+      if(Math.abs(newX - c.x) < SNAP_DISTANCE) newX = c.x;
+      if(Math.abs(newY - c.y) < SNAP_DISTANCE) newY = c.y;
+      if(Math.abs((newX + CARD_WIDTH) - (c.x + CARD_WIDTH)) < SNAP_DISTANCE) newX = c.x;
+      if(Math.abs((newY + CARD_HEIGHT) - (c.y + CARD_HEIGHT)) < SNAP_DISTANCE) newY = c.y;
+    }
+
+    cardEl.style.left = `${newX}px`;
+    cardEl.style.top = `${newY}px`;
+
+    // 拖拽到屏幕左右边缘，自动切换分页，实现跨页拖拽
+    if(clientX < rect.left + PAGE_SWIPE_THRESHOLD){
+      if(this.config.currentPage > 0){
+        this.switchPage(this.config.currentPage -1);
+      }
+    }else if(clientX > rect.right - PAGE_SWIPE_THRESHOLD){
+      if(this.config.currentPage < this.config.pages.length -1){
+        this.switchPage(this.config.currentPage +1);
+      }
+    }
+  },
+
+  onGlobalDragEnd(cardEl, cardData, sourcePageIndex){
+    if (this.draggingCardId !== cardData.id) return;
+    cardEl.classList.remove('dragging');
+
+    const sourcePage = this.config.pages[sourcePageIndex];
+    const targetPage = this.config.pages[this.config.currentPage];
+
+    // 判断拖拽结束后，是否跨页：源页面 !== 当前页面
+    if(sourcePageIndex !== this.config.currentPage){
+      // 从源页面删除卡片
+      const srcIdx = sourcePage.cards.findIndex(c=>c.id === cardData.id);
+      if(srcIdx>-1) sourcePage.cards.splice(srcIdx,1);
+      // 目标页面找空位
+      const pos = this.findEmptyPosition(targetPage);
+      if(pos){
+        cardData.x = pos.x;
+        cardData.y = pos.y;
+        targetPage.cards.push(cardData);
+      }else{
+        // 目标页面满，放回原页面
+        cardData.x = this.cardOrigX;
+        cardData.y = this.cardOrigY;
+        sourcePage.cards.push(cardData);
+        Toast.show('目标页面空间已满，放回原页面');
+      }
+    }else{
+      // 同一页面拖拽，更新坐标
+      const target = sourcePage.cards.find(c => c.id === cardData.id);
+      if (target) {
+        target.x = parseInt(cardEl.style.left);
+        target.y = parseInt(cardEl.style.top);
+      }
+    }
+    this.saveConfig();
+    this.render();
+    Toast.show('布局已保存');
+    this.draggingCardId = null;
   },
 
   bindPageScroll() {
@@ -634,7 +704,7 @@ export const DesktopModule = {
   bindGlobalEvents() {
     const uploadInput = document.getElementById('icon-upload-input');
     if (uploadInput) {
-      uploadInput.onchange = async (e) => {
+      uploadInput.onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         if (!file.type.startsWith('image/')) {
@@ -642,13 +712,9 @@ export const DesktopModule = {
           uploadInput.value = '';
           return;
         }
-        try {
-          const reader = new FileReader();
-          await new Promise((res, rej)=>{
-            reader.onload = res;
-            reader.onerror = rej;
-            reader.readAsDataURL(file);
-          })
+        const reader = new FileReader();
+        // 修复上一版致命bug：FileReader不能用Promise包装，改用原生onload
+        reader.onload = () => {
           const base64 = reader.result;
           const cardId = this._uploadTargetCardId;
           if (!cardId) { uploadInput.value=''; return; }
@@ -660,11 +726,15 @@ export const DesktopModule = {
             this.renderAllCards();
             Toast.show('图标更换成功');
           }
-        } catch(err) {
+          this._uploadTargetCardId = null;
+          uploadInput.value = '';
+        };
+        reader.onerror = ()=>{
           Toast.show('图片读取失败，请重试');
-        }
-        this._uploadTargetCardId = null;
-        uploadInput.value = '';
+          this._uploadTargetCardId = null;
+          uploadInput.value = '';
+        };
+        reader.readAsDataURL(file);
       };
     }
   },
@@ -692,24 +762,27 @@ export const DesktopModule = {
     }
   },
 
-  openCardMenu(cardId, cardEl) {
+  openCardMenu(cardId) {
     if (confirm('是否更换该图标？')) {
       this._uploadTargetCardId = cardId;
       document.getElementById('icon-upload-input').click();
     }
   },
 
-  hideCard(pageIdx, cardId) {
+  /** 删除卡片，删除后自动补齐网格空位 */
+  deleteCard(pageIdx, cardId) {
     const page = this.config.pages[pageIdx];
     const idx = page.cards.findIndex(c => c.id === cardId);
     if (idx > -1) {
       page.cards.splice(idx, 1);
+      this.reArrangePageCards(page);
       this.saveConfig();
       this.renderAllCards();
-      Toast.show('已隐藏该图标');
+      Toast.show('已删除图标，已自动补齐布局');
     }
   },
 
+  /** 新增弹窗：支持批量勾选多个图标添加 */
   showAddCardModal() {
     const currentPage = this.getCurrentPage();
     const currentPageIds = currentPage.cards.map(c => c.id);
@@ -730,17 +803,21 @@ export const DesktopModule = {
     mask.innerHTML = `
       <div class="add-card-modal">
         <div class="add-card-modal-header">
-          <span>添加图标到桌面</span>
+          <span>添加图标到桌面（可多选）</span>
           <span style="cursor:pointer;color:var(--color-text-2)" id="close-add-modal">×</span>
         </div>
         <div class="add-card-list">
           ${available.map(item => `
             <div class="add-card-item" data-id="${item.id}">
+              <input type="checkbox" class="chk-item" data-id="${item.id}"/>
               <span class="icon">${item.defaultIcon}</span>
               <span>${item.name}</span>
               ${item.isDev ? '<span style="font-size:11px;color:var(--color-text-2);margin-left:auto">开发中</span>' : ''}
             </div>
           `).join('')}
+        </div>
+        <div class="modal-footer-bar">
+          <button id="batch-add-btn" style="flex:1;padding:8px;border-radius:6px;background:var(--color-main);color:#fff;border:none">批量添加选中</button>
         </div>
       </div>
     `;
@@ -749,26 +826,37 @@ export const DesktopModule = {
     mask.querySelector('#close-add-modal').onclick = () => mask.remove();
     mask.onclick = (e) => { if (e.target === mask) mask.remove(); };
 
-    mask.querySelectorAll('.add-card-item').forEach(item => {
-      item.onclick = () => {
-        const id = item.dataset.id;
-        this.addCardToPage(id, emptyPos);
-        mask.remove();
-      };
-    });
+    mask.querySelector('#batch-add-btn').onclick = ()=>{
+      const checkedInputs = mask.querySelectorAll('.chk-item:checked');
+      if(!checkedInputs.length){
+        Toast.show('请勾选至少一个图标');
+        return;
+      }
+      const ids = Array.from(checkedInputs).map(el=>el.dataset.id);
+      this.batchAddCardsToPage(ids);
+      mask.remove();
+    };
   },
 
-  addCardToPage(cardId, pos) {
+  /** 批量添加多个图标，自动寻找空位摆放 */
+  batchAddCardsToPage(idList){
     const page = this.getCurrentPage();
-    page.cards.push({
-      id: cardId,
-      x: pos.x,
-      y: pos.y,
-      customIcon: ''
-    });
+    for(const cardId of idList){
+      const pos = this.findEmptyPosition(page);
+      if(!pos){
+        Toast.show('页面剩余空间不足，部分图标未添加');
+        break;
+      }
+      page.cards.push({
+        id: cardId,
+        x: pos.x,
+        y: pos.y,
+        customIcon: ''
+      });
+    }
     this.saveConfig();
     this.renderAllCards();
-    Toast.show('已添加到当前桌面页');
+    Toast.show(`成功添加${idList.length}个图标`);
   },
 
   switchPage(index) {
