@@ -141,7 +141,7 @@ export const ChatModule = {
       <div style="display:flex;align-items:center;gap:8px">
         <button id="chat-back-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:${this.bgColor};">←</button>
         <img id="chat-header-avatar" src="" style="width:36px;height:36px;object-fit:cover;background:#eee">
-        <div id="chat-title" style="font-weight:bold;color:#222">未选择联系人</div>
+        <div id="chat-title" style="font-weight:bold;color:var(--color-text)">未选择联系人</div>
       </div>
       <button id="chat-more-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:${this.bgColor};font-size:18px">⋯</button>
     `;
@@ -257,11 +257,11 @@ export const ChatModule = {
       headerAvatar.style.borderRadius = avatarRadius;
     }
     if (!this.activeContactId) {
-      this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">请前往设置选择一个梦角联系人开始对话</div>`;
+      this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:var(--color-text-2)">请前往设置选择一个梦角联系人开始对话</div>`;
       return;
     }
     if (this.messageList.length === 0) {
-      this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:#777">暂无消息，发送第一条消息吧</div>`;
+      this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:var(--color-text-2)">暂无消息，发送第一条消息吧</div>`;
       return;
     }
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
@@ -278,7 +278,7 @@ export const ChatModule = {
         noticeEl.style.borderRadius = "12px";
         noticeEl.style.textAlign = "center";
         noticeEl.style.fontSize = "13px";
-        noticeEl.style.color = "#222222";
+        noticeEl.style.color = "var(--color-text)";
         noticeEl.style.maxWidth = "85%";
         noticeEl.style.wordBreak = "break-all";
         noticeEl.style.border = "1px solid rgba(255,255,255,0.35)";
@@ -309,7 +309,7 @@ export const ChatModule = {
             </div>
             <div style="display:flex;flex-direction:column;align-items:center;margin-left:8px">
               <img src="${myCurrentAvatar}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
-              <div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>
+              <div class="time-label" style="margin-top:4px">${timeStr}</div>
             </div>
           `;
         }else{
@@ -317,7 +317,7 @@ export const ChatModule = {
           msgItem.innerHTML = `
             <div style="display:flex;flex-direction:column;align-items:center;margin-right:8px">
               <img src="${this.activeContactInfo.avatar || ''}" style="width:34px;height:34px;border-radius:${avatarRadius};background:#eee;object-fit:cover">
-              <div style="font-size:11px;color:#999;margin-top:4px">${timeStr}</div>
+              <div class="time-label" style="margin-top:4px">${timeStr}</div>
             </div>
             <div style="max-width:70%">
               <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
@@ -328,7 +328,7 @@ export const ChatModule = {
         let timeHtml = "";
         if(timePos === "hide") timeHtml = "";
         else if(timePos === "bubbleOuter"){
-          timeHtml = `<div style="font-size:11px;color:#999;margin-left:6px;align-self:flex-end;white-space:nowrap">${timeStr}</div>`;
+          timeHtml = `<div class="time-label" style="margin-left:6px;align-self:flex-end;white-space:nowrap">${timeStr}</div>`;
         }
         if(msg.role === "user"){
           msgItem.style.justifyContent = "flex-end";
@@ -360,7 +360,7 @@ export const ChatModule = {
     });
     if(this.isTyping){
       const tip = document.createElement("div");
-      tip.style.color="#777";
+      tip.style.color="var(--color-text-2)";
       tip.style.fontSize="13px";
       tip.textContent = `${this.activeContactInfo.name} 正在输入...`;
       this.msgListEl.appendChild(tip);
