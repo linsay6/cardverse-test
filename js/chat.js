@@ -3,7 +3,6 @@ import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
 import { ChatSettingSubModule } from './chat-setting.js';
 import { ChatExtendPanel } from './chat-extend-panel.js';
-
 export const ChatModule = {
   rootEl: null,
   msgListEl: null,
@@ -15,7 +14,6 @@ export const ChatModule = {
   viewMode: "chat",
   primaryColor: "#7c68ee",
   bgColor: "#ffffff",
-
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
@@ -56,7 +54,6 @@ export const ChatModule = {
       }
     });
   },
-
   executeApply(apply, contactObj){
     switch(apply.targetType){
       case "taAvatar":
@@ -73,22 +70,20 @@ export const ChatModule = {
         break;
     }
   },
-
-  // 对外接口：写入系统通知，自动持久化保存
-  pushSystemNotice(text){
+  // 对外接口：写入系统通知，自动持久化保存；previewAvatar 可选，头像变更时传入base64
+  pushSystemNotice(text, previewAvatar = null){
     this.messageList.push({
       type:"notice",
       content:text,
+      previewAvatar: previewAvatar,
       time:Date.now()
     });
     this.saveHistory();
     this.renderMessages();
   },
-
   pushNoticeMessage(text, from="me"){
     this.pushSystemNotice(text);
   },
-
   loadContactSession(contactId) {
     const contactList = Store.get("contactList", []);
     const findItem = contactList.find(c => c.id === contactId);
@@ -115,7 +110,6 @@ export const ChatModule = {
     this.render();
     Toast.show(`进入对话：${findItem.name}`);
   },
-
   render() {
     if(this.viewMode === "setting"){
       ChatSettingSubModule.open(this.rootEl, this.activeContactId, ()=>{
@@ -126,7 +120,6 @@ export const ChatModule = {
     }
     this.renderChatLayout();
   },
-
   renderChatLayout() {
     if (!this.rootEl) return;
     this.rootEl.innerHTML = "";
@@ -165,7 +158,6 @@ export const ChatModule = {
     const styleHideScroll = document.createElement("style");
     styleHideScroll.textContent = `#msg-list::-webkit-scrollbar{display:none}`;
     document.head.appendChild(styleHideScroll);
-
     const inputWrap = document.createElement('div');
     inputWrap.style.padding = "10px 12px";
     inputWrap.style.borderTop = "1px solid #e5e5e5";
@@ -228,7 +220,6 @@ export const ChatModule = {
     };
     this.renderMessages();
   },
-
   updateContact(patch){
     const list = Store.get("contactList", []);
     const idx = list.findIndex(x=>x.id === this.activeContactId);
@@ -239,7 +230,6 @@ export const ChatModule = {
     this.renderMessages();
     Toast.show("已更新");
   },
-
   renderMessages() {
     const titleDom = document.getElementById("chat-title");
     const avatarDom = document.getElementById("chat-header-avatar");
@@ -275,9 +265,8 @@ export const ChatModule = {
       return;
     }
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
-
     this.messageList.forEach(msg => {
-      // 系统通知消息，对齐图2样式
+      // 系统通知消息，支持头像预览
       if(msg.type === "notice"){
         const noticeEl = document.createElement("div");
         noticeEl.style.margin = "10px auto";
@@ -289,11 +278,16 @@ export const ChatModule = {
         noticeEl.style.color = "#4b5563";
         noticeEl.style.maxWidth = "85%";
         noticeEl.style.wordBreak = "break-all";
-        noticeEl.textContent = msg.content;
+
+        let innerHtml = `<div>${msg.content}</div>`;
+        // 如果存在previewAvatar，在文字下方渲染圆形预览头像
+        if(msg.previewAvatar){
+          innerHtml += `<div style="margin-top:8px;"><img src="${msg.previewAvatar}" style="width:56px;height:56px;border-radius:999px;object-fit:cover;"></div>`;
+        }
+        noticeEl.innerHTML = innerHtml;
         this.msgListEl.appendChild(noticeEl);
         return;
       }
-
       const d = new Date(msg.time);
       const hh = String(d.getHours()).padStart(2,'0');
       const mm = String(d.getMinutes()).padStart(2,'0');
@@ -303,7 +297,6 @@ export const ChatModule = {
       msgItem.style.marginBottom = "14px";
       msgItem.style.display = "flex";
       msgItem.style.alignItems = "flex-start";
-
       if(timePos === "avatarBottom"){
         if(msg.role === "user"){
           msgItem.style.justifyContent = "flex-end";
@@ -362,7 +355,6 @@ export const ChatModule = {
       }
       this.msgListEl.appendChild(msgItem);
     });
-
     if(this.isTyping){
       const tip = document.createElement("div");
       tip.style.color="#777";
@@ -372,7 +364,6 @@ export const ChatModule = {
     }
     this.msgListEl.scrollTop = this.msgListEl.scrollHeight;
   },
-
   sendMessage() {
     const content = this.inputEl.value.trim();
     if (!content) return;
@@ -403,7 +394,6 @@ export const ChatModule = {
       this.renderMessages();
     },1200);
   },
-
   saveHistory() {
     if(!this.activeContactId) return;
     Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
