@@ -809,3 +809,6 @@ export const DesktopModule = {
     Toast.show('已删除桌面页');
   }
 };
+
+// 暴露到全局，setting.js可以调用
+window.DesktopModule = DesktopModule;
