@@ -10,24 +10,20 @@ export const ChatSettingSubModule = {
   tab2List: ["形象", "消息", "显示"],
   activeTab2: "形象",
   _themeChangeOff: null,
-
   open(parentDom, cid, cbBack) {
     this.parentContainer = parentDom;
     this.contactId = cid;
     const list = Store.get("contactList", []);
     this.contactInfo = list.find(i => i.id === this.contactId);
     this.callbackBack = cbBack;
-
     // 监听全局主题变化，实时重渲染更新背景色
     this._themeChangeOff = EventBus.on("themeChange", () => {
       if(this.parentContainer){
         this.render();
       }
     });
-
     this.render();
   },
-
   openRadioModal(title, optionList, currentVal, onSelect) {
     const mask = document.createElement("div");
     mask.style.position = "fixed";
@@ -65,7 +61,6 @@ export const ChatSettingSubModule = {
       if(e.target === mask) mask.remove();
     };
   },
-
   render() {
     if (!this.parentContainer) return;
     this.parentContainer.innerHTML = "";
@@ -266,7 +261,6 @@ export const ChatSettingSubModule = {
     contentWrap.appendChild(mainCard);
     wrap.appendChild(contentWrap);
     this.parentContainer.appendChild(wrap);
-
     document.getElementById("csub-back").onclick = () => {
       // 关闭面板时注销主题监听，防止内存泄漏
       if(typeof this._themeChangeOff === "function"){
@@ -276,7 +270,6 @@ export const ChatSettingSubModule = {
         this.callbackBack();
       }
     };
-
     const rowAvatarShape = document.getElementById("row-avatar-shape");
     if(rowAvatarShape){
       rowAvatarShape.onclick = ()=>{
@@ -341,6 +334,10 @@ export const ChatSettingSubModule = {
           Store.set("contactList", list);
           this.contactInfo = list[idx];
           EventBus.emit("contactInfoChange", this.contactId);
+          // 插入聊天系统记录
+          if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
+            window.ChatModule.pushSystemNotice(`我更换了TA的昵称为：${trimName}`);
+          }
           Toast.show("昵称已更新，全部界面同步刷新");
           this.render();
         }
@@ -363,6 +360,10 @@ export const ChatSettingSubModule = {
             Store.set("contactList", list);
             this.contactInfo = list[idx];
             EventBus.emit("contactInfoChange", this.contactId);
+            // 插入聊天系统记录
+            if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
+              window.ChatModule.pushSystemNotice("我更换了TA的头像");
+            }
             Toast.show("联系人头像已更新，全部界面同步刷新");
             this.render();
           }
@@ -381,6 +382,10 @@ export const ChatSettingSubModule = {
           Store.set("contactList", list);
           this.contactInfo = list[idx];
           EventBus.emit("contactInfoChange", this.contactId);
+          // 插入聊天系统记录
+          if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
+            window.ChatModule.pushSystemNotice("我清空了TA的头像");
+          }
           Toast.show("联系人头像已清空");
           this.render();
         }
@@ -405,6 +410,10 @@ export const ChatSettingSubModule = {
           Store.set("contactList", list);
           this.contactInfo = list[idx];
           EventBus.emit("contactInfoChange", this.contactId);
+          // 插入聊天系统记录
+          if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
+            window.ChatModule.pushSystemNotice(`我更换了自己的昵称为：${trimName}`);
+          }
           Toast.show("我的昵称已更新，全部界面同步刷新");
           this.render();
         }
@@ -427,6 +436,10 @@ export const ChatSettingSubModule = {
             Store.set("contactList", list);
             this.contactInfo = list[idx];
             EventBus.emit("contactInfoChange", this.contactId);
+            // 插入聊天系统记录
+            if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
+              window.ChatModule.pushSystemNotice("我更换了自己的头像");
+            }
             Toast.show("我的头像已更新，全部界面同步刷新");
             this.render();
           }
@@ -445,6 +458,10 @@ export const ChatSettingSubModule = {
           Store.set("contactList", list);
           this.contactInfo = list[idx];
           EventBus.emit("contactInfoChange", this.contactId);
+          // 插入聊天系统记录
+          if(window.ChatModule && window.ChatModule.activeContactId === this.contactId){
+            window.ChatModule.pushSystemNotice("我清空了自己的头像");
+          }
           Toast.show("我的头像已清空");
           this.render();
         }
