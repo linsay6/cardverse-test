@@ -266,7 +266,7 @@ export const ChatModule = {
     }
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
     this.messageList.forEach(msg => {
-      // 系统通知消息，支持头像预览
+      // =========【系统通知气泡：头像/昵称变更记录，居中浅灰色气泡】=========
       if(msg.type === "notice"){
         const noticeEl = document.createElement("div");
         noticeEl.style.margin = "10px auto";
@@ -278,7 +278,6 @@ export const ChatModule = {
         noticeEl.style.color = "#4b5563";
         noticeEl.style.maxWidth = "85%";
         noticeEl.style.wordBreak = "break-all";
-
         let innerHtml = `<div>${msg.content}</div>`;
         // 如果存在previewAvatar，在文字下方渲染圆形预览头像
         if(msg.previewAvatar){
