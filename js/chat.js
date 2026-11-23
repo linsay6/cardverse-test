@@ -271,13 +271,17 @@ export const ChatModule = {
         const noticeEl = document.createElement("div");
         noticeEl.style.margin = "10px auto";
         noticeEl.style.padding = "8px 16px";
-        noticeEl.style.background = "#f3f4f6";
+        // 半透明白色 + 毛玻璃模糊，支持聊天壁纸透出
+        noticeEl.style.background = "rgba(255, 255, 255, 0.24)";
+        noticeEl.style.backdropFilter = "blur(8px)";
+        noticeEl.style.webkitBackdropFilter = "blur(8px)";
         noticeEl.style.borderRadius = "12px";
         noticeEl.style.textAlign = "center";
         noticeEl.style.fontSize = "13px";
-        noticeEl.style.color = "#4b5563";
+        noticeEl.style.color = "#222222";
         noticeEl.style.maxWidth = "85%";
         noticeEl.style.wordBreak = "break-all";
+        noticeEl.style.border = "1px solid rgba(255,255,255,0.35)";
         let innerHtml = `<div>${msg.content}</div>`;
         // 如果存在previewAvatar，在文字下方渲染圆形预览头像
         if(msg.previewAvatar){
