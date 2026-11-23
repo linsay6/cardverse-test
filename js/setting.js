@@ -19,10 +19,9 @@ export const SettingModule = {
     "contactList",
     "app-theme",
     "cardList",
-    "desktopConfig",
+    "desktop-layout",
     "activeContactId"
   ],
-
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
@@ -51,7 +50,6 @@ export const SettingModule = {
     Store.set("activeContactId", id);
     document.dispatchEvent(new CustomEvent("contact:change", { detail: id }));
   },
-
   /** 导出全部数据 */
   async exportAllData() {
     try {
@@ -72,7 +70,6 @@ export const SettingModule = {
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       const fileName = `Cardverse数据备份-${y}-${m}-${day}.json`;
-
       const a = document.createElement("a");
       a.href = url;
       a.download = fileName;
@@ -86,7 +83,6 @@ export const SettingModule = {
       Toast.show('导出失败：' + err.message);
     }
   },
-
   /** 导入备份数据，覆盖写入，导入完成自动刷新 */
   async importData() {
     try {
@@ -121,7 +117,6 @@ export const SettingModule = {
       Toast.show('导入失败，文件损坏或者格式错误');
     }
   },
-
   render() {
     if (!this.rootEl) return;
     this.rootEl.innerHTML = "";
@@ -196,7 +191,8 @@ export const SettingModule = {
       <div style="border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:12px">
         <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">联系人 / 桌面</div>
         <div style="font-size:13px;color:var(--color-text-2);margin-bottom:8px">管理多个梦角联系人，切换对话桌面</div>
-        <button id="btn-goto-contact-list" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">打开联系人列表</button>
+        <button id="btn-goto-contact-list" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn);margin-bottom:8px">打开联系人列表</button>
+        <button id="btn-goto-desktop-edit" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">桌面图标编辑</button>
       </div>
       <div style="border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:12px">
         <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">外观</div>
@@ -314,7 +310,6 @@ export const SettingModule = {
       wrap.innerHTML += html;
     }
     this.rootEl.appendChild(wrap);
-
     // 返回按钮
     const backBtn = document.getElementById('back-home');
     if(backBtn){
@@ -330,7 +325,22 @@ export const SettingModule = {
         this.render();
       }
     }
-
+    // 桌面编辑按钮
+    const btnGotoDesktopEdit = document.getElementById("btn-goto-desktop-edit");
+    if(btnGotoDesktopEdit){
+      btnGotoDesktopEdit.onclick = ()=>{
+        if(!window.TabManager || !window.DesktopModule){
+          Toast.show("模块未就绪");
+          return;
+        }
+        // 切到桌面tab
+        window.TabManager.switchTab("desktop");
+        // 延迟等待tab渲染完成，进入编辑模式
+        setTimeout(()=>{
+          window.DesktopModule.enterEditMode();
+        },120);
+      }
+    }
     // 导入导出按钮绑定
     const exportBtn = document.getElementById("btn-export-all");
     if(exportBtn){
@@ -340,7 +350,6 @@ export const SettingModule = {
     if(importBtn){
       importBtn.onclick = ()=> this.importData();
     }
-
     const gotoContactBtn = document.getElementById('btn-goto-contact-list');
     if(gotoContactBtn){
       gotoContactBtn.onclick = ()=>{
@@ -363,7 +372,7 @@ export const SettingModule = {
       };
     }
     const resetThemeBtn = document.getElementById("btn-reset-theme");
-    if(resetThemeBtn){
+     if(resetThemeBtn){
       resetThemeBtn.onclick = () => {
         ThemeManager.update(ThemeManager.defaultTheme);
         Toast.show("已恢复默认配色");
