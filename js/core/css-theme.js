@@ -1,6 +1,5 @@
 import { Store } from './store.js';
 import { EventBus } from './context.js';
-
 /**
  * 主题管理：读取配置、更新页面CSS变量
  */
@@ -17,10 +16,8 @@ export const ThemeManager = {
     radiusBtn: "10px",
     tabInactive: "#999"
   },
-
   // 当前生效的主题
   currentTheme: {},
-
   /**
    * 加载主题：从本地存储读取，没有就用默认
    */
@@ -29,7 +26,6 @@ export const ThemeManager = {
     this.currentTheme = { ...this.defaultTheme, ...saved };
     this.apply();
   },
-
   /**
    * 把currentTheme里面的值，同步到页面CSS变量
    */
@@ -46,10 +42,27 @@ export const ThemeManager = {
     root.style.setProperty("--tab-inactive", this.currentTheme.tabInactive);
     root.style.setProperty("--tab-active", this.currentTheme.colorMain);
 
+    // 全局：占位提示文字、时间标签跟随次要文字颜色
+    let globalStyle = document.getElementById('global‑theme‑aux‑style');
+    if (!globalStyle) {
+        globalStyle = document.createElement('style');
+        globalStyle.id = 'global‑theme‑aux‑style';
+        document.head.appendChild(globalStyle);
+    }
+    globalStyle.textContent = `
+::placeholder {
+  color: var(--color-text-2) !important;
+  opacity: 1;
+}
+.time-label {
+  color: var(--color-text-2) !important;
+  font-size:11px;
+}
+`;
+
     // 触发主题变更事件，通知所有模块刷新UI
     EventBus.emit("themeChange", this.currentTheme);
   },
-
   /**
    * 更新并保存主题
    * @param {object} newPartial 要修改的部分主题
