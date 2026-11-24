@@ -128,13 +128,9 @@ export const DesktopModule = {
   },
 
   // 计算页面网格居中左边距（保证左右留白对称）
-    getGridMarginLeft(pageWidth) {
-    const perRow = 4;
-    const totalContentWidth = perRow * CARD_WIDTH + (perRow - 1) * GAP;
-    const idealMargin = (pageWidth - totalContentWidth) / 2;
-    // 限制最小16、最大32，然后四舍五入取整数，避免小数偏移
-    const margin = Math.round(Math.max(16, Math.min(32, idealMargin)));
-    return margin;
+     getGridMarginLeft(pageWidth) {
+    // 和原版一样，固定单边留白，左右永远相等，不会不对称
+    return 16;
   },
 
   getDefaultConfig() {
