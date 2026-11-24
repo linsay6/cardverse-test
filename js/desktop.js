@@ -31,12 +31,12 @@ function cropImageToSquare(file, maxSize = 256) {
 
 // ========== 常量配置 ==========
 const STORAGE_KEY = 'desktop-layout';
-const CARD_WIDTH = 52;     
-const CARD_HEIGHT = 52;    
+const CARD_WIDTH = 48;     
+const CARD_HEIGHT = 48;    
 const WIDGET_AREA_HEIGHT = 110;
 const INDICATOR_HEIGHT = 30;
 const V_GAP = 22;          
-const SIDE_MARGIN = 24;    // 固定左右两侧留白，控制离手机边框的距离
+const SIDE_MARGIN = 16;    // 固定左右两侧留白，控制离手机边框的距离
 const SNAP_DISTANCE = 18;
 const PAGE_SWIPE_THRESHOLD = 60;
 const LABEL_HEIGHT = 26;   
@@ -95,7 +95,21 @@ export const DesktopModule = {
     this.rootEl = document.querySelector(selector);
     if (!this.rootEl) return;
     this.loadConfig();
+    
+    // 初始尝试渲染
     this.render();
+
+    // 【核心修复】：如果初始加载时容器被隐藏(宽度为0)，监听尺寸变化，等展示后自动触发重新计算布局
+    if (window.ResizeObserver) {
+      this._resizeObserver = new ResizeObserver((entries) => {
+        const width = entries[0].contentRect.width;
+        if (width > 0 && width !== this._lastRenderedWidth) {
+          this.render();
+        }
+      });
+      this._resizeObserver.observe(this.rootEl);
+    }
+
     this.bindGlobalEvents();
     EventBus.on('themeChange', () => {
       this.render();
@@ -128,22 +142,22 @@ export const DesktopModule = {
     Store.set(STORAGE_KEY, this.config);
   },
 
-  // 【核心增强】安全宽度计算，防止在容器隐藏或获取不到时算出负数或极小的间距
+  // 计算网格间距，拒绝使用 window.innerWidth，防止在桌面端宽度过宽导致间距爆炸
   getGridInfo(pageWidth) {
     const perRow = 4;
     const marginLeft = SIDE_MARGIN;
     let safeWidth = pageWidth;
     
-    // 防止获取到 0 或小于 320（大部分手机最小宽度） 的情况
+    // 如果无法获取有效宽度，兜底 375
     if (!safeWidth || safeWidth < 320) {
-      safeWidth = (this.rootEl && this.rootEl.clientWidth > 320) ? this.rootEl.clientWidth : (window.innerWidth || 375);
+      safeWidth = 375;
     }
-    if (safeWidth > 600) safeWidth = 600; // 限制最大宽度防止平板/PC拉太宽
+    // 防止在超宽屏幕(如平板)上拉得太散
+    if (safeWidth > 600) safeWidth = 600; 
 
     const availableWidth = safeWidth - marginLeft * 2 - perRow * CARD_WIDTH;
     let gap = availableWidth / (perRow - 1);
     
-    // 【绝对保护】严禁 gap 出现负数，至少保留 8px
     gap = Math.max(8, gap);
     
     return {
@@ -163,7 +177,7 @@ export const DesktopModule = {
     const perPage = perRow * perPageRow;
     let pageCards = [];
     
-    const pageW = this.rootEl ? this.rootEl.clientWidth : 375;
+    const pageW = this.rootEl && this.rootEl.clientWidth > 0 ? this.rootEl.clientWidth : 375;
     const { marginLeft, gap } = this.getGridInfo(pageW);
 
     CARD_META.forEach((meta, idx) => {
@@ -198,7 +212,7 @@ export const DesktopModule = {
   },
 
   findEmptyPosition(page) {
-    const pageW = this.rootEl.clientWidth || window.innerWidth || 375;
+    const pageW = this.rootEl.clientWidth > 0 ? this.rootEl.clientWidth : 375;
     const pageH = this.rootEl.clientHeight - WIDGET_AREA_HEIGHT - INDICATOR_HEIGHT;
     const { marginLeft, gap } = this.getGridInfo(pageW);
     const perRow = 4;
@@ -221,7 +235,7 @@ export const DesktopModule = {
 
   reArrangePageCards(page, width) {
     const perRow = 4;
-    const pageW = width || this.rootEl.clientWidth || window.innerWidth || 375;
+    const pageW = width > 0 ? width : (this.rootEl.clientWidth > 0 ? this.rootEl.clientWidth : 375);
     const { marginLeft, gap } = this.getGridInfo(pageW);
     const sorted = [...page.cards].sort((a,b)=>{
       if(a.y !== b.y) return a.y - b.y;
@@ -236,23 +250,24 @@ export const DesktopModule = {
     page.cards = sorted;
   },
 
-  render() {
+  render(retryCount = 0) {
     if (!this.rootEl) return;
     
-    // 【终极自愈】：每次渲染前，强制根据当前真实设备宽度，重算并矫正所有的 X 坐标
-    // 彻底解决之前因为容器过窄导致的间距为0，被错误保存为紧凑布局的问题
+    // 【核心修复】：获取真实宽度，如果为0（比如还在切换Tab/隐藏状态），延迟重试
     let realWidth = this.rootEl.clientWidth;
-    if (!realWidth || realWidth < 320) {
-      realWidth = window.innerWidth;
+    if (realWidth <= 0) {
+      if (retryCount < 10) {
+        setTimeout(() => this.render(retryCount + 1), 50);
+      }
+      return;
     }
-    if (!realWidth || realWidth < 320) {
-      realWidth = 375;
-    }
+    
+    this._lastRenderedWidth = realWidth;
 
+    // 【终极自愈】：每次渲染前，强制根据当前真实设备宽度，重算并矫正所有的 X 坐标
     this.config.pages.forEach(page => {
       const { marginLeft, gap } = this.getGridInfo(realWidth);
       
-      // 按 y 和 x 排序，保证正确的视觉相对顺序
       const sorted = [...page.cards].sort((a,b)=>{
         if (Math.abs(a.y - b.y) > 10) return a.y - b.y;
         return a.x - b.x;
@@ -260,19 +275,18 @@ export const DesktopModule = {
       
       let rowMap = {};
       sorted.forEach(card => {
-        // 推导它属于哪一行
         const rowKey = Math.round((card.y - 16) / (CARD_HEIGHT + V_GAP + LABEL_HEIGHT));
         if (!rowMap[rowKey]) rowMap[rowKey] = [];
         rowMap[rowKey].push(card);
       });
 
-      // 将同一行的卡片强制均匀分布到对应的 0、1、2、3 列
       Object.keys(rowMap).forEach(rowKey => {
         const rowCards = rowMap[rowKey];
         rowCards.forEach((card, index) => {
-          const col = Math.min(3, index);
+          const col = index % 4; // 强制限制为 0~3 列
+          const rowOffset = Math.floor(index / 4); 
           card.x = Math.round(marginLeft + col * (CARD_WIDTH + gap));
-          card.y = 16 + Number(rowKey) * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
+          card.y = 16 + (Number(rowKey) + rowOffset) * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
         });
       });
     });
@@ -777,7 +791,7 @@ export const DesktopModule = {
           }
           const targetPage = this.config.pages[targetPageIdx];
           const wrap = document.getElementById('desktop-pages-wrap');
-          const pageW = wrap.clientWidth || window.innerWidth || 375;
+          const pageW = wrap.clientWidth > 0 ? wrap.clientWidth : 375;
           const { marginLeft, gap } = this.getGridInfo(pageW);
           const targetX = Math.round(marginLeft + targetCol * (CARD_WIDTH + gap));
           const targetY = 16 + targetRow * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
@@ -884,7 +898,7 @@ export const DesktopModule = {
     let finalX = Math.max(0, Math.min(maxX, newRealX));
     let finalY = Math.max(0, Math.min(maxY, newRealY));
 
-    const pageW = wrap.clientWidth || window.innerWidth || 375;
+    const pageW = wrap.clientWidth > 0 ? wrap.clientWidth : 375;
     const { marginLeft, gap } = this.getGridInfo(pageW);
     const col = Math.round((finalX - marginLeft) / (CARD_WIDTH + gap));
     const row = Math.round((finalY - 16) / (CARD_HEIGHT + V_GAP + LABEL_HEIGHT));
@@ -955,7 +969,11 @@ export const DesktopModule = {
     });
   },
 
-  bindGlobalEvents() {},
+  bindGlobalEvents() {
+    window.addEventListener('resize', () => {
+      this.render();
+    });
+  },
 
   handleCardClick(cardId) {
     const meta = this.getCardMeta(cardId);
