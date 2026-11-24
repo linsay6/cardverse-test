@@ -140,6 +140,17 @@ export const DesktopModule = {
     gap: finalGap
   }
 },
+getGridInfo(pageWidth) {
+  const perRow = 4;
+  const fixedSideMargin = 24;
+  const availableWidth = pageWidth - fixedSideMargin * 2;
+  const gap = (availableWidth - perRow * CARD_WIDTH) / (perRow - 1);
+  const finalGap = Math.max(16, Math.min(40, gap));
+  return {
+    marginLeft: fixedSideMargin,
+    gap: finalGap
+  }
+},
 getGridMarginLeft(pageWidth) {
   return this.getGridInfo(pageWidth).marginLeft;
 },
