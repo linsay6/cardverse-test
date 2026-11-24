@@ -31,12 +31,12 @@ function cropImageToSquare(file, maxSize = 256) {
 
 // ========== 常量配置 ==========
 const STORAGE_KEY = 'desktop-layout';
-const CARD_WIDTH = 48;     
-const CARD_HEIGHT = 48;    
+const CARD_WIDTH = 52;     
+const CARD_HEIGHT = 52;    
 const WIDGET_AREA_HEIGHT = 110;
 const INDICATOR_HEIGHT = 30;
 const V_GAP = 22;          
-const SIDE_MARGIN = 20;    // 固定左右两侧留白，控制离手机边框的距离
+const SIDE_MARGIN = 24;    // 固定左右两侧留白，控制离手机边框的距离
 const SNAP_DISTANCE = 18;
 const PAGE_SWIPE_THRESHOLD = 60;
 const LABEL_HEIGHT = 26;   
