@@ -127,11 +127,25 @@ export const DesktopModule = {
     Store.set(STORAGE_KEY, this.config);
   },
 
-  // 计算页面网格居中左边距（保证左右留白对称）
-     getGridMarginLeft(pageWidth) {
-    // 和原版一样，固定单边留白，左右永远相等，不会不对称
-    return 16;
-  },
+  getGridInfo(pageWidth) {
+  const perRow = 4;
+  const fixedSideMargin = 24; // 左右两边留白，左边24，右边24
+  const availableWidth = pageWidth - fixedSideMargin * 2;
+  // 4个图标，3个间隙
+  const gap = (availableWidth - perRow * CARD_WIDTH) / (perRow - 1);
+  // 限制间隙最小、最大值，防止挤太近或者散太开
+  const finalGap = Math.max(16, Math.min(40, gap));
+  return {
+    marginLeft: fixedSideMargin,
+    gap: finalGap
+  }
+},
+getGridMarginLeft(pageWidth) {
+  return this.getGridInfo(pageWidth).marginLeft;
+},
+getGridGap(pageWidth) {
+  return this.getGridInfo(pageWidth).gap;
+}
 
   getDefaultConfig() {
     const pages = [];
