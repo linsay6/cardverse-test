@@ -31,15 +31,15 @@ function cropImageToSquare(file, maxSize = 256) {
 
 // ========== 常量配置 ==========
 const STORAGE_KEY = 'desktop-layout';
-const CARD_WIDTH = 48;     // 图标整体宽度
-const CARD_HEIGHT = 48;    // 图标整体高度
+const CARD_WIDTH = 48;     
+const CARD_HEIGHT = 48;    
 const WIDGET_AREA_HEIGHT = 110;
 const INDICATOR_HEIGHT = 30;
-const V_GAP = 22;          // 图标上下垂直间距（原来叫GAP，现在仅用于垂直控制）
-const SIDE_MARGIN = 16;    // 【核心配置】固定左右两侧留白，控制离手机边框的距离，可修改（例如 12、16、20）
+const V_GAP = 22;          
+const SIDE_MARGIN = 16;    // 固定左右两侧留白，控制离手机边框的距离
 const SNAP_DISTANCE = 18;
 const PAGE_SWIPE_THRESHOLD = 60;
-const LABEL_HEIGHT = 26;   // 图标文字高度
+const LABEL_HEIGHT = 26;   
 
 // ========== 36个功能卡片元数据 ==========
 const CARD_META = [
@@ -118,18 +118,8 @@ export const DesktopModule = {
     const saved = Store.get(STORAGE_KEY, null);
     if (saved && saved.pages && saved.pages.length > 0) {
       this.config = saved;
-      // 如果检测到旧版布局数据，强行执行一次重新排版以适应最新间距和留白
-      if(!this.config._layoutV || this.config._layoutV < 2) {
-        this.config._layoutV = 2;
-        const pageW = this.rootEl ? this.rootEl.clientWidth : 375;
-        this.config.pages.forEach(page => {
-          this.reArrangePageCards(page, pageW);
-        });
-        this.saveConfig();
-      }
     } else {
       this.config = this.getDefaultConfig();
-      this.config._layoutV = 2;
       this.saveConfig();
     }
   },
@@ -138,14 +128,24 @@ export const DesktopModule = {
     Store.set(STORAGE_KEY, this.config);
   },
 
-  // 【核心新增】根据实际页面宽度动态计算左右边距和内部剩余间距
+  // 【核心增强】安全宽度计算，防止在容器隐藏或获取不到时算出负数或极小的间距
   getGridInfo(pageWidth) {
     const perRow = 4;
     const marginLeft = SIDE_MARGIN;
-    // 手机总宽度 - 左右两边留白 - 4个图标的宽度
-    const availableWidth = pageWidth - marginLeft * 2 - perRow * CARD_WIDTH;
-    // 剩下的宽度平分给3个间隙
-    const gap = Math.max(0, availableWidth / (perRow - 1));
+    let safeWidth = pageWidth;
+    
+    // 防止获取到 0 或小于 320（大部分手机最小宽度） 的情况
+    if (!safeWidth || safeWidth < 320) {
+      safeWidth = (this.rootEl && this.rootEl.clientWidth > 320) ? this.rootEl.clientWidth : (window.innerWidth || 375);
+    }
+    if (safeWidth > 600) safeWidth = 600; // 限制最大宽度防止平板/PC拉太宽
+
+    const availableWidth = safeWidth - marginLeft * 2 - perRow * CARD_WIDTH;
+    let gap = availableWidth / (perRow - 1);
+    
+    // 【绝对保护】严禁 gap 出现负数，至少保留 8px
+    gap = Math.max(8, gap);
+    
     return {
       marginLeft,
       gap
@@ -163,7 +163,6 @@ export const DesktopModule = {
     const perPage = perRow * perPageRow;
     let pageCards = [];
     
-    // 获取真实设备宽度，避免使用固定 375 导致布局偏移
     const pageW = this.rootEl ? this.rootEl.clientWidth : 375;
     const { marginLeft, gap } = this.getGridInfo(pageW);
 
@@ -199,7 +198,7 @@ export const DesktopModule = {
   },
 
   findEmptyPosition(page) {
-    const pageW = this.rootEl.clientWidth || 375;
+    const pageW = this.rootEl.clientWidth || window.innerWidth || 375;
     const pageH = this.rootEl.clientHeight - WIDGET_AREA_HEIGHT - INDICATOR_HEIGHT;
     const { marginLeft, gap } = this.getGridInfo(pageW);
     const perRow = 4;
@@ -222,7 +221,7 @@ export const DesktopModule = {
 
   reArrangePageCards(page, width) {
     const perRow = 4;
-    const pageW = width || this.rootEl.clientWidth || 375;
+    const pageW = width || this.rootEl.clientWidth || window.innerWidth || 375;
     const { marginLeft, gap } = this.getGridInfo(pageW);
     const sorted = [...page.cards].sort((a,b)=>{
       if(a.y !== b.y) return a.y - b.y;
@@ -237,9 +236,48 @@ export const DesktopModule = {
     page.cards = sorted;
   },
 
-    render() {
+  render() {
     if (!this.rootEl) return;
-    // 【修复】渲染前保存滚动位置，解决弹窗、上传图片后跳回第一页（问题2）
+    
+    // 【终极自愈】：每次渲染前，强制根据当前真实设备宽度，重算并矫正所有的 X 坐标
+    // 彻底解决之前因为容器过窄导致的间距为0，被错误保存为紧凑布局的问题
+    let realWidth = this.rootEl.clientWidth;
+    if (!realWidth || realWidth < 320) {
+      realWidth = window.innerWidth;
+    }
+    if (!realWidth || realWidth < 320) {
+      realWidth = 375;
+    }
+
+    this.config.pages.forEach(page => {
+      const { marginLeft, gap } = this.getGridInfo(realWidth);
+      
+      // 按 y 和 x 排序，保证正确的视觉相对顺序
+      const sorted = [...page.cards].sort((a,b)=>{
+        if (Math.abs(a.y - b.y) > 10) return a.y - b.y;
+        return a.x - b.x;
+      });
+      
+      let rowMap = {};
+      sorted.forEach(card => {
+        // 推导它属于哪一行
+        const rowKey = Math.round((card.y - 16) / (CARD_HEIGHT + V_GAP + LABEL_HEIGHT));
+        if (!rowMap[rowKey]) rowMap[rowKey] = [];
+        rowMap[rowKey].push(card);
+      });
+
+      // 将同一行的卡片强制均匀分布到对应的 0、1、2、3 列
+      Object.keys(rowMap).forEach(rowKey => {
+        const rowCards = rowMap[rowKey];
+        rowCards.forEach((card, index) => {
+          const col = Math.min(3, index);
+          card.x = Math.round(marginLeft + col * (CARD_WIDTH + gap));
+          card.y = 16 + Number(rowKey) * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
+        });
+      });
+    });
+
+    // 渲染前保存滚动位置
     const wrapBefore = document.getElementById('desktop-pages-wrap');
     let restoreScrollLeft = 0;
     if(wrapBefore){
@@ -542,8 +580,8 @@ export const DesktopModule = {
     this.renderPageIndicator();
     this.bindPageScroll();
 
-    // 渲染完成后强制滚动到当前页，彻底解决跳回第一页问题
-        requestAnimationFrame(() => {
+    // 渲染完成后强制滚动到当前页
+    requestAnimationFrame(() => {
       const wrap = document.getElementById('desktop-pages-wrap');
       if (wrap) {
         wrap.scrollLeft = restoreScrollLeft;
@@ -596,7 +634,6 @@ export const DesktopModule = {
           iconBtn.dataset.pageIndex = pageIdx;
           iconBtn.dataset.cardId = cardData.id;
           cardEl.appendChild(iconBtn);
-          // =========新增：移动按钮📐=========
           const moveBtn = document.createElement('button');
           moveBtn.className = 'card-move-btn';
           moveBtn.textContent = '📐';
@@ -622,7 +659,6 @@ export const DesktopModule = {
       addCardBtn.onclick = () => this.showAddCardModal();
       indicator.appendChild(addCardBtn);
 
-      // =====新增：手动收拢图标按钮=====
       const arrangeBtn = document.createElement('button');
       arrangeBtn.className = 'page-control-btn';
       arrangeBtn.innerText = '收拢图标';
@@ -719,7 +755,6 @@ export const DesktopModule = {
         this.render();
         Toast.show("已恢复默认图标","info");
       };
-      // ============【新增：📐移动按钮逻辑】============
       const moveBtn = cardEl.querySelector('.card-move-btn');
       if(moveBtn){
         moveBtn.onclick = (e)=>{
@@ -728,7 +763,6 @@ export const DesktopModule = {
           const cardId = moveBtn.dataset.cardId;
           const cardObj = this.findCard(sourcePageIdx, cardId);
           if(!cardObj) return;
-          // 提示输入格式：页面号,排号,列号，全部从0开始
           const inputText = prompt("请输入目标位置，格式：页面号,排号,列号\n全部数字从0开始，例：0,1,2 → 第0页，第1排，第2列");
           if(!inputText) return;
           const arr = inputText.split(',').map(s=>parseInt(s.trim(),10));
@@ -743,16 +777,13 @@ export const DesktopModule = {
           }
           const targetPage = this.config.pages[targetPageIdx];
           const wrap = document.getElementById('desktop-pages-wrap');
-          const pageW = wrap.clientWidth;
+          const pageW = wrap.clientWidth || window.innerWidth || 375;
           const { marginLeft, gap } = this.getGridInfo(pageW);
-          // 计算目标坐标
           const targetX = Math.round(marginLeft + targetCol * (CARD_WIDTH + gap));
           const targetY = 16 + targetRow * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
-          // 从源页面移除卡片
           const srcPage = this.config.pages[sourcePageIdx];
           const srcIdx = srcPage.cards.findIndex(c=>c.id===cardObj.id);
           if(srcIdx>-1) srcPage.cards.splice(srcIdx,1);
-          // 目标页面：检查目标位置是否被占用；占用则本页所有>=该Y坐标卡片向后往下移位
           let isOccupied = false;
           for(const oc of targetPage.cards){
             const overlap = !(
@@ -764,7 +795,6 @@ export const DesktopModule = {
             if(overlap){
               isOccupied = true;
               const shiftH = CARD_HEIGHT + V_GAP + LABEL_HEIGHT;
-              // 所有Y>=目标Y的卡片全部向下挪一行
               for(const cc of targetPage.cards){
                 if(cc.y >= targetY){
                   cc.y += shiftH;
@@ -773,11 +803,9 @@ export const DesktopModule = {
               break;
             }
           }
-          // 设置新坐标，加入目标页面
           cardObj.x = targetX;
           cardObj.y = targetY;
           targetPage.cards.push(cardObj);
-          // 切到目标页面
           this.config.currentPage = targetPageIdx;
           this.saveConfig();
           this.render();
@@ -785,7 +813,6 @@ export const DesktopModule = {
         };
       }
     }
-    // ===== 删除拖拽绑定：不再调用 bindDragEvents =====
   },
 
   bindDragEvents(wrapEl, cardEl, cardData, pageIndex) {
@@ -857,8 +884,7 @@ export const DesktopModule = {
     let finalX = Math.max(0, Math.min(maxX, newRealX));
     let finalY = Math.max(0, Math.min(maxY, newRealY));
 
-    // 磁吸吸附网格
-    const pageW = wrap.clientWidth;
+    const pageW = wrap.clientWidth || window.innerWidth || 375;
     const { marginLeft, gap } = this.getGridInfo(pageW);
     const col = Math.round((finalX - marginLeft) / (CARD_WIDTH + gap));
     const row = Math.round((finalY - 16) / (CARD_HEIGHT + V_GAP + LABEL_HEIGHT));
@@ -868,7 +894,6 @@ export const DesktopModule = {
     if (Math.abs(finalY - snapY) < SNAP_DISTANCE) finalY = snapY;
 
     const currentPage = this.config.pages[this.config.currentPage];
-    // ==========【修改：碰撞不再回退，向下推挤其他图标腾出空位】 ==========
     let hasOverlap = false;
     for(const otherCard of currentPage.cards){
       if(otherCard.id === cardData.id) continue;
@@ -880,7 +905,6 @@ export const DesktopModule = {
       );
       if(overlap){
         hasOverlap = true;
-        // 发生碰撞：把被碰撞图标以及所有y坐标 >=该图标y的卡片，向下挪一整行高度，腾出当前网格
         const shiftRowHeight = CARD_HEIGHT + V_GAP + LABEL_HEIGHT;
         for(const c of currentPage.cards){
           if(c.id === cardData.id) continue;
@@ -891,14 +915,13 @@ export const DesktopModule = {
         break;
       }
     }
-    // 不再回退坐标，直接使用吸附后的坐标放置拖拽卡片
     cardData.x = finalX;
     cardData.y = finalY;
-    // =================================================================
 
-    if(sourcePageIndex !== this.config.currentPage){
-      const srcIdx = sourcePage.cards.findIndex(c=>c.id === cardData.id);
-      if(srcIdx>-1) sourcePage.cards.splice(srcIdx,1);
+    if(pageIndex !== this.config.currentPage){
+      const srcPage = this.config.pages[pageIndex];
+      const srcIdx = srcPage.cards.findIndex(c=>c.id === cardData.id);
+      if(srcIdx>-1) srcPage.cards.splice(srcIdx,1);
       const targetPage = this.config.pages[this.config.currentPage];
       const pos = this.findEmptyPosition(targetPage);
       if(pos){
@@ -906,7 +929,7 @@ export const DesktopModule = {
         cardData.y = pos.y;
         targetPage.cards.push(cardData);
       }else{
-        sourcePage.cards.push(cardData);
+        srcPage.cards.push(cardData);
         Toast.show('目标页面已满，放回原页面');
       }
     }
@@ -957,7 +980,6 @@ export const DesktopModule = {
     const idx = page.cards.findIndex(c => c.id === cardId);
     if (idx > -1) {
       page.cards.splice(idx, 1);
-      // ========= 删除：不再执行reArrangePageCards，不再自动补齐空位 =========
       this.saveConfig();
       this.renderAllCards();
       Toast.show('已删除图标，空位保留');
