@@ -89,15 +89,7 @@ export const DesktopModule = {
   rootEl: null,
   config: null,
   isEditMode: false,
-  draggingCardId: null,
-  dragStartX: 0,
-  dragStartY: 0,
-  cardOrigX: 0,
-  cardOrigY: 0,
-  dragSourcePageIndex: 0,
-  dragGlobalMoveHandler: null,
-  dragGlobalUpHandler: null,
-
+  
   init(selector) {
     this.rootEl = document.querySelector(selector);
     if (!this.rootEl) return;
@@ -381,6 +373,24 @@ export const DesktopModule = {
           cursor:pointer;
           pointer-events:auto !important;
         }
+                .card-move-btn{
+          position:absolute;
+          bottom:-6px;
+          left:50%;
+          transform:translateX(-50%);
+          width:18px;
+          height:16px;
+          border-radius:4px;
+          background:rgba(30,180,80,0.85);
+          color:#fff;
+          border:none;
+          font-size:10px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          cursor:pointer;
+          pointer-events:auto !important;
+        }
         .page-control-btn {
           padding: 3px 7px;
           font-size: 11px;
@@ -459,9 +469,11 @@ export const DesktopModule = {
           font-size:12px;
         }
         .desktop-card .card-icon svg {
-          width: 100%;
-          height: 100%;
-        }
+  max-width:60%;
+  max-height:60%;
+  width:auto;
+  height:auto;
+}
         @media (max-width:480px){
           .exit-edit-tip { bottom:86px; left:50%; transform:translateX(-50%); }
         }
@@ -549,7 +561,7 @@ export const DesktopModule = {
         labelEl.textContent = meta.name;
         wrapEl.appendChild(cardEl);
         wrapEl.appendChild(labelEl);
-        if(this.isEditMode){
+       if(this.isEditMode){
           const delBtn = document.createElement('button');
           delBtn.className = 'card-del-btn';
           delBtn.textContent = '×';
@@ -560,6 +572,13 @@ export const DesktopModule = {
           iconBtn.dataset.pageIndex = pageIdx;
           iconBtn.dataset.cardId = cardData.id;
           cardEl.appendChild(iconBtn);
+          // =========新增：移动按钮📐=========
+          const moveBtn = document.createElement('button');
+          moveBtn.className = 'card-move-btn';
+          moveBtn.textContent = '📐';
+          moveBtn.dataset.pageIndex = pageIdx;
+          moveBtn.dataset.cardId = cardData.id;
+          cardEl.appendChild(moveBtn);
         }
         this.bindCardEvents(wrapEl,cardEl,labelEl,cardData, pageIdx);
         pageEl.appendChild(wrapEl);
@@ -650,7 +669,7 @@ export const DesktopModule = {
         };
         fileInput.click();
       };
-      iconBtn.oncontextmenu = (e)=>{
+     iconBtn.oncontextmenu = (e)=>{
         e.preventDefault();
         const pi = Number(iconBtn.dataset.pageIndex);
         const cid = iconBtn.dataset.cardId;
@@ -662,10 +681,73 @@ export const DesktopModule = {
         this.render();
         Toast.show("已恢复默认图标","info");
       };
+      // ============【新增：📐移动按钮逻辑】============
+      const moveBtn = cardEl.querySelector('.card-move-btn');
+      if(moveBtn){
+        moveBtn.onclick = (e)=>{
+          e.stopPropagation();
+          const sourcePageIdx = Number(moveBtn.dataset.pageIndex);
+          const cardId = moveBtn.dataset.cardId;
+          const cardObj = this.findCard(sourcePageIdx, cardId);
+          if(!cardObj) return;
+          // 提示输入格式：页面号,排号,列号，全部从0开始
+          const inputText = prompt("请输入目标位置，格式：页面号,排号,列号\n全部数字从0开始，例：0,1,2 → 第0页，第1排，第2列");
+          if(!inputText) return;
+          const arr = inputText.split(',').map(s=>parseInt(s.trim(),10));
+          const [targetPageIdx, targetRow, targetCol] = arr;
+          if(isNaN(targetPageIdx)||isNaN(targetRow)||isNaN(targetCol)){
+            Toast.show("输入格式错误，请按 页面号,排号,列号","error");
+            return;
+          }
+          if(targetPageIdx<0 || targetPageIdx >= this.config.pages.length){
+            Toast.show("目标页面不存在","error");
+            return;
+          }
+          const targetPage = this.config.pages[targetPageIdx];
+          const wrap = document.getElementById('desktop-pages-wrap');
+          const pageW = wrap.clientWidth;
+          const marginLeft = this.getGridMarginLeft(pageW);
+          // 计算目标坐标
+          const targetX = marginLeft + targetCol * (CARD_WIDTH + GAP);
+          const targetY = 16 + targetRow * (CARD_HEIGHT + GAP + LABEL_HEIGHT);
+          // 从源页面移除卡片
+          const srcPage = this.config.pages[sourcePageIdx];
+          const srcIdx = srcPage.cards.findIndex(c=>c.id===cardObj.id);
+          if(srcIdx>-1) srcPage.cards.splice(srcIdx,1);
+          // 目标页面：检查目标位置是否被占用；占用则本页所有>=该Y坐标卡片向后往下移位
+          let isOccupied = false;
+          for(const oc of targetPage.cards){
+            const overlap = !(
+              targetX + CARD_WIDTH < oc.x
+              || targetX > oc.x + CARD_WIDTH
+              || targetY + CARD_HEIGHT < oc.y
+              || targetY > oc.y + CARD_HEIGHT
+            );
+            if(overlap){
+              isOccupied = true;
+              const shiftH = CARD_HEIGHT + GAP + LABEL_HEIGHT;
+              // 所有Y>=目标Y的卡片全部向下挪一行
+              for(const cc of targetPage.cards){
+                if(cc.y >= targetY){
+                  cc.y += shiftH;
+                }
+              }
+              break;
+            }
+          }
+          // 设置新坐标，加入目标页面
+          cardObj.x = targetX;
+          cardObj.y = targetY;
+          targetPage.cards.push(cardObj);
+          // 切到目标页面
+          this.config.currentPage = targetPageIdx;
+          this.saveConfig();
+          this.render();
+          Toast.show(isOccupied?"目标格子已有图标，原有图标已自动后移":"移动完成","success");
+        };
+      }
     }
-    if (this.isEditMode) {
-      this.bindDragEvents(wrapEl, cardEl, cardData, pageIndex);
-    }
+    // ===== 删除拖拽绑定：不再调用 bindDragEvents =====
   },
 
   bindDragEvents(wrapEl, cardEl, cardData, pageIndex) {
