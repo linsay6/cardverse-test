@@ -35,10 +35,10 @@ const CARD_WIDTH = 56;
 const CARD_HEIGHT = 56;
 const WIDGET_AREA_HEIGHT = 110;
 const INDICATOR_HEIGHT = 30;
-const GAP = 14;
-const SNAP_DISTANCE = 14;
+const GAP = 18;         // 图标左右水平间距：由14→18，拉开横向间隙
+const SNAP_DISTANCE = 18;
 const PAGE_SWIPE_THRESHOLD = 60;
-const LABEL_HEIGHT = 18; // 图标下方文字高度
+const LABEL_HEIGHT = 24; // 行垂直间隙增大，拉开上下图标距离
 
 // ========== 36个功能卡片元数据 ==========
 const CARD_META = [
@@ -128,10 +128,12 @@ export const DesktopModule = {
   },
 
   // 计算页面网格居中左边距（保证左右留白对称）
-  getGridMarginLeft(pageWidth) {
+   getGridMarginLeft(pageWidth) {
     const perRow = 4;
     const totalContentWidth = perRow * CARD_WIDTH + (perRow - 1) * GAP;
-    const margin = Math.max(16, (pageWidth - totalContentWidth) / 2);
+    // 改动：最大单边边距限制40px；不会无限放大左右空白，大屏图标尽量铺满可用宽度
+    const idealMargin = (pageWidth - totalContentWidth) / 2;
+    const margin = Math.max(16, Math.min(40, idealMargin));
     return margin;
   },
 
