@@ -2,7 +2,7 @@ import { Store } from './core/store.js';
 import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
 
-// ========== 内置图片裁剪工具（原作者A的cropImageToSquare，内置，不依赖外部untils文件 ==========
+// ========== 内置图片裁剪工具 ==========
 function cropImageToSquare(file, maxSize = 256) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -38,9 +38,9 @@ const INDICATOR_HEIGHT = 30;
 const GAP = 14;
 const SNAP_DISTANCE = 14;
 const PAGE_SWIPE_THRESHOLD = 60;
-const PAGE_LEFT_MARGIN_RATIO = 0.04; // 页面左右留白占页面宽度4%，手机PC统一对称
+const LABEL_HEIGHT = 18; // 图标下方文字高度
 
-// ========== 36个功能卡片元数据｜改名：存钱罐→扑满🫙；记账→账簿；寻味抉择→寻味 ==========
+// ========== 36个功能卡片元数据 ==========
 const CARD_META = [
   // ===== 已开发 8个 =====
   { id: 'chat', name: '聊天', defaultIcon: '💬', isDev: false, type: 'tab', target: 'chat' },
@@ -135,20 +135,27 @@ export const DesktopModule = {
     Store.set(STORAGE_KEY, this.config);
   },
 
+  // 计算页面网格居中左边距（保证左右留白对称）
+  getGridMarginLeft(pageWidth) {
+    const perRow = 4;
+    const totalContentWidth = perRow * CARD_WIDTH + (perRow - 1) * GAP;
+    const margin = Math.max(16, (pageWidth - totalContentWidth) / 2);
+    return margin;
+  },
+
   getDefaultConfig() {
     const pages = [];
     const perRow = 4;
     const perPageRow = 4;
     const perPage = perRow * perPageRow;
     let pageCards = [];
+    const pageW = 375;
+    const marginLeft = this.getGridMarginLeft(pageW);
     CARD_META.forEach((meta, idx) => {
       const col = idx % perRow;
       const row = Math.floor((idx % perPage) / perRow);
-      const pageW = 375;
-      const marginLeft = pageW * PAGE_LEFT_MARGIN_RATIO;
       const x = marginLeft + col * (CARD_WIDTH + GAP);
-      const y = 16 + row * (CARD_HEIGHT + GAP + 18);
-      // 默认卡片不带customIcon，为null使用默认图标
+      const y = 16 + row * (CARD_HEIGHT + GAP + LABEL_HEIGHT);
       pageCards.push({ id: meta.id, x, y, customIcon: null });
       if(pageCards.length >= perPage) {
         pages.push({ id: Date.now() + Math.random(), widgets: [], cards: pageCards });
@@ -169,7 +176,6 @@ export const DesktopModule = {
     return CARD_META.find(item => item.id === id);
   },
 
-  /** 根据pageIndex + cardId查找卡片对象 */
   findCard(pageIndex, cardId) {
     const page = this.config.pages[pageIndex];
     if (!page) return null;
@@ -179,13 +185,14 @@ export const DesktopModule = {
   findEmptyPosition(page) {
     const pageW = this.rootEl.clientWidth;
     const pageH = this.rootEl.clientHeight - WIDGET_AREA_HEIGHT - INDICATOR_HEIGHT;
-    const marginLeft = pageW * PAGE_LEFT_MARGIN_RATIO;
-    const maxCol = Math.floor((pageW - marginLeft * 2) / (CARD_WIDTH + GAP));
-    const maxRow = Math.floor((pageH - 16) / (CARD_HEIGHT + GAP + 18));
+    const marginLeft = this.getGridMarginLeft(pageW);
+    const perRow = 4;
+    const maxCol = perRow;
+    const maxRow = Math.floor((pageH - 16) / (CARD_HEIGHT + GAP + LABEL_HEIGHT));
     for(let r=0; r<maxRow; r++){
       for(let c=0; c<maxCol; c++){
         const testX = marginLeft + c * (CARD_WIDTH + GAP);
-        const testY = 16 + r * (CARD_HEIGHT + GAP + 18);
+        const testY = 16 + r * (CARD_HEIGHT + GAP + LABEL_HEIGHT);
         let occupied = false;
         for(const cd of page.cards) {
           const overlap = !(testX + CARD_WIDTH < cd.x || testX > cd.x + CARD_WIDTH || testY + CARD_HEIGHT < cd.y || testY > cd.y + CARD_HEIGHT);
@@ -200,7 +207,7 @@ export const DesktopModule = {
   reArrangePageCards(page) {
     const perRow = 4;
     const pageW = this.rootEl.clientWidth || 375;
-    const marginLeft = pageW * PAGE_LEFT_MARGIN_RATIO;
+    const marginLeft = this.getGridMarginLeft(pageW);
     const sorted = [...page.cards].sort((a,b)=>{
       if(a.y !== b.y) return a.y - b.y;
       return a.x - b.x;
@@ -209,247 +216,249 @@ export const DesktopModule = {
       const col = idx % perRow;
       const row = Math.floor(idx / perRow);
       card.x = marginLeft + col * (CARD_WIDTH + GAP);
-      card.y = 16 + row * (CARD_HEIGHT + GAP + 18);
+      card.y = 16 + row * (CARD_HEIGHT + GAP + LABEL_HEIGHT);
     });
     page.cards = sorted;
   },
 
   render() {
     if (!this.rootEl) return;
-    const oldWrap = document.getElementById('desktop-pages-wrap');
-    let restoreScrollLeft = 0;
-    if(oldWrap){
-      restoreScrollLeft = oldWrap.scrollLeft;
-    }
     this.rootEl.innerHTML = '';
-    const styleEl = document.createElement('style');
-    styleEl.textContent = `
-      #desktop-canvas {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-      }
-      .desktop-widget-area {
-        height: ${WIDGET_AREA_HEIGHT}px;
-        width: 100%;
-        position: relative;
-      }
-      .desktop-pages-wrap {
-        width: 100%;
-        height: calc(100% - ${WIDGET_AREA_HEIGHT}px - ${INDICATOR_HEIGHT}px);
-        overflow-x: auto;
-        overflow-y: hidden;
-        scroll-snap-type: x mandatory;
-        scrollbar-width: none;
-      }
-      .desktop-pages-wrap::-webkit-scrollbar { display: none; }
-      .desktop-pages-track {
-        display: flex;
-        height: 100%;
-      }
-      .desktop-page {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        flex-shrink: 0;
-        scroll-snap-align: start;
-      }
-      .desktop-page-indicator {
-        height: ${INDICATOR_HEIGHT}px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-      }
-      .page-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--color-text-2);
-        opacity: 0.5;
-        transition: all 0.2s ease;
-      }
-      .page-dot.active {
-        opacity: 1;
-        background: var(--color-main);
-        width: 18px;
-        border-radius: 3px;
-      }
-      .desktop-item-wrap{
-        position:absolute;
-        display:flex;
-        flex-direction:column;
-        align-items:center;
-      }
-      .desktop-card {
-        width: ${CARD_WIDTH}px;
-        height: ${CARD_HEIGHT}px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius:18px;
-        background: var(--color-main);
-        border:1px solid color-mix(in srgb,var(--color-main) 30%,transparent);
-        cursor: pointer;
-        user-select: none;
-        box-sizing: border-box;
-        will-change: transform;
-        position:relative;
-      }
-      .desktop-card:active { transform: scale(0.94); }
-      .desktop-card.dragging {
-        z-index: 999;
-        opacity:0.92;
-        transform: scale(1.04);
-      }
-      .desktop-card .card-icon {
-        width:42px;
-        height:42px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-size:26px;
-        border-radius:14px;
-        overflow:hidden;
-        color:var(--color-text);
-        -webkit-text-fill-color: var(--color-text);
-      }
-      .desktop-card .card-icon img{
-        width:100%;
-        height:100%;
-        object-fit:cover;
-      }
-      .card-label-outside{
-        font-size: 10px;
-        color: var(--color-text);
-        text-align:center;
-        line-height:1.1;
-        margin-top:4px;
-        max-width:${CARD_WIDTH+8}px;
-        overflow:hidden;
-        text-overflow:ellipsis;
-        white-space:nowrap;
-      }
-      .card-del-btn {
-        position:absolute;
-        top:-5px;
-        right:-5px;
-        width:16px;
-        height:16px;
-        border-radius:50%;
-        background:rgba(220,20,20,0.85);
-        color:#fff;
-        border:none;
-        font-size:10px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        cursor:pointer;
-        pointer-events:auto !important;
-      }
-      .card-icon-btn{
-        position:absolute;
-        top:-5px;
-        left:-5px;
-        width:16px;
-        height:16px;
-        border-radius:50%;
-        background:rgba(40,140,240,0.85);
-        color:#fff;
-        border:none;
-        font-size:10px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        cursor:pointer;
-        pointer-events:auto !important;
-      }
-      .page-control-btn {
-        padding: 3px 7px;
-        font-size: 11px;
-        border:1px solid var(--color-border);
-        border-radius:5px;
-        background:color-mix(in srgb, var(--color-main) 14%, transparent);
-        color:var(--color-text);
-        cursor:pointer;
-      }
-      .add-card-modal-mask {
-        position:fixed;
-        inset:0;
-        background:rgba(0,0,0,0.42);
-        z-index:10000;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-      }
-      .add-card-modal {
-        width:82%;
-        max-width:320px;
-        max-height:70vh;
-        background:var(--color-bg);
-        border-radius:14px;
-        overflow:hidden;
-        display:flex;
-        flex-direction:column;
-      }
-      .add-card-modal-header {
-        padding:12px 14px;
-        font-weight:bold;
-        color:var(--color-text);
-        border-bottom:1px solid var(--color-border);
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-      }
-      .add-card-list {
-        flex:1;
-        overflow-y:auto;
-        padding:6px;
-        scrollbar-width:none;
-      }
-      .add-card-list::-webkit-scrollbar { display:none; }
-      .add-card-item {
-        display:flex;
-        align-items:center;
-        gap:8px;
-        padding:8px 10px;
-        border-radius:7px;
-        cursor:pointer;
-        color:var(--color-text);
-      }
-      .add-card-item:hover { background:rgba(0,0,0,0.045); }
-      .add-card-item .icon {
-        font-size:20px;
-        color:var(--color-text);
-        -webkit-text-fill-color: var(--color-text);
-      }
-      .modal-footer-bar{
-        padding:9px 12px;
-        border-top:1px solid var(--color-border);
-        display:flex;
-        gap:7px;
-      }
-      .exit-edit-tip {
-        position:fixed;
-        z-index:999;
-      }
-      .exit-edit-btn {
-        padding:5px 12px;
-        border-radius:999px;
-        border:1px solid var(--color-border);
-        background:color-mix(in srgb, var(--color-main) 14%, transparent);
-        color:var(--color-text);
-        font-size:12px;
-      }
-      @media (max-width:480px){
-        .exit-edit-tip { bottom:86px; left:50%; transform:translateX(-50%); }
-      }
-      @media (min-width:481px){
-        .exit-edit-tip { bottom:32px; left:50%; transform:translateX(-50%); }
-      }
-    `;
-    document.head.appendChild(styleEl);
+
+    // 样式只插入一次，避免重复
+    let styleEl = document.getElementById('desktop-module-style');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'desktop-module-style';
+      styleEl.textContent = `
+        #desktop-canvas {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+        }
+        .desktop-widget-area {
+          height: ${WIDGET_AREA_HEIGHT}px;
+          width: 100%;
+          position: relative;
+        }
+        .desktop-pages-wrap {
+          width: 100%;
+          height: calc(100% - ${WIDGET_AREA_HEIGHT}px - ${INDICATOR_HEIGHT}px);
+          overflow-x: auto;
+          overflow-y: hidden;
+          scroll-snap-type: x mandatory;
+          scrollbar-width: none;
+        }
+        .desktop-pages-wrap::-webkit-scrollbar { display: none; }
+        .desktop-pages-track {
+          display: flex;
+          height: 100%;
+        }
+        .desktop-page {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          flex-shrink: 0;
+          scroll-snap-align: start;
+        }
+        .desktop-page-indicator {
+          height: ${INDICATOR_HEIGHT}px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+        }
+        .page-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--color-text-2);
+          opacity: 0.5;
+          transition: all 0.2s ease;
+        }
+        .page-dot.active {
+          opacity: 1;
+          background: var(--color-main);
+          width: 18px;
+          border-radius: 3px;
+        }
+        .desktop-item-wrap{
+          position:absolute;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+        }
+        .desktop-card {
+          width: ${CARD_WIDTH}px;
+          height: ${CARD_HEIGHT}px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius:18px;
+          background: var(--color-main);
+          border:1px solid color-mix(in srgb,var(--color-main) 30%,transparent);
+          cursor: pointer;
+          user-select: none;
+          box-sizing: border-box;
+          will-change: transform;
+          position:relative;
+        }
+        .desktop-card:active { transform: scale(0.94); }
+        .desktop-card.dragging {
+          z-index: 999;
+          opacity:0.92;
+          transform: scale(1.04);
+        }
+        .desktop-card .card-icon {
+          width:42px;
+          height:42px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:26px;
+          border-radius:14px;
+          overflow:hidden;
+          color:var(--color-text);
+          -webkit-text-fill-color: var(--color-text);
+        }
+        .desktop-card .card-icon img{
+          width:100%;
+          height:100%;
+          object-fit: contain;
+        }
+        .card-label-outside{
+          font-size: 10px;
+          color: var(--color-text);
+          text-align:center;
+          line-height:1.1;
+          margin-top:4px;
+          max-width:${CARD_WIDTH+8}px;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+        }
+        .card-del-btn {
+          position:absolute;
+          top:-5px;
+          right:-5px;
+          width:16px;
+          height:16px;
+          border-radius:50%;
+          background:rgba(220,20,20,0.85);
+          color:#fff;
+          border:none;
+          font-size:10px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          cursor:pointer;
+          pointer-events:auto !important;
+        }
+        .card-icon-btn{
+          position:absolute;
+          top:-5px;
+          left:-5px;
+          width:16px;
+          height:16px;
+          border-radius:50%;
+          background:rgba(40,140,240,0.85);
+          color:#fff;
+          border:none;
+          font-size:10px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          cursor:pointer;
+          pointer-events:auto !important;
+        }
+        .page-control-btn {
+          padding: 3px 7px;
+          font-size: 11px;
+          border:1px solid var(--color-border);
+          border-radius:5px;
+          background:color-mix(in srgb, var(--color-main) 14%, transparent);
+          color:var(--color-text);
+          cursor:pointer;
+        }
+        .add-card-modal-mask {
+          position:fixed;
+          inset:0;
+          background:rgba(0,0,0,0.42);
+          z-index:10000;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+        }
+        .add-card-modal {
+          width:82%;
+          max-width:320px;
+          max-height:70vh;
+          background:var(--color-bg);
+          border-radius:14px;
+          overflow:hidden;
+          display:flex;
+          flex-direction:column;
+        }
+        .add-card-modal-header {
+          padding:12px 14px;
+          font-weight:bold;
+          color:var(--color-text);
+          border-bottom:1px solid var(--color-border);
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+        }
+        .add-card-list {
+          flex:1;
+          overflow-y:auto;
+          padding:6px;
+          scrollbar-width:none;
+        }
+        .add-card-list::-webkit-scrollbar { display:none; }
+        .add-card-item {
+          display:flex;
+          align-items:center;
+          gap:8px;
+          padding:8px 10px;
+          border-radius:7px;
+          cursor:pointer;
+          color:var(--color-text);
+        }
+        .add-card-item:hover { background:rgba(0,0,0,0.045); }
+        .add-card-item .icon {
+          font-size:20px;
+          color:var(--color-text);
+          -webkit-text-fill-color: var(--color-text);
+        }
+        .modal-footer-bar{
+          padding:9px 12px;
+          border-top:1px solid var(--color-border);
+          display:flex;
+          gap:7px;
+        }
+        .exit-edit-tip {
+          position:fixed;
+          z-index:999;
+        }
+        .exit-edit-btn {
+          padding:5px 12px;
+          border-radius:999px;
+          border:1px solid var(--color-border);
+          background:color-mix(in srgb, var(--color-main) 14%, transparent);
+          color:var(--color-text);
+          font-size:12px;
+        }
+        @media (max-width:480px){
+          .exit-edit-tip { bottom:86px; left:50%; transform:translateX(-50%); }
+        }
+        @media (min-width:481px){
+          .exit-edit-tip { bottom:32px; left:50%; transform:translateX(-50%); }
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
     const canvas = document.createElement('div');
     canvas.id = 'desktop-canvas';
     const widgetArea = document.createElement('div');
@@ -483,10 +492,15 @@ export const DesktopModule = {
     this.renderAllCards();
     this.renderPageIndicator();
     this.bindPageScroll();
-    setTimeout(()=>{
-      const wrapAfter = document.getElementById('desktop-pages-wrap');
-      if(wrapAfter) wrapAfter.scrollLeft = restoreScrollLeft;
-    },0);
+
+    // 渲染完成后强制滚动到当前页，彻底解决跳回第一页问题
+    requestAnimationFrame(() => {
+      const wrap = document.getElementById('desktop-pages-wrap');
+      if (wrap) {
+        wrap.scrollLeft = this.config.currentPage * wrap.clientWidth;
+      }
+    });
+
     if(this.isEditMode) {
       document.getElementById('exit-edit').onclick = ()=>this.exitEditMode();
     }
@@ -509,7 +523,6 @@ export const DesktopModule = {
         const cardEl = document.createElement('div');
         cardEl.className = 'desktop-card';
 
-        // ========= 渲染自定义图标逻辑 =========
         let iconHtml = '';
         if(cardData.customIcon){
           iconHtml = `<div class="card-icon"><img src="${cardData.customIcon}" alt=""></div>`;
@@ -523,14 +536,11 @@ export const DesktopModule = {
         labelEl.textContent = meta.name;
         wrapEl.appendChild(cardEl);
         wrapEl.appendChild(labelEl);
-
         if(this.isEditMode){
-          // 删除按钮
           const delBtn = document.createElement('button');
           delBtn.className = 'card-del-btn';
           delBtn.textContent = '×';
           cardEl.appendChild(delBtn);
-          // 【新增】更换图标按钮 🖼
           const iconBtn = document.createElement('button');
           iconBtn.className = 'card-icon-btn';
           iconBtn.textContent = '🖼';
@@ -538,7 +548,6 @@ export const DesktopModule = {
           iconBtn.dataset.cardId = cardData.id;
           cardEl.appendChild(iconBtn);
         }
-
         this.bindCardEvents(wrapEl,cardEl,labelEl,cardData, pageIdx);
         pageEl.appendChild(wrapEl);
       });
@@ -588,7 +597,6 @@ export const DesktopModule = {
         this.handleCardClick(cardId);
       }
     };
-
     const delBtn = cardEl.querySelector('.card-del-btn');
     if (delBtn) {
       delBtn.onclick = (e) => {
@@ -597,7 +605,6 @@ export const DesktopModule = {
       };
     }
 
-    // =========【新增：更换图标按钮事件】=========
     const iconBtn = cardEl.querySelector('.card-icon-btn');
     if(iconBtn){
       iconBtn.onclick = async (e)=>{
@@ -606,8 +613,6 @@ export const DesktopModule = {
         const cid = iconBtn.dataset.cardId;
         const cardObj = this.findCard(pi,cid);
         if(!cardObj) return;
-
-        // 创建隐藏file input
         const fileInput = document.createElement('input');
         fileInput.type="file";
         fileInput.accept="image/*";
@@ -632,7 +637,6 @@ export const DesktopModule = {
         };
         fileInput.click();
       };
-      // 右键长按点击重置图标（弹出确认）
       iconBtn.oncontextmenu = (e)=>{
         e.preventDefault();
         const pi = Number(iconBtn.dataset.pageIndex);
@@ -646,7 +650,6 @@ export const DesktopModule = {
         Toast.show("已恢复默认图标","info");
       };
     }
-
     if (this.isEditMode) {
       this.bindDragEvents(wrapEl, cardEl, cardData, pageIndex);
     }
@@ -663,12 +666,12 @@ export const DesktopModule = {
       self.dragSourcePageIndex = pageIndex;
       cardEl.classList.add('dragging');
       wrapEl.style.zIndex = '999';
-      cardEl.style.transform = '';
+      wrapEl.style.transform = '';
       self.dragGlobalMoveHandler = (evt)=>{
         let cx,cy;
         if(evt.touches){ cx = evt.touches[0].clientX; cy = evt.touches[0].clientY; }
         else{ cx = evt.clientX; cy = evt.clientY; }
-        self.onGlobalDragMove(cx,cy,wrapEl,cardEl);
+        self.onGlobalDragMove(cx,cy,wrapEl,cardEl,cardData);
       };
       self.dragGlobalUpHandler = ()=>{
         self.onGlobalDragEnd(wrapEl,cardEl,cardData,pageIndex);
@@ -688,7 +691,7 @@ export const DesktopModule = {
     wrapEl.addEventListener('touchstart', (e) => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); }, { passive: true });
   },
 
-  onGlobalDragMove(clientX, clientY, wrapEl, cardEl){
+  onGlobalDragMove(clientX, clientY, wrapEl, cardEl, cardData){
     if(this.draggingCardId === null) return;
     const dx = clientX - this.dragStartX;
     const dy = clientY - this.dragStartY;
@@ -717,17 +720,24 @@ export const DesktopModule = {
     if(!wrap) return;
     const rect = wrap.getBoundingClientRect();
     const maxX = rect.width - CARD_WIDTH;
-    const maxY = rect.height - CARD_HEIGHT - 24;
+    const maxY = rect.height - CARD_HEIGHT - LABEL_HEIGHT;
     let finalX = Math.max(0, Math.min(maxX, newRealX));
     let finalY = Math.max(0, Math.min(maxY, newRealY));
-    const sourcePage = this.config.pages[sourcePageIndex];
-    const others = sourcePage.cards.filter(c=>c.id !== cardData.id);
-    for(const c of others){
-      if(Math.abs(finalX - c.x) < SNAP_DISTANCE) finalX = c.x;
-      if(Math.abs(finalY - c.y) < SNAP_DISTANCE) finalY = c.y;
-    }
+
+    // 优化磁吸：吸附到标准网格坐标
+    const pageW = wrap.clientWidth;
+    const marginLeft = this.getGridMarginLeft(pageW);
+    const col = Math.round((finalX - marginLeft) / (CARD_WIDTH + GAP));
+    const row = Math.round((finalY - 16) / (CARD_HEIGHT + GAP + LABEL_HEIGHT));
+    const snapX = marginLeft + col * (CARD_WIDTH + GAP);
+    const snapY = 16 + row * (CARD_HEIGHT + GAP + LABEL_HEIGHT);
+    // 在磁吸距离内才吸附
+    if (Math.abs(finalX - snapX) < SNAP_DISTANCE) finalX = snapX;
+    if (Math.abs(finalY - snapY) < SNAP_DISTANCE) finalY = snapY;
+
     cardData.x = finalX;
     cardData.y = finalY;
+
     if(sourcePageIndex !== this.config.currentPage){
       const srcIdx = sourcePage.cards.findIndex(c=>c.id === cardData.id);
       if(srcIdx>-1) sourcePage.cards.splice(srcIdx,1);
@@ -843,11 +853,10 @@ export const DesktopModule = {
     for(const cardId of idList){
       const pos = this.findEmptyPosition(page);
       if(!pos){ Toast.show('页面剩余空间不足，部分图标未添加'); break; }
-      // 新添加卡片默认 customIcon=null
       page.cards.push({ id: cardId, x: pos.x, y: pos.y, customIcon: null });
     }
     this.saveConfig();
-    this.renderAllCards();
+    this.render();
     Toast.show(`成功添加${idList.length}个图标`);
   },
 
