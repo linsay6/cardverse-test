@@ -2,6 +2,33 @@ import { Store } from './core/store.js';
 import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
 
+// ========== 内置图片裁剪工具（原作者A的cropImageToSquare，内置，不依赖外部untils文件 ==========
+function cropImageToSquare(file, maxSize = 256) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const minSide = Math.min(img.width, img.height);
+        const sx = (img.width - minSide) / 2;
+        const sy = (img.height - minSide) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = maxSize;
+        canvas.height = maxSize;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, maxSize, maxSize);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 // ========== 常量配置 ==========
 const STORAGE_KEY = 'desktop-layout';
 const CARD_WIDTH = 56;
@@ -24,7 +51,6 @@ const CARD_META = [
   { id: 'house', name: '小屋', defaultIcon: '🏠', isDev: false, type: 'action', action: 'house' },
   { id: 'audit', name: '审核', defaultIcon: '✅', isDev: false, type: 'action', action: 'audit' },
   { id: 'setting', name: '设置', defaultIcon: '⚙️', isDev: false, type: 'tab', target: 'setting' },
-
   // ===== 开发中 28个 =====
   { id: 'groupchat', name: '群聊', defaultIcon: '👥', isDev: true },
   { id: 'heartletter', name: '心信笺', defaultIcon: '💌', isDev: true },
@@ -88,6 +114,7 @@ export const DesktopModule = {
     this.render();
     Toast.show('已进入桌面编辑模式');
   },
+
   exitEditMode() {
     this.isEditMode = false;
     this.render();
@@ -121,7 +148,8 @@ export const DesktopModule = {
       const marginLeft = pageW * PAGE_LEFT_MARGIN_RATIO;
       const x = marginLeft + col * (CARD_WIDTH + GAP);
       const y = 16 + row * (CARD_HEIGHT + GAP + 18);
-      pageCards.push({ id: meta.id, x, y });
+      // 默认卡片不带customIcon，为null使用默认图标
+      pageCards.push({ id: meta.id, x, y, customIcon: null });
       if(pageCards.length >= perPage) {
         pages.push({ id: Date.now() + Math.random(), widgets: [], cards: pageCards });
         pageCards = [];
@@ -141,13 +169,19 @@ export const DesktopModule = {
     return CARD_META.find(item => item.id === id);
   },
 
+  /** 根据pageIndex + cardId查找卡片对象 */
+  findCard(pageIndex, cardId) {
+    const page = this.config.pages[pageIndex];
+    if (!page) return null;
+    return page.cards.find(c => c.id === cardId);
+  },
+
   findEmptyPosition(page) {
     const pageW = this.rootEl.clientWidth;
     const pageH = this.rootEl.clientHeight - WIDGET_AREA_HEIGHT - INDICATOR_HEIGHT;
     const marginLeft = pageW * PAGE_LEFT_MARGIN_RATIO;
     const maxCol = Math.floor((pageW - marginLeft * 2) / (CARD_WIDTH + GAP));
     const maxRow = Math.floor((pageH - 16) / (CARD_HEIGHT + GAP + 18));
-
     for(let r=0; r<maxRow; r++){
       for(let c=0; c<maxCol; c++){
         const testX = marginLeft + c * (CARD_WIDTH + GAP);
@@ -188,7 +222,6 @@ export const DesktopModule = {
       restoreScrollLeft = oldWrap.scrollLeft;
     }
     this.rootEl.innerHTML = '';
-
     const styleEl = document.createElement('style');
     styleEl.textContent = `
       #desktop-canvas {
@@ -282,6 +315,11 @@ export const DesktopModule = {
         color:var(--color-text);
         -webkit-text-fill-color: var(--color-text);
       }
+      .desktop-card .card-icon img{
+        width:100%;
+        height:100%;
+        object-fit:cover;
+      }
       .card-label-outside{
         font-size: 10px;
         color: var(--color-text);
@@ -301,6 +339,23 @@ export const DesktopModule = {
         height:16px;
         border-radius:50%;
         background:rgba(220,20,20,0.85);
+        color:#fff;
+        border:none;
+        font-size:10px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        cursor:pointer;
+        pointer-events:auto !important;
+      }
+      .card-icon-btn{
+        position:absolute;
+        top:-5px;
+        left:-5px;
+        width:16px;
+        height:16px;
+        border-radius:50%;
+        background:rgba(40,140,240,0.85);
         color:#fff;
         border:none;
         font-size:10px;
@@ -395,13 +450,11 @@ export const DesktopModule = {
       }
     `;
     document.head.appendChild(styleEl);
-
     const canvas = document.createElement('div');
     canvas.id = 'desktop-canvas';
     const widgetArea = document.createElement('div');
     widgetArea.className = 'desktop-widget-area';
     canvas.appendChild(widgetArea);
-
     const pagesWrap = document.createElement('div');
     pagesWrap.className = 'desktop-pages-wrap';
     pagesWrap.id = 'desktop-pages-wrap';
@@ -416,12 +469,10 @@ export const DesktopModule = {
     });
     pagesWrap.appendChild(pagesTrack);
     canvas.appendChild(pagesWrap);
-
     const indicator = document.createElement('div');
     indicator.className = 'desktop-page-indicator';
     indicator.id = 'desktop-page-indicator';
     canvas.appendChild(indicator);
-
     if(this.isEditMode) {
       const exitWrap = document.createElement('div');
       exitWrap.className = 'exit-edit-tip';
@@ -429,7 +480,6 @@ export const DesktopModule = {
       canvas.appendChild(exitWrap);
     }
     this.rootEl.appendChild(canvas);
-
     this.renderAllCards();
     this.renderPageIndicator();
     this.bindPageScroll();
@@ -456,23 +506,37 @@ export const DesktopModule = {
         wrapEl.dataset.pageIndex = pageIdx;
         wrapEl.style.left = `${cardData.x}px`;
         wrapEl.style.top = `${cardData.y}px`;
-
         const cardEl = document.createElement('div');
         cardEl.className = 'desktop-card';
-        cardEl.innerHTML = `<div class="card-icon">${meta.defaultIcon}</div>`;
+
+        // ========= 渲染自定义图标逻辑 =========
+        let iconHtml = '';
+        if(cardData.customIcon){
+          iconHtml = `<div class="card-icon"><img src="${cardData.customIcon}" alt=""></div>`;
+        }else{
+          iconHtml = `<div class="card-icon">${meta.defaultIcon}</div>`;
+        }
+        cardEl.innerHTML = iconHtml;
 
         const labelEl = document.createElement('div');
         labelEl.className = 'card-label-outside';
         labelEl.textContent = meta.name;
-
         wrapEl.appendChild(cardEl);
         wrapEl.appendChild(labelEl);
 
         if(this.isEditMode){
+          // 删除按钮
           const delBtn = document.createElement('button');
           delBtn.className = 'card-del-btn';
           delBtn.textContent = '×';
           cardEl.appendChild(delBtn);
+          // 【新增】更换图标按钮 🖼
+          const iconBtn = document.createElement('button');
+          iconBtn.className = 'card-icon-btn';
+          iconBtn.textContent = '🖼';
+          iconBtn.dataset.pageIndex = pageIdx;
+          iconBtn.dataset.cardId = cardData.id;
+          cardEl.appendChild(iconBtn);
         }
 
         this.bindCardEvents(wrapEl,cardEl,labelEl,cardData, pageIdx);
@@ -519,6 +583,7 @@ export const DesktopModule = {
     const cardId = cardData.id;
     wrapEl.onclick = (e) => {
       if (e.target.classList.contains('card-del-btn')) return;
+      if (e.target.classList.contains('card-icon-btn')) return;
       if (!this.isEditMode) {
         this.handleCardClick(cardId);
       }
@@ -529,6 +594,56 @@ export const DesktopModule = {
       delBtn.onclick = (e) => {
         e.stopPropagation();
         this.deleteCard(pageIndex, cardId);
+      };
+    }
+
+    // =========【新增：更换图标按钮事件】=========
+    const iconBtn = cardEl.querySelector('.card-icon-btn');
+    if(iconBtn){
+      iconBtn.onclick = async (e)=>{
+        e.stopPropagation();
+        const pi = Number(iconBtn.dataset.pageIndex);
+        const cid = iconBtn.dataset.cardId;
+        const cardObj = this.findCard(pi,cid);
+        if(!cardObj) return;
+
+        // 创建隐藏file input
+        const fileInput = document.createElement('input');
+        fileInput.type="file";
+        fileInput.accept="image/*";
+        fileInput.onchange = async (ev)=>{
+          const file = ev.target.files[0];
+          if(!file){
+            fileInput.remove();
+            return;
+          }
+          try{
+            Toast.show("正在处理图片...","info");
+            const base64 = await cropImageToSquare(file,256);
+            cardObj.customIcon = base64;
+            this.saveConfig();
+            this.render();
+            Toast.show("图标更换成功！","success");
+          }catch(err){
+            Toast.show("图片处理失败，请换一张图片","error");
+            console.error(err);
+          }
+          fileInput.remove();
+        };
+        fileInput.click();
+      };
+      // 右键长按点击重置图标（弹出确认）
+      iconBtn.oncontextmenu = (e)=>{
+        e.preventDefault();
+        const pi = Number(iconBtn.dataset.pageIndex);
+        const cid = iconBtn.dataset.cardId;
+        const cardObj = this.findCard(pi,cid);
+        if(!cardObj) return;
+        if(!confirm("是否重置该卡片图标，恢复默认？")) return;
+        cardObj.customIcon = null;
+        this.saveConfig();
+        this.render();
+        Toast.show("已恢复默认图标","info");
       };
     }
 
@@ -549,7 +664,6 @@ export const DesktopModule = {
       cardEl.classList.add('dragging');
       wrapEl.style.zIndex = '999';
       cardEl.style.transform = '';
-
       self.dragGlobalMoveHandler = (evt)=>{
         let cx,cy;
         if(evt.touches){ cx = evt.touches[0].clientX; cy = evt.touches[0].clientY; }
@@ -565,13 +679,11 @@ export const DesktopModule = {
         self.dragGlobalMoveHandler = null;
         self.dragGlobalUpHandler = null;
       };
-
       document.addEventListener('mousemove', self.dragGlobalMoveHandler);
       document.addEventListener('mouseup', self.dragGlobalUpHandler);
       document.addEventListener('touchmove', self.dragGlobalMoveHandler, {passive:false});
       document.addEventListener('touchend', self.dragGlobalUpHandler);
     };
-
     wrapEl.addEventListener('mousedown', (e) => { e.preventDefault(); startDrag(e.clientX, e.clientY); });
     wrapEl.addEventListener('touchstart', (e) => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); }, { passive: true });
   },
@@ -581,7 +693,6 @@ export const DesktopModule = {
     const dx = clientX - this.dragStartX;
     const dy = clientY - this.dragStartY;
     wrapEl.style.transform = `translate(${dx}px, ${dy}px)`;
-
     const wrap = document.getElementById('desktop-pages-wrap');
     if(!wrap) return;
     const rect = wrap.getBoundingClientRect();
@@ -596,15 +707,12 @@ export const DesktopModule = {
     if (this.draggingCardId !== cardData.id) return;
     cardEl.classList.remove('dragging');
     wrapEl.style.zIndex = '';
-
     const transformStr = wrapEl.style.transform || '';
     let deltaX = 0,deltaY=0;
     const match = transformStr.match(/translate\((.+?)px,\s*(.+?)px\)/);
     if(match){ deltaX = parseFloat(match[1])||0; deltaY = parseFloat(match[2])||0; }
-
     const newRealX = this.cardOrigX + deltaX;
     const newRealY = this.cardOrigY + deltaY;
-
     const wrap = document.getElementById('desktop-pages-wrap');
     if(!wrap) return;
     const rect = wrap.getBoundingClientRect();
@@ -612,17 +720,14 @@ export const DesktopModule = {
     const maxY = rect.height - CARD_HEIGHT - 24;
     let finalX = Math.max(0, Math.min(maxX, newRealX));
     let finalY = Math.max(0, Math.min(maxY, newRealY));
-
     const sourcePage = this.config.pages[sourcePageIndex];
     const others = sourcePage.cards.filter(c=>c.id !== cardData.id);
     for(const c of others){
       if(Math.abs(finalX - c.x) < SNAP_DISTANCE) finalX = c.x;
       if(Math.abs(finalY - c.y) < SNAP_DISTANCE) finalY = c.y;
     }
-
     cardData.x = finalX;
     cardData.y = finalY;
-
     if(sourcePageIndex !== this.config.currentPage){
       const srcIdx = sourcePage.cards.findIndex(c=>c.id === cardData.id);
       if(srcIdx>-1) sourcePage.cards.splice(srcIdx,1);
@@ -637,7 +742,6 @@ export const DesktopModule = {
         Toast.show('目标页面已满，放回原页面');
       }
     }
-
     wrapEl.style.transform = '';
     this.saveConfig();
     this.render();
@@ -699,7 +803,6 @@ export const DesktopModule = {
     if (available.length === 0) { Toast.show('所有图标都已经在当前页面了'); return; }
     const emptyPos = this.findEmptyPosition(currentPage);
     if(!emptyPos) { Toast.show('当前页面空间已满，请新建页面或者移除部分图标'); return; }
-
     const mask = document.createElement('div');
     mask.className = 'add-card-modal-mask';
     mask.innerHTML = `
@@ -740,7 +843,8 @@ export const DesktopModule = {
     for(const cardId of idList){
       const pos = this.findEmptyPosition(page);
       if(!pos){ Toast.show('页面剩余空间不足，部分图标未添加'); break; }
-      page.cards.push({ id: cardId, x: pos.x, y: pos.y });
+      // 新添加卡片默认 customIcon=null
+      page.cards.push({ id: cardId, x: pos.x, y: pos.y, customIcon: null });
     }
     this.saveConfig();
     this.renderAllCards();
@@ -772,5 +876,4 @@ export const DesktopModule = {
     Toast.show('已删除桌面页');
   }
 };
-
 window.DesktopModule = DesktopModule;
