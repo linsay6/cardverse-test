@@ -31,14 +31,15 @@ function cropImageToSquare(file, maxSize = 256) {
 
 // ========== 常量配置 ==========
 const STORAGE_KEY = 'desktop-layout';
-const CARD_WIDTH = 48;     // 图标整体缩小，由56 →48
-const CARD_HEIGHT = 48;
+const CARD_WIDTH = 48;     // 图标整体宽度
+const CARD_HEIGHT = 48;    // 图标整体高度
 const WIDGET_AREA_HEIGHT = 110;
 const INDICATOR_HEIGHT = 30;
-const GAP = 22;           // 图标左右水平间距，拉大
+const V_GAP = 22;          // 图标上下垂直间距（原来叫GAP，现在仅用于垂直控制）
+const SIDE_MARGIN = 16;    // 【核心配置】固定左右两侧留白，控制离手机边框的距离，可修改（例如 12、16、20）
 const SNAP_DISTANCE = 18;
 const PAGE_SWIPE_THRESHOLD = 60;
-const LABEL_HEIGHT = 26;  // 图标行垂直间距拉大
+const LABEL_HEIGHT = 26;   // 图标文字高度
 
 // ========== 36个功能卡片元数据 ==========
 const CARD_META = [
@@ -117,8 +118,18 @@ export const DesktopModule = {
     const saved = Store.get(STORAGE_KEY, null);
     if (saved && saved.pages && saved.pages.length > 0) {
       this.config = saved;
+      // 如果检测到旧版布局数据，强行执行一次重新排版以适应最新间距和留白
+      if(!this.config._layoutV || this.config._layoutV < 2) {
+        this.config._layoutV = 2;
+        const pageW = this.rootEl ? this.rootEl.clientWidth : 375;
+        this.config.pages.forEach(page => {
+          this.reArrangePageCards(page, pageW);
+        });
+        this.saveConfig();
+      }
     } else {
       this.config = this.getDefaultConfig();
+      this.config._layoutV = 2;
       this.saveConfig();
     }
   },
@@ -127,37 +138,23 @@ export const DesktopModule = {
     Store.set(STORAGE_KEY, this.config);
   },
 
+  // 【核心新增】根据实际页面宽度动态计算左右边距和内部剩余间距
   getGridInfo(pageWidth) {
-  const perRow = 4;
-  const fixedSideMargin = 24; // 左右两边留白，左边24，右边24
-  const availableWidth = pageWidth - fixedSideMargin * 2;
-  // 4个图标，3个间隙
-  const gap = (availableWidth - perRow * CARD_WIDTH) / (perRow - 1);
-  // 限制间隙最小、最大值，防止挤太近或者散太开
-  const finalGap = Math.max(16, Math.min(40, gap));
-  return {
-    marginLeft: fixedSideMargin,
-    gap: finalGap
-  }
-},
-getGridInfo(pageWidth) {
-  const perRow = 4;
-  const fixedSideMargin = 24;
-  const availableWidth = pageWidth - fixedSideMargin * 2;
-  const gap = (availableWidth - perRow * CARD_WIDTH) / (perRow - 1);
-  const finalGap = Math.max(16, Math.min(40, gap));
-  return {
-    marginLeft: fixedSideMargin,
-    gap: finalGap
-  }
-},
-getGridMarginLeft(pageWidth) {
-  const perRow = 4;
-  const totalContentWidth = perRow * CARD_WIDTH + (perRow - 1) * GAP;
-  let margin = (pageWidth - totalContentWidth) / 2;
-  margin = Math.max(16, margin);
-  return Math.round(margin);
-},
+    const perRow = 4;
+    const marginLeft = SIDE_MARGIN;
+    // 手机总宽度 - 左右两边留白 - 4个图标的宽度
+    const availableWidth = pageWidth - marginLeft * 2 - perRow * CARD_WIDTH;
+    // 剩下的宽度平分给3个间隙
+    const gap = Math.max(0, availableWidth / (perRow - 1));
+    return {
+      marginLeft,
+      gap
+    };
+  },
+
+  getGridMarginLeft(pageWidth) {
+    return this.getGridInfo(pageWidth).marginLeft;
+  },
 
   getDefaultConfig() {
     const pages = [];
@@ -165,13 +162,16 @@ getGridMarginLeft(pageWidth) {
     const perPageRow = 4;
     const perPage = perRow * perPageRow;
     let pageCards = [];
-    const pageW = 375;
-    const marginLeft = this.getGridMarginLeft(pageW);
+    
+    // 获取真实设备宽度，避免使用固定 375 导致布局偏移
+    const pageW = this.rootEl ? this.rootEl.clientWidth : 375;
+    const { marginLeft, gap } = this.getGridInfo(pageW);
+
     CARD_META.forEach((meta, idx) => {
       const col = idx % perRow;
       const row = Math.floor((idx % perPage) / perRow);
-      const x = marginLeft + col * (CARD_WIDTH + GAP);
-      const y = 16 + row * (CARD_HEIGHT + GAP + LABEL_HEIGHT);
+      const x = Math.round(marginLeft + col * (CARD_WIDTH + gap));
+      const y = 16 + row * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
       pageCards.push({ id: meta.id, x, y, customIcon: null });
       if(pageCards.length >= perPage) {
         pages.push({ id: Date.now() + Math.random(), widgets: [], cards: pageCards });
@@ -199,16 +199,16 @@ getGridMarginLeft(pageWidth) {
   },
 
   findEmptyPosition(page) {
-    const pageW = this.rootEl.clientWidth;
+    const pageW = this.rootEl.clientWidth || 375;
     const pageH = this.rootEl.clientHeight - WIDGET_AREA_HEIGHT - INDICATOR_HEIGHT;
-    const marginLeft = this.getGridMarginLeft(pageW);
+    const { marginLeft, gap } = this.getGridInfo(pageW);
     const perRow = 4;
     const maxCol = perRow;
-    const maxRow = Math.floor((pageH - 16) / (CARD_HEIGHT + GAP + LABEL_HEIGHT));
+    const maxRow = Math.floor((pageH - 16) / (CARD_HEIGHT + V_GAP + LABEL_HEIGHT));
     for(let r=0; r<maxRow; r++){
       for(let c=0; c<maxCol; c++){
-        const testX = marginLeft + c * (CARD_WIDTH + GAP);
-        const testY = 16 + r * (CARD_HEIGHT + GAP + LABEL_HEIGHT);
+        const testX = Math.round(marginLeft + c * (CARD_WIDTH + gap));
+        const testY = 16 + r * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
         let occupied = false;
         for(const cd of page.cards) {
           const overlap = !(testX + CARD_WIDTH < cd.x || testX > cd.x + CARD_WIDTH || testY + CARD_HEIGHT < cd.y || testY > cd.y + CARD_HEIGHT);
@@ -220,10 +220,10 @@ getGridMarginLeft(pageWidth) {
     return null;
   },
 
-  reArrangePageCards(page) {
+  reArrangePageCards(page, width) {
     const perRow = 4;
-    const pageW = this.rootEl.clientWidth || 375;
-    const marginLeft = this.getGridMarginLeft(pageW);
+    const pageW = width || this.rootEl.clientWidth || 375;
+    const { marginLeft, gap } = this.getGridInfo(pageW);
     const sorted = [...page.cards].sort((a,b)=>{
       if(a.y !== b.y) return a.y - b.y;
       return a.x - b.x;
@@ -231,8 +231,8 @@ getGridMarginLeft(pageWidth) {
     sorted.forEach((card, idx)=>{
       const col = idx % perRow;
       const row = Math.floor(idx / perRow);
-      card.x = marginLeft + col * (CARD_WIDTH + GAP);
-      card.y = 16 + row * (CARD_HEIGHT + GAP + LABEL_HEIGHT);
+      card.x = Math.round(marginLeft + col * (CARD_WIDTH + gap));
+      card.y = 16 + row * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
     });
     page.cards = sorted;
   },
@@ -333,18 +333,18 @@ getGridMarginLeft(pageWidth) {
           transform: scale(1.04);
         }
         .desktop-card .card-icon {
-  width:42px;
-  height:42px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:26px;
-  border-radius:14px;
-  overflow:hidden;
-  color:var(--color-text);
-  -webkit-text-fill-color: var(--color-text);
-  filter:grayscale(0.1) var(--icon-filter,none);
-}
+          width:42px;
+          height:42px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:26px;
+          border-radius:14px;
+          overflow:hidden;
+          color:var(--color-text);
+          -webkit-text-fill-color: var(--color-text);
+          filter:grayscale(0.1) var(--icon-filter,none);
+        }
          .desktop-card .card-icon img{
           width:100%;
           height:100%;
@@ -493,11 +493,11 @@ getGridMarginLeft(pageWidth) {
           font-size:12px;
         }
         .desktop-card .card-icon svg {
-  max-width:60%;
-  max-height:60%;
-  width:auto;
-  height:auto;
-}
+          max-width:60%;
+          max-height:60%;
+          width:auto;
+          height:auto;
+        }
         @media (max-width:480px){
           .exit-edit-tip { bottom:86px; left:50%; transform:translateX(-50%); }
         }
@@ -744,10 +744,10 @@ getGridMarginLeft(pageWidth) {
           const targetPage = this.config.pages[targetPageIdx];
           const wrap = document.getElementById('desktop-pages-wrap');
           const pageW = wrap.clientWidth;
-          const marginLeft = this.getGridMarginLeft(pageW);
+          const { marginLeft, gap } = this.getGridInfo(pageW);
           // 计算目标坐标
-          const targetX = marginLeft + targetCol * (CARD_WIDTH + GAP);
-          const targetY = 16 + targetRow * (CARD_HEIGHT + GAP + LABEL_HEIGHT);
+          const targetX = Math.round(marginLeft + targetCol * (CARD_WIDTH + gap));
+          const targetY = 16 + targetRow * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
           // 从源页面移除卡片
           const srcPage = this.config.pages[sourcePageIdx];
           const srcIdx = srcPage.cards.findIndex(c=>c.id===cardObj.id);
@@ -763,7 +763,7 @@ getGridMarginLeft(pageWidth) {
             );
             if(overlap){
               isOccupied = true;
-              const shiftH = CARD_HEIGHT + GAP + LABEL_HEIGHT;
+              const shiftH = CARD_HEIGHT + V_GAP + LABEL_HEIGHT;
               // 所有Y>=目标Y的卡片全部向下挪一行
               for(const cc of targetPage.cards){
                 if(cc.y >= targetY){
@@ -859,11 +859,11 @@ getGridMarginLeft(pageWidth) {
 
     // 磁吸吸附网格
     const pageW = wrap.clientWidth;
-    const marginLeft = this.getGridMarginLeft(pageW);
-    const col = Math.round((finalX - marginLeft) / (CARD_WIDTH + GAP));
-    const row = Math.round((finalY - 16) / (CARD_HEIGHT + GAP + LABEL_HEIGHT));
-    const snapX = marginLeft + col * (CARD_WIDTH + GAP);
-    const snapY = 16 + row * (CARD_HEIGHT + GAP + LABEL_HEIGHT);
+    const { marginLeft, gap } = this.getGridInfo(pageW);
+    const col = Math.round((finalX - marginLeft) / (CARD_WIDTH + gap));
+    const row = Math.round((finalY - 16) / (CARD_HEIGHT + V_GAP + LABEL_HEIGHT));
+    const snapX = Math.round(marginLeft + col * (CARD_WIDTH + gap));
+    const snapY = 16 + row * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
     if (Math.abs(finalX - snapX) < SNAP_DISTANCE) finalX = snapX;
     if (Math.abs(finalY - snapY) < SNAP_DISTANCE) finalY = snapY;
 
@@ -881,7 +881,7 @@ getGridMarginLeft(pageWidth) {
       if(overlap){
         hasOverlap = true;
         // 发生碰撞：把被碰撞图标以及所有y坐标 >=该图标y的卡片，向下挪一整行高度，腾出当前网格
-        const shiftRowHeight = CARD_HEIGHT + GAP + LABEL_HEIGHT;
+        const shiftRowHeight = CARD_HEIGHT + V_GAP + LABEL_HEIGHT;
         for(const c of currentPage.cards){
           if(c.id === cardData.id) continue;
           if(c.y >= otherCard.y){
