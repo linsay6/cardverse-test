@@ -73,7 +73,7 @@ const CARD_META = [
   { id: 'dreambook', name: '梦册', defaultIcon: '💭', isDev: true },
   { id: 'selfintro', name: '自叙', defaultIcon: '✍️', isDev: true },
   { id: 'memo', name: '备忘', defaultIcon: '📋', isDev: true },
-  { id: 'pomodoro', name: '番茄钟', defaultIcon: '🍅', isDev: true },
+  { id: 'pomodoro', name: '专注', defaultIcon: '🍅', isDev: true },
   { id: 'piggybank', name: '扑满', defaultIcon: '🫙', isDev: true },
   { id: 'account', name: '账簿', defaultIcon: '💰', isDev: true },
   { id: 'water', name: '饮水', defaultIcon: '💧', isDev: true },
