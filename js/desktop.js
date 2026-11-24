@@ -31,14 +31,14 @@ function cropImageToSquare(file, maxSize = 256) {
 
 // ========== 常量配置 ==========
 const STORAGE_KEY = 'desktop-layout';
-const CARD_WIDTH = 56;
-const CARD_HEIGHT = 56;
+const CARD_WIDTH = 48;     // 图标整体缩小，由56 →48
+const CARD_HEIGHT = 48;
 const WIDGET_AREA_HEIGHT = 110;
 const INDICATOR_HEIGHT = 30;
-const GAP = 18;         // 图标左右水平间距：由14→18，拉开横向间隙
+const GAP = 22;           // 图标左右水平间距，拉大
 const SNAP_DISTANCE = 18;
 const PAGE_SWIPE_THRESHOLD = 60;
-const LABEL_HEIGHT = 24; // 行垂直间隙增大，拉开上下图标距离
+const LABEL_HEIGHT = 26;  // 图标行垂直间距拉大
 
 // ========== 36个功能卡片元数据 ==========
 const CARD_META = [
@@ -128,12 +128,12 @@ export const DesktopModule = {
   },
 
   // 计算页面网格居中左边距（保证左右留白对称）
-   getGridMarginLeft(pageWidth) {
+     getGridMarginLeft(pageWidth) {
     const perRow = 4;
     const totalContentWidth = perRow * CARD_WIDTH + (perRow - 1) * GAP;
-    // 改动：最大单边边距限制40px；不会无限放大左右空白，大屏图标尽量铺满可用宽度
     const idealMargin = (pageWidth - totalContentWidth) / 2;
-    const margin = Math.max(16, Math.min(40, idealMargin));
+    // 最大单边边距锁定32px，杜绝大屏左右留白过宽；最小保留16px不贴屏幕边缘
+    const margin = Math.max(16, Math.min(32, idealMargin));
     return margin;
   },
 
@@ -916,15 +916,15 @@ export const DesktopModule = {
     }
   },
 
-  deleteCard(pageIdx, cardId) {
+    deleteCard(pageIdx, cardId) {
     const page = this.config.pages[pageIdx];
     const idx = page.cards.findIndex(c => c.id === cardId);
     if (idx > -1) {
       page.cards.splice(idx, 1);
-      this.reArrangePageCards(page);
+      // ========= 删除：不再执行reArrangePageCards，不再自动补齐空位 =========
       this.saveConfig();
       this.renderAllCards();
-      Toast.show('已删除图标，已自动补齐布局');
+      Toast.show('已删除图标，空位保留');
     }
   },
 
