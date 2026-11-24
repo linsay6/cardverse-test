@@ -201,10 +201,11 @@ export const DesktopModule = {
   // ========== 主渲染【渲染前保存滚动位置，渲染完成恢复，修复删图标自动跳第一页BUG】 ==========
   render() {
     if (!this.rootEl) return;
-    const pagesWrap = document.getElementById('desktop-pages-wrap');
+    // 注意：这里取旧容器只用于保存滚动位置，变量名避开下面新建的 pagesWrap，避免重复声明报错白屏
+    const oldWrap = document.getElementById('desktop-pages-wrap');
     let restoreScrollLeft = 0;
-    if(pagesWrap){
-      restoreScrollLeft = pagesWrap.scrollLeft;
+    if(oldWrap){
+      restoreScrollLeft = oldWrap.scrollLeft;
     }
 
     this.rootEl.innerHTML = '';
@@ -497,7 +498,7 @@ export const DesktopModule = {
     this.renderPageIndicator();
     this.bindPageScroll();
 
-    // ✅修复BUG：渲染结束恢复原来滚动位置，不会自动跳到第0页
+    // 渲染结束恢复原来滚动位置，不会自动跳到第0页
     const wrapAfter = document.getElementById('desktop-pages-wrap');
     if(wrapAfter){
       wrapAfter.scrollLeft = restoreScrollLeft;
@@ -663,6 +664,7 @@ export const DesktopModule = {
 
     // 边缘跨页检测
     const wrap = document.getElementById('desktop-pages-wrap');
+    if(!wrap) return;
     const rect = wrap.getBoundingClientRect();
     if(clientX < rect.left + PAGE_SWIPE_THRESHOLD){
       if(this.config.currentPage > 0){
@@ -690,26 +692,24 @@ export const DesktopModule = {
       deltaY = parseFloat(match[2])||0;
     }
 
-    const newRealX = this.cardOrigX + deltaX;
-    const newRealY = this.cardOrigY + deltaY;
+    let finalX = this.cardOrigX + deltaX;
+    let finalY = this.cardOrigY + deltaY;
 
     const wrap = document.getElementById('desktop-pages-wrap');
-    const rect = wrap.getBoundingClientRect();
-    const maxX = rect.width - CARD_WIDTH;
-    const maxY = rect.height - CARD_HEIGHT;
-    const finalX = Math.max(0, Math.min(maxX, newRealX));
-    const finalY = Math.max(0, Math.min(maxY, newRealY));
+    const rect = wrap ? wrap.getBoundingClientRect() : { width: 375, height: 500 };
+    const maxX = Math.max(0, rect.width - CARD_WIDTH);
+    const maxY = Math.max(0, rect.height - CARD_HEIGHT);
 
-    // 磁吸对齐
+    // 磁吸对齐：先在同页其余卡片上吸附，再做边界限制
     const sourcePage = this.config.pages[sourcePageIndex];
     const others = sourcePage.cards.filter(c=>c.id !== cardData.id);
     for(const c of others){
-      if(Math.abs(finalX - c.x) < SNAP_DISTANCE) { cardData.x = c.x; }
-      if(Math.abs(finalY - c.y) < SNAP_DISTANCE) { cardData.y = c.y; }
+      if(Math.abs(finalX - c.x) < SNAP_DISTANCE) finalX = c.x;
+      if(Math.abs(finalY - c.y) < SNAP_DISTANCE) finalY = c.y;
     }
 
-    cardData.x = Math.max(0, Math.min(maxX, cardData.x ?? finalX));
-    cardData.y = Math.max(0, Math.min(maxY, cardData.y ?? finalY));
+    finalX = Math.max(0, Math.min(maxX, finalX));
+    finalY = Math.max(0, Math.min(maxY, finalY));
 
     // 判断是否跨页
     if(sourcePageIndex !== this.config.currentPage){
@@ -723,9 +723,14 @@ export const DesktopModule = {
         cardData.y = pos.y;
         targetPage.cards.push(cardData);
       }else{
+        cardData.x = this.cardOrigX;
+        cardData.y = this.cardOrigY;
         sourcePage.cards.push(cardData);
         Toast.show('目标页面已满，放回原页面');
       }
+    }else{
+      cardData.x = finalX;
+      cardData.y = finalY;
     }
 
     cardEl.style.transform = '';
