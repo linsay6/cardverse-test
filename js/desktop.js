@@ -221,12 +221,18 @@ export const DesktopModule = {
     page.cards = sorted;
   },
 
-  render() {
+    render() {
     if (!this.rootEl) return;
+    // 【修复】渲染前保存滚动位置，解决弹窗、上传图片后跳回第一页（问题2）
+    const wrapBefore = document.getElementById('desktop-pages-wrap');
+    let restoreScrollLeft = 0;
+    if(wrapBefore){
+      restoreScrollLeft = wrapBefore.scrollLeft;
+    }
     this.rootEl.innerHTML = '';
-
     // 样式只插入一次，避免重复
     let styleEl = document.getElementById('desktop-module-style');
+
     if (!styleEl) {
       styleEl = document.createElement('style');
       styleEl.id = 'desktop-module-style';
@@ -311,21 +317,22 @@ export const DesktopModule = {
           transform: scale(1.04);
         }
         .desktop-card .card-icon {
-          width:42px;
-          height:42px;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          font-size:26px;
-          border-radius:14px;
-          overflow:hidden;
-          color:var(--color-text);
-          -webkit-text-fill-color: var(--color-text);
-        }
+  width:42px;
+  height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:26px;
+  border-radius:14px;
+  overflow:hidden;
+  color:var(--color-text);
+  -webkit-text-fill-color: var(--color-text);
+  filter:grayscale(0.1) var(--icon-filter,none);
+}
         .desktop-card .card-icon img{
-          width:100%;
-          height:100%;
-          object-fit: contain;
+         width:100%;
+         height:100%;
+         object-fit: cover;
         }
         .card-label-outside{
           font-size: 10px;
@@ -494,10 +501,10 @@ export const DesktopModule = {
     this.bindPageScroll();
 
     // 渲染完成后强制滚动到当前页，彻底解决跳回第一页问题
-    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
       const wrap = document.getElementById('desktop-pages-wrap');
       if (wrap) {
-        wrap.scrollLeft = this.config.currentPage * wrap.clientWidth;
+        wrap.scrollLeft = restoreScrollLeft;
       }
     });
 
@@ -706,7 +713,7 @@ export const DesktopModule = {
     }
   },
 
-  onGlobalDragEnd(wrapEl, cardEl, cardData, sourcePageIndex){
+    onGlobalDragEnd(wrapEl, cardEl, cardData, sourcePageIndex){
     if (this.draggingCardId !== cardData.id) return;
     cardEl.classList.remove('dragging');
     wrapEl.style.zIndex = '';
@@ -723,7 +730,6 @@ export const DesktopModule = {
     const maxY = rect.height - CARD_HEIGHT - LABEL_HEIGHT;
     let finalX = Math.max(0, Math.min(maxX, newRealX));
     let finalY = Math.max(0, Math.min(maxY, newRealY));
-
     // 优化磁吸：吸附到标准网格坐标
     const pageW = wrap.clientWidth;
     const marginLeft = this.getGridMarginLeft(pageW);
@@ -735,8 +741,32 @@ export const DesktopModule = {
     if (Math.abs(finalX - snapX) < SNAP_DISTANCE) finalX = snapX;
     if (Math.abs(finalY - snapY) < SNAP_DISTANCE) finalY = snapY;
 
+    // =========【新增：碰撞重叠检测，禁止卡片互相叠加】问题1修复 =========
+    const currentPage = this.config.pages[this.config.currentPage];
+    let hasOverlap = false;
+    for(const otherCard of currentPage.cards){
+      if(otherCard.id === cardData.id) continue;
+      // 矩形碰撞检测
+      const overlap = !(
+        finalX + CARD_WIDTH < otherCard.x
+        || finalX > otherCard.x + CARD_WIDTH
+        || finalY + CARD_HEIGHT < otherCard.y
+        || finalY > otherCard.y + CARD_HEIGHT
+      );
+      if(overlap){
+        hasOverlap = true;
+        break;
+      }
+    }
+    // 如果发生重叠，回退拖拽之前原始坐标，不更新位置
+    if(hasOverlap){
+      finalX = this.cardOrigX;
+      finalY = this.cardOrigY;
+      Toast.show('该位置与其他图标重叠，位置已回退');
+    }
     cardData.x = finalX;
     cardData.y = finalY;
+    // =========================================================
 
     if(sourcePageIndex !== this.config.currentPage){
       const srcIdx = sourcePage.cards.findIndex(c=>c.id === cardData.id);
@@ -755,7 +785,7 @@ export const DesktopModule = {
     wrapEl.style.transform = '';
     this.saveConfig();
     this.render();
-    Toast.show('布局已保存');
+    if(!hasOverlap) Toast.show('布局已保存');
     this.draggingCardId = null;
   },
 
