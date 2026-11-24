@@ -592,12 +592,26 @@ export const DesktopModule = {
     const indicator = document.getElementById('desktop-page-indicator');
     if (!indicator) return;
     indicator.innerHTML = '';
-    if (this.isEditMode) {
-      const addBtn = document.createElement('button');
-      addBtn.className = 'page-control-btn';
-      addBtn.innerText = '+ 新页面';
-      addBtn.onclick = () => this.addNewPage();
-      indicator.appendChild(addBtn);
+     if (this.isEditMode) {
+      const addCardBtn = document.createElement('button');
+      addCardBtn.className = 'page-control-btn';
+      addCardBtn.innerText = '+ 添加图标';
+      addCardBtn.style.marginLeft = '6px';
+      addCardBtn.onclick = () => this.showAddCardModal();
+      indicator.appendChild(addCardBtn);
+
+      // =====新增：手动收拢图标按钮=====
+      const arrangeBtn = document.createElement('button');
+      arrangeBtn.className = 'page-control-btn';
+      arrangeBtn.innerText = '收拢图标';
+      arrangeBtn.style.marginLeft = '6px';
+      arrangeBtn.onclick = ()=>{
+        this.reArrangePageCards(this.getCurrentPage());
+        this.saveConfig();
+        this.render();
+        Toast.show('已手动收拢全部图标');
+      };
+      indicator.appendChild(arrangeBtn);
     }
     this.config.pages.forEach((_, idx) => {
       const dot = document.createElement('div');
