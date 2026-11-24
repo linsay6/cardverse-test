@@ -152,11 +152,12 @@ getGridInfo(pageWidth) {
   }
 },
 getGridMarginLeft(pageWidth) {
-  return this.getGridInfo(pageWidth).marginLeft;
+  const perRow = 4;
+  const totalContentWidth = perRow * CARD_WIDTH + (perRow - 1) * GAP;
+  let margin = (pageWidth - totalContentWidth) / 2;
+  margin = Math.max(16, margin);
+  return Math.round(margin);
 },
-getGridGap(pageWidth) {
-  return this.getGridInfo(pageWidth).gap;
-}
 
   getDefaultConfig() {
     const pages = [];
