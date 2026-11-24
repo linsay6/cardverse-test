@@ -2,17 +2,18 @@ import { Store } from './core/store.js';
 import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
 
-// ========== 常量配置｜整体缩小卡片尺寸 ==========
+// ========== 常量配置 ==========
 const STORAGE_KEY = 'desktop-layout';
 const CARD_WIDTH = 56;
-const CARD_HEIGHT = 72;
+const CARD_HEIGHT = 56;
 const WIDGET_AREA_HEIGHT = 110;
 const INDICATOR_HEIGHT = 30;
-const GAP = 12;
+const GAP = 14;
 const SNAP_DISTANCE = 14;
 const PAGE_SWIPE_THRESHOLD = 60;
+const PAGE_LEFT_MARGIN_RATIO = 0.04; // 页面左右留白占页面宽度4%，手机PC统一对称
 
-// ========== 36个功能卡片元数据｜已改名：存钱罐→扑满🫙；记账→账簿；寻味抉择→寻味 ==========
+// ========== 36个功能卡片元数据｜改名：存钱罐→扑满🫙；记账→账簿；寻味抉择→寻味 ==========
 const CARD_META = [
   // ===== 已开发 8个 =====
   { id: 'chat', name: '聊天', defaultIcon: '💬', isDev: false, type: 'tab', target: 'chat' },
@@ -116,8 +117,10 @@ export const DesktopModule = {
     CARD_META.forEach((meta, idx) => {
       const col = idx % perRow;
       const row = Math.floor((idx % perPage) / perRow);
-      const x = 16 + col * (CARD_WIDTH + GAP);
-      const y = 16 + row * (CARD_HEIGHT + GAP);
+      const pageW = 375;
+      const marginLeft = pageW * PAGE_LEFT_MARGIN_RATIO;
+      const x = marginLeft + col * (CARD_WIDTH + GAP);
+      const y = 16 + row * (CARD_HEIGHT + GAP + 18);
       pageCards.push({ id: meta.id, x, y });
       if(pageCards.length >= perPage) {
         pages.push({ id: Date.now() + Math.random(), widgets: [], cards: pageCards });
@@ -141,12 +144,14 @@ export const DesktopModule = {
   findEmptyPosition(page) {
     const pageW = this.rootEl.clientWidth;
     const pageH = this.rootEl.clientHeight - WIDGET_AREA_HEIGHT - INDICATOR_HEIGHT;
-    const maxCol = Math.floor((pageW - 16) / (CARD_WIDTH + GAP));
-    const maxRow = Math.floor((pageH - 16) / (CARD_HEIGHT + GAP));
+    const marginLeft = pageW * PAGE_LEFT_MARGIN_RATIO;
+    const maxCol = Math.floor((pageW - marginLeft * 2) / (CARD_WIDTH + GAP));
+    const maxRow = Math.floor((pageH - 16) / (CARD_HEIGHT + GAP + 18));
+
     for(let r=0; r<maxRow; r++){
       for(let c=0; c<maxCol; c++){
-        const testX = 16 + c * (CARD_WIDTH + GAP);
-        const testY = 16 + r * (CARD_HEIGHT + GAP);
+        const testX = marginLeft + c * (CARD_WIDTH + GAP);
+        const testY = 16 + r * (CARD_HEIGHT + GAP + 18);
         let occupied = false;
         for(const cd of page.cards) {
           const overlap = !(testX + CARD_WIDTH < cd.x || testX > cd.x + CARD_WIDTH || testY + CARD_HEIGHT < cd.y || testY > cd.y + CARD_HEIGHT);
@@ -160,6 +165,8 @@ export const DesktopModule = {
 
   reArrangePageCards(page) {
     const perRow = 4;
+    const pageW = this.rootEl.clientWidth || 375;
+    const marginLeft = pageW * PAGE_LEFT_MARGIN_RATIO;
     const sorted = [...page.cards].sort((a,b)=>{
       if(a.y !== b.y) return a.y - b.y;
       return a.x - b.x;
@@ -167,8 +174,8 @@ export const DesktopModule = {
     sorted.forEach((card, idx)=>{
       const col = idx % perRow;
       const row = Math.floor(idx / perRow);
-      card.x = 16 + col * (CARD_WIDTH + GAP);
-      card.y = 16 + row * (CARD_HEIGHT + GAP);
+      card.x = marginLeft + col * (CARD_WIDTH + GAP);
+      card.y = 16 + row * (CARD_HEIGHT + GAP + 18);
     });
     page.cards = sorted;
   },
@@ -236,22 +243,26 @@ export const DesktopModule = {
         width: 18px;
         border-radius: 3px;
       }
+      .desktop-item-wrap{
+        position:absolute;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+      }
       .desktop-card {
-        position: absolute;
         width: ${CARD_WIDTH}px;
         height: ${CARD_HEIGHT}px;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap:3px;
-        border-radius:10px;
+        border-radius:18px;
         background: var(--color-main);
         border:1px solid color-mix(in srgb,var(--color-main) 30%,transparent);
         cursor: pointer;
         user-select: none;
         box-sizing: border-box;
         will-change: transform;
+        position:relative;
       }
       .desktop-card:active { transform: scale(0.94); }
       .desktop-card.dragging {
@@ -260,23 +271,27 @@ export const DesktopModule = {
         transform: scale(1.04);
       }
       .desktop-card .card-icon {
-        width:28px;
-        height:28px;
+        width:42px;
+        height:42px;
         display:flex;
         align-items:center;
         justify-content:center;
-        font-size:22px;
-        border-radius:6px;
-        /* emoji转单色，跟随文字主题色 */
-        filter:grayscale(1) brightness(var(--color-text-bright,1));
+        font-size:26px;
+        border-radius:14px;
+        overflow:hidden;
         color:var(--color-text);
+        -webkit-text-fill-color: var(--color-text);
       }
-      .desktop-card .card-label {
+      .card-label-outside{
         font-size: 10px;
         color: var(--color-text);
         text-align:center;
         line-height:1.1;
-        padding:0 2px;
+        margin-top:4px;
+        max-width:${CARD_WIDTH+8}px;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
       }
       .card-del-btn {
         position:absolute;
@@ -293,6 +308,7 @@ export const DesktopModule = {
         align-items:center;
         justify-content:center;
         cursor:pointer;
+        pointer-events:auto !important;
       }
       .page-control-btn {
         padding: 3px 7px;
@@ -350,8 +366,8 @@ export const DesktopModule = {
       .add-card-item:hover { background:rgba(0,0,0,0.045); }
       .add-card-item .icon {
         font-size:20px;
-        filter:grayscale(1) brightness(var(--color-text-bright,1));
         color:var(--color-text);
+        -webkit-text-fill-color: var(--color-text);
       }
       .modal-footer-bar{
         padding:9px 12px;
@@ -375,7 +391,7 @@ export const DesktopModule = {
         .exit-edit-tip { bottom:86px; left:50%; transform:translateX(-50%); }
       }
       @media (min-width:481px){
-        .exit-edit-tip { bottom:24px; left:50%; transform:translateX(-50%); }
+        .exit-edit-tip { bottom:32px; left:50%; transform:translateX(-50%); }
       }
     `;
     document.head.appendChild(styleEl);
@@ -417,12 +433,10 @@ export const DesktopModule = {
     this.renderAllCards();
     this.renderPageIndicator();
     this.bindPageScroll();
-
     setTimeout(()=>{
       const wrapAfter = document.getElementById('desktop-pages-wrap');
       if(wrapAfter) wrapAfter.scrollLeft = restoreScrollLeft;
     },0);
-
     if(this.isEditMode) {
       document.getElementById('exit-edit').onclick = ()=>this.exitEditMode();
     }
@@ -436,19 +450,33 @@ export const DesktopModule = {
       page.cards.forEach(cardData => {
         const meta = this.getCardMeta(cardData.id);
         if (!meta) return;
+        const wrapEl = document.createElement('div');
+        wrapEl.className = 'desktop-item-wrap';
+        wrapEl.dataset.cardId = cardData.id;
+        wrapEl.dataset.pageIndex = pageIdx;
+        wrapEl.style.left = `${cardData.x}px`;
+        wrapEl.style.top = `${cardData.y}px`;
+
         const cardEl = document.createElement('div');
         cardEl.className = 'desktop-card';
-        cardEl.dataset.cardId = cardData.id;
-        cardEl.dataset.pageIndex = pageIdx;
-        cardEl.style.left = `${cardData.x}px`;
-        cardEl.style.top = `${cardData.y}px`;
-        cardEl.innerHTML = `
-          <div class="card-icon">${meta.defaultIcon}</div>
-          <div class="card-label">${meta.name}</div>
-          ${this.isEditMode ? '<button class="card-del-btn">×</button>' : ''}
-        `;
-        this.bindCardEvents(cardEl, cardData, pageIdx);
-        pageEl.appendChild(cardEl);
+        cardEl.innerHTML = `<div class="card-icon">${meta.defaultIcon}</div>`;
+
+        const labelEl = document.createElement('div');
+        labelEl.className = 'card-label-outside';
+        labelEl.textContent = meta.name;
+
+        wrapEl.appendChild(cardEl);
+        wrapEl.appendChild(labelEl);
+
+        if(this.isEditMode){
+          const delBtn = document.createElement('button');
+          delBtn.className = 'card-del-btn';
+          delBtn.textContent = '×';
+          cardEl.appendChild(delBtn);
+        }
+
+        this.bindCardEvents(wrapEl,cardEl,labelEl,cardData, pageIdx);
+        pageEl.appendChild(wrapEl);
       });
     });
   },
@@ -487,14 +515,15 @@ export const DesktopModule = {
     }
   },
 
-  bindCardEvents(cardEl, cardData, pageIndex) {
+  bindCardEvents(wrapEl,cardEl,labelEl, cardData, pageIndex) {
     const cardId = cardData.id;
-    cardEl.onclick = (e) => {
+    wrapEl.onclick = (e) => {
       if (e.target.classList.contains('card-del-btn')) return;
       if (!this.isEditMode) {
         this.handleCardClick(cardId);
       }
     };
+
     const delBtn = cardEl.querySelector('.card-del-btn');
     if (delBtn) {
       delBtn.onclick = (e) => {
@@ -502,12 +531,13 @@ export const DesktopModule = {
         this.deleteCard(pageIndex, cardId);
       };
     }
+
     if (this.isEditMode) {
-      this.bindDragEvents(cardEl, cardData, pageIndex);
+      this.bindDragEvents(wrapEl, cardEl, cardData, pageIndex);
     }
   },
 
-  bindDragEvents(cardEl, cardData, pageIndex) {
+  bindDragEvents(wrapEl, cardEl, cardData, pageIndex) {
     const self = this;
     const startDrag = (clientX, clientY) => {
       self.draggingCardId = cardData.id;
@@ -517,16 +547,17 @@ export const DesktopModule = {
       self.cardOrigY = cardData.y;
       self.dragSourcePageIndex = pageIndex;
       cardEl.classList.add('dragging');
+      wrapEl.style.zIndex = '999';
       cardEl.style.transform = '';
 
       self.dragGlobalMoveHandler = (evt)=>{
         let cx,cy;
         if(evt.touches){ cx = evt.touches[0].clientX; cy = evt.touches[0].clientY; }
         else{ cx = evt.clientX; cy = evt.clientY; }
-        self.onGlobalDragMove(cx,cy,cardEl);
+        self.onGlobalDragMove(cx,cy,wrapEl,cardEl);
       };
       self.dragGlobalUpHandler = ()=>{
-        self.onGlobalDragEnd(cardEl,cardData,pageIndex);
+        self.onGlobalDragEnd(wrapEl,cardEl,cardData,pageIndex);
         document.removeEventListener('mousemove', self.dragGlobalMoveHandler);
         document.removeEventListener('mouseup', self.dragGlobalUpHandler);
         document.removeEventListener('touchmove', self.dragGlobalMoveHandler);
@@ -534,20 +565,23 @@ export const DesktopModule = {
         self.dragGlobalMoveHandler = null;
         self.dragGlobalUpHandler = null;
       };
+
       document.addEventListener('mousemove', self.dragGlobalMoveHandler);
       document.addEventListener('mouseup', self.dragGlobalUpHandler);
       document.addEventListener('touchmove', self.dragGlobalMoveHandler, {passive:false});
       document.addEventListener('touchend', self.dragGlobalUpHandler);
     };
-    cardEl.addEventListener('mousedown', (e) => { e.preventDefault(); startDrag(e.clientX, e.clientY); });
-    cardEl.addEventListener('touchstart', (e) => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); }, { passive: true });
+
+    wrapEl.addEventListener('mousedown', (e) => { e.preventDefault(); startDrag(e.clientX, e.clientY); });
+    wrapEl.addEventListener('touchstart', (e) => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); }, { passive: true });
   },
 
-  onGlobalDragMove(clientX, clientY, cardEl){
+  onGlobalDragMove(clientX, clientY, wrapEl, cardEl){
     if(this.draggingCardId === null) return;
     const dx = clientX - this.dragStartX;
     const dy = clientY - this.dragStartY;
-    cardEl.style.transform = `translate(${dx}px, ${dy}px)`;
+    wrapEl.style.transform = `translate(${dx}px, ${dy}px)`;
+
     const wrap = document.getElementById('desktop-pages-wrap');
     if(!wrap) return;
     const rect = wrap.getBoundingClientRect();
@@ -558,21 +592,24 @@ export const DesktopModule = {
     }
   },
 
-  onGlobalDragEnd(cardEl, cardData, sourcePageIndex){
+  onGlobalDragEnd(wrapEl, cardEl, cardData, sourcePageIndex){
     if (this.draggingCardId !== cardData.id) return;
     cardEl.classList.remove('dragging');
-    const transformStr = cardEl.style.transform || '';
+    wrapEl.style.zIndex = '';
+
+    const transformStr = wrapEl.style.transform || '';
     let deltaX = 0,deltaY=0;
     const match = transformStr.match(/translate\((.+?)px,\s*(.+?)px\)/);
     if(match){ deltaX = parseFloat(match[1])||0; deltaY = parseFloat(match[2])||0; }
 
     const newRealX = this.cardOrigX + deltaX;
     const newRealY = this.cardOrigY + deltaY;
+
     const wrap = document.getElementById('desktop-pages-wrap');
     if(!wrap) return;
     const rect = wrap.getBoundingClientRect();
     const maxX = rect.width - CARD_WIDTH;
-    const maxY = rect.height - CARD_HEIGHT;
+    const maxY = rect.height - CARD_HEIGHT - 24;
     let finalX = Math.max(0, Math.min(maxX, newRealX));
     let finalY = Math.max(0, Math.min(maxY, newRealY));
 
@@ -582,6 +619,7 @@ export const DesktopModule = {
       if(Math.abs(finalX - c.x) < SNAP_DISTANCE) finalX = c.x;
       if(Math.abs(finalY - c.y) < SNAP_DISTANCE) finalY = c.y;
     }
+
     cardData.x = finalX;
     cardData.y = finalY;
 
@@ -599,7 +637,8 @@ export const DesktopModule = {
         Toast.show('目标页面已满，放回原页面');
       }
     }
-    cardEl.style.transform = '';
+
+    wrapEl.style.transform = '';
     this.saveConfig();
     this.render();
     Toast.show('布局已保存');
