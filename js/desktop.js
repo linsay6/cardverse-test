@@ -113,8 +113,7 @@ export const DesktopModule = {
   EventBus.on('themechange', function() {
     this.render();
   }.bind(this));
-
-  // 监听open-panel事件，唤起audit测试弹窗
+    // 监听open-panel事件，唤起audit测试弹窗
   EventBus.on("open-panel", function(payload) {
     if (payload.panel !== "audit") return;
     const mask = document.createElement('div');
@@ -138,8 +137,8 @@ export const DesktopModule = {
         mask.remove();
       }
     };
-  });
-}
+  }
+});
   enterEditMode() {
     this.isEditMode = true;
     this.render();
