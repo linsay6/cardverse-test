@@ -1,4 +1,4 @@
-// core/context.js 事件总线
+// core/context.js 事件总线 + 全局会话上下文
 const EventBus = {
   events: {},
   on(eventName, callback) {
@@ -13,4 +13,11 @@ const EventBus = {
     }
   }
 };
+
+// 全局上下文：保存当前会话ID、全局配置，全模块共享
+window.GLOBAL_CONTEXT = {
+  activeSessionId: null, // 当前激活的联系人/梦角sessionId
+  config: {} // 预留：全局引擎、通知、美化配置
+};
+
 export { EventBus };
