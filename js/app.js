@@ -4,6 +4,7 @@ import { DesktopModule } from './desktop.js';
 import { CardEditorModule } from './card-editor.js';
 import { ChatModule } from './chat.js';
 import { SettingModule } from './setting.js';
+import { AuditCardModule } from './audit.js';
 // 新增导入头像昵称模块，用于后台轮换定时器
 import { ModalAvatarNick } from './modal-avatar-nick.js';
 window.$Toast = Toast;
