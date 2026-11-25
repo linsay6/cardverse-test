@@ -92,53 +92,30 @@ export const DesktopModule = {
   isEditMode: false,
   
   init(selector) {
-  this.rootEl = document.querySelector(selector);
-  if (!this.rootEl) return;
-  this.loadConfig();
-  // 初始尝试渲染
-  this.render();
-
-  // 【核心修复】：如果初始加载时容器被隐藏(宽度为0)，监听尺寸变化，等展示后自动触发重新计算布局
-  if (window.ResizeObserver) {
-    this._resizeObserver = new ResizeObserver((entries) => {
-      const width = entries[0].contentRect.width;
-      if (width > 0 && width !== this._lastRenderedWidth) {
-        this.render();
-      }
-    });
-    this._resizeObserver.observe(this.rootEl);
-  }
-
-  this.bindGlobalEvents();
-  EventBus.on('themechange', function() {
+    this.rootEl = document.querySelector(selector);
+    if (!this.rootEl) return;
+    this.loadConfig();
+    
+    // 初始尝试渲染
     this.render();
-  }.bind(this));
-    // 监听open-panel事件，唤起audit测试弹窗
-  EventBus.on("open-panel", function(payload) {
-    if (payload.panel !== "audit") return;
-    const mask = document.createElement('div');
-    mask.style.cssText = "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);z-index:9999;";
-    const box = document.createElement('div');
-    box.style.cssText = "width:80%;max-width:420px;background:var(--color-bg);padding:24px;border-radius:16px;";
-    box.innerHTML = "<h3 style='margin:0 0 16px;color:var(--color-text)'>审核面板(测试)</h3><button id='drawBtn' style='width:100%;padding:12px;border-radius:12px;border:none;background:var(--color-main);color:#fff;margin-bottom:12px'>抽一张【审核报告字卡】发送到聊天</button><button id='closeBtn' style='width:100%;padding:12px;border-radius:12px;border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-text)'>关闭</button>";
-    mask.appendChild(box);
-    document.body.appendChild(mask);
 
-    box.querySelector("#drawBtn").onclick = function() {
-      if(window.AuditCardModule){
-        window.AuditCardModule.drawAndSend("auditReport");
-      }else{
-        Toast.show("Audit模块未加载");
-      }
-    };
-    box.querySelector("#closeBtn").onclick = function() { mask.remove(); };
-    mask.onclick = function(e) {
-      if (e.target === mask) {
-        mask.remove();
-      }
-    };
-  }
-});
+    // 【核心修复】：如果初始加载时容器被隐藏(宽度为0)，监听尺寸变化，等展示后自动触发重新计算布局
+    if (window.ResizeObserver) {
+      this._resizeObserver = new ResizeObserver((entries) => {
+        const width = entries[0].contentRect.width;
+        if (width > 0 && width !== this._lastRenderedWidth) {
+          this.render();
+        }
+      });
+      this._resizeObserver.observe(this.rootEl);
+    }
+
+    this.bindGlobalEvents();
+    EventBus.on('themeChange', () => {
+      this.render();
+    });
+  },
+
   enterEditMode() {
     this.isEditMode = true;
     this.render();
