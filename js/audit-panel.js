@@ -832,7 +832,6 @@ const AuditPanelModule = {
 
       const textwrap = document.createElement("div");
       textwrap.style.cssText = "flex:1;min-width:0;";
-      // 【修复】只渲染content一行，不再显示title
       textwrap.innerHTML = `
         <div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
           ${card.content}
@@ -854,73 +853,35 @@ const AuditPanelModule = {
         navigator.clipboard.writeText(card.content);
         Toast.show("已复制");
       };
-      
-      // 记得把按钮append进ops，不然页面不显示
+
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "编辑";
+      editBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "删除";
+      delBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:#ff3b30;color:#fff;font-size:11px;cursor:pointer;";
+      delBtn.onclick = () => {
+        if(!confirm("确定删除这张字卡？")) return;
+        M.deleteCard(cat.id, card.id);
+        Toast.show("已删除");
+        this.renderCardLib(body);
+      };
+
       ops.appendChild(sendBtn);
       ops.appendChild(copyBtn);
+      ops.appendChild(editBtn);
+      ops.appendChild(delBtn);
+
       cardEl.appendChild(ck);
       cardEl.appendChild(textwrap);
       cardEl.appendChild(ops);
       cardList.appendChild(cardEl);
-    })
+    }); // 【重点！这里是forEach的闭合，很多人漏这个}
   }
+  catEl.appendChild(cardList);
 }
-
-              const editBtn = document.createElement("button");
-              editBtn.textContent = "编辑";
-              editBtn.style = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
-              editBtn.onclick = () => {
-                const newText = prompt("修改字卡内容", card.content);
-                if (newText !== null) {
-                  M.updateCard(cat.id, card.id, { content: newText.trim(), title: newText.trim().slice(0,10) });
-                  this.renderCardLib(body);
-                }
-              };
-
-              if (card.isDisabled) {
-                const restoreBtn = document.createElement("button");
-                restoreBtn.textContent = "恢复";
-                restoreBtn.style = "padding:3px 6px;border:none;border-radius:4px;background:#34c759;color:#fff;font-size:11px;cursor:pointer;";
-                restoreBtn.onclick = () => {
-                  M.updateCard(cat.id, card.id, { isDisabled: false });
-                  this.renderCardLib(body);
-                };
-                ops.appendChild(restoreBtn);
-              } else {
-                const disableBtn = document.createElement("button");
-                disableBtn.textContent = "禁用";
-                disableBtn.style = "padding:3px 6px;border:1px solid #ff9500;border-radius:4px;background:transparent;color:#ff9500;font-size:11px;cursor:pointer;";
-                disableBtn.onclick = () => {
-                  M.updateCard(cat.id, card.id, { isDisabled: true });
-                  this.renderCardLib(body);
-                };
-                ops.appendChild(disableBtn);
-              }
-
-              const delBtn2 = document.createElement("button");
-              delBtn2.textContent = "删除";
-              delBtn2.style = "padding:3px 6px;border:none;border-radius:4px;background:#ff3b30;color:#fff;font-size:11px;cursor:pointer;";
-              delBtn2.onclick = () => {
-                if (!confirm("确定删除这张字卡？")) return;
-                M.deleteCard(cat.id, card.id);
-                Toast.show("已删除");
-                this.renderCardLib(body);
-              };
-
-              ops.appendChild(sendBtn);
-              ops.appendChild(copyBtn);
-              ops.appendChild(editBtn);
-              ops.appendChild(delBtn2);
-
-              cardEl.appendChild(ck);
-              cardEl.appendChild(textwrap);
-              cardEl.appendChild(ops);
-              cardList.appendChild(cardEl);
-            });
-          }
-          catEl.appendChild(cardList);
-        }
-        listWrap.appendChild(catEl);
+listWrap.appendChild(catEl);
       });
     }
 
