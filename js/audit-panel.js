@@ -786,26 +786,19 @@ const AuditPanelModule = {
             showCards.forEach(card => {
               const cardEl = document.createElement("div");
               // 单行文本溢出省略
-              cardEl.style.cssText = `
-                padding:8px;border:1px solid var(--color-border);border-radius:8px;margin-bottom:6px;
-                ${card.isDisabled ? "opacity:0.5;text-decoration:line-through;" : ""}
-                display:flex;align-items:flex-start;gap:6px;
-              `;
-              // 单张字卡勾选
               const ck = document.createElement("input");
               ck.type = "checkbox";
-              ck.style.marginTop:"2px";
+              ck.style.marginTop="2px";
               ck.checked = this._selectedCards.has(card.id);
               ck.onchange = ()=>{
                 if(ck.checked) this._selectedCards.add(card.id);
                 else this._selectedCards.delete(card.id);
               };
 
-              const textWrap = document.createElement("div");
-              textWrap.style.cssText = `flex:1;min-width:0;`;
-              textWrap.innerHTML = `
-                <div style="font-weight:bold;font-size:12px;color:var(--color-main);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${card.title || "无标题"}</div>
-                <div style="font-size:12px;color:var(--color-text-2);margin:2px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${card.content}</div>
+              const textwrap = document.createElement("div");
+              textwrap.style.cssText = 'flex:1;min-width:0;';
+              textwrap.innerHTML = `
+              <div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${card.content}</div>
               `;
 
               const ops = document.createElement("div");
