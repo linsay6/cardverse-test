@@ -833,8 +833,10 @@ const AuditPanelModule = {
               const textwrap = document.createElement("div");
               textwrap.style.cssText = `flex:1;min-width:0;`;
               // 【修复】只渲染content一行，不再显示title
-              textwrap.innerHTML = `
-<div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${card.content}</div>
+             textwrap.innerHTML = `
+  <div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
+    ${card.content}
+  </div>
 `;
 
               const ops = document.createElement("div");
