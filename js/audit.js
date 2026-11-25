@@ -2,12 +2,8 @@ import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
 
 const AuditCardModule = {
-  // ==========【1.数据模型】==========
   cardGroups: {
-    custom: {
-      name: "自定义字卡",
-      list: []
-    },
+    custom: { name: "自定义字卡", list: [] },
     system: {
       name: "系统预设字卡",
       list: [
@@ -22,21 +18,10 @@ const AuditCardModule = {
       ]
     }
   },
-
-  /** 待审申请队列 */
   pendingApply: [],
-  /** 审批历史记录 */
   auditHistory: [],
-  /** 全局配置 */
   auditConfig: {
-    floatBall: {
-      enable: true,
-      size: 48,
-      color: "#7c68ee",
-      avatarBase64: "",
-      posX: null,
-      posY: null
-    },
+    floatBall: { enable: true, size: 48, color: "#7c68ee", avatarBase64: "", posX: null, posY: null },
     dreamEngine: {
       enableGrabChat: true,
       enableChaos: true,
@@ -49,75 +34,56 @@ const AuditCardModule = {
       applyCoolDownMs: 60000,
       dreamNick: "梦角"
     },
-    notification: {
-      enable: true,
-      permissionDenied: false
-    },
+    notification: { enable: true, permissionDenied: false },
     debug: false
   },
-
   engineRunning: false,
   emotionWords: ["喜欢", "爱", "想你", "开心"],
 
-  // ==========【2.持久化 + 旧数据迁移】==========
+  // ========== 来自DS版本新增工具方法 ==========
+  getContactNick() {
+    return window.ChatModule?.activeContactInfo?.name || this.auditConfig.dreamEngine.dreamNick || "梦角";
+  },
+  getMyNick() {
+    return window.ChatModule?.activeContactInfo?.myNick || "我";
+  },
+
+  // ========== 持久化加载，兼容旧存储 ==========
   loadFromStorage() {
     const raw = localStorage.getItem("mochi_audit_v2");
     if (!raw) return;
     try {
       const data = JSON.parse(raw);
       this.cardGroups.custom.list = data?.customCards ?? [];
-      this.cardGroups.auditReport.categories = data?.auditReportCategories ?? [
-        { id: "default", name: "默认分类", sort: 0, isDisabled: false, expanded: true, cards: [] }
-      ];
-      
-      // 兼容旧数据：扁平list自动迁移到默认分类
+      this.cardGroups.auditReport.categories = data?.auditReportCategories ?? [{ id: "default", name: "默认分类", sort: 0, isDisabled: false, expanded: true, cards: [] }];
+
       if (data?.auditReportCards && Array.isArray(data.auditReportCards) && data.auditReportCards.length > 0) {
         const defaultCat = this.cardGroups.auditReport.categories.find(c => c.id === "default");
-        if (defaultCat && defaultCat.cards.length === 0) {
-          defaultCat.cards = data.auditReportCards;
-        }
+        if (defaultCat && defaultCat.cards.length === 0) defaultCat.cards = data.auditReportCards;
       }
-
       this.pendingApply = data?.pendingApply ?? [];
       this.auditHistory = data?.auditHistory ?? [];
       this.auditConfig = { ...this.auditConfig, ...(data?.auditConfig ?? {}) };
-    } catch (e) {
-      console.warn("audit读取本地存储失败", e);
-    }
+    } catch (e) { console.warn("audit读取本地存储失败", e); }
   },
 
   saveToStorage() {
-    const payload = {
+    localStorage.setItem("mochi_audit_v2", JSON.stringify({
       customCards: this.cardGroups.custom.list,
       auditReportCategories: this.cardGroups.auditReport.categories,
       pendingApply: this.pendingApply,
       auditHistory: this.auditHistory,
       auditConfig: this.auditConfig
-    };
-    localStorage.setItem("mochi_audit_v2", JSON.stringify(payload));
-    EventBus.emit("my‑audit‑data‑updated", {
-      pendingCount: this.pendingApply.length
-    });
+    }));
+    EventBus.emit("my‑audit‑data‑updated", { pendingCount: this.pendingApply.length });
   },
 
-  // ==========【3.审核报告分类操作API】==========
-  getAuditCategories() {
-    return [...this.cardGroups.auditReport.categories].sort((a,b) => a.sort - b.sort);
-  },
-
-  getAuditCategoryById(catId) {
-    return this.cardGroups.auditReport.categories.find(c => c.id === catId);
-  },
+  // ========== 分类操作API ==========
+  getAuditCategories() { return [...this.cardGroups.auditReport.categories].sort((a, b) => a.sort - b.sort); },
+  getAuditCategoryById(catId) { return this.cardGroups.auditReport.categories.find(c => c.id === catId); },
 
   addCategory(name) {
-    const cat = {
-      id: "cat_" + Date.now(),
-      name: name.trim() || "新分类",
-      sort: this.cardGroups.auditReport.categories.length,
-      isDisabled: false,
-      expanded: true,
-      cards: []
-    };
+    const cat = { id: "cat_" + Date.now(), name: name.trim() || "新分类", sort: this.cardGroups.auditReport.categories.length, isDisabled: false, expanded: true, cards: [] };
     this.cardGroups.auditReport.categories.push(cat);
     this.saveToStorage();
     return cat;
@@ -155,6 +121,11 @@ const AuditCardModule = {
     this.saveToStorage();
   },
 
+  /**
+   * 合并优化后的deleteCategory：
+   * - 分类无卡片：targetCatId 可省略，直接删除
+   * - 分类有卡片：必须传入有效的 targetCatId，迁移卡片后删除
+   */
   deleteCategory(catId, targetCatId) {
     const list = this.cardGroups.auditReport.categories;
     if (list.length <= 1) {
@@ -162,12 +133,21 @@ const AuditCardModule = {
       return false;
     }
     const cat = this.getAuditCategoryById(catId);
-    const target = this.getAuditCategoryById(targetCatId);
-    if (!cat || !target || catId === targetCatId) {
-      Toast.show("请选择有效目标分类");
-      return false;
+    if (!cat) return false;
+
+    if (cat.cards.length > 0) {
+      if (!targetCatId) {
+        Toast.show("该分类下存在字卡，请选择目标分类迁移卡片");
+        return false;
+      }
+      const target = this.getAuditCategoryById(targetCatId);
+      if (!target || catId === targetCatId) {
+        Toast.show("请选择有效目标分类");
+        return false;
+      }
+      target.cards.push(...cat.cards);
     }
-    target.cards.push(...cat.cards);
+
     const idx = list.findIndex(c => c.id === catId);
     list.splice(idx, 1);
     list.forEach((c, i) => c.sort = i);
@@ -175,15 +155,18 @@ const AuditCardModule = {
     return true;
   },
 
+  // ========== 字卡操作 ==========
   addCardToCategory(catId, cardData) {
     const cat = this.getAuditCategoryById(catId);
     if (!cat) return null;
+    // 使用DS版本ID生成策略，避免短时间ID重复
     const card = {
-      id: Date.now(),
+      id: Date.now() + Math.floor(Math.random() * 1000),
       title: cardData.title || cardData.content.slice(0, 10),
       content: cardData.content,
       side: cardData.side || "bot",
-      isDisabled: !!cardData.isDisabled
+      isDisabled: !!cardData.isDisabled,
+      disabledBy: cardData.disabledBy || null
     };
     cat.cards.push(card);
     this.saveToStorage();
@@ -243,7 +226,6 @@ const AuditCardModule = {
     return this.cardGroups.auditReport.categories.reduce((sum, cat) => sum + cat.cards.length, 0);
   },
 
-  // ==========【4.字卡基础操作（兼容原有接口）】==========
   getEnabledCardList(groupKey) {
     const g = this.cardGroups[groupKey];
     if (!g) return [];
@@ -263,19 +245,12 @@ const AuditCardModule = {
 
   drawRandomCard(groupKey = "auditReport") {
     const list = this.getEnabledCardList(groupKey);
-    if (list.length === 0) {
-      Toast.show("该分类暂无可用字卡");
-      return null;
-    }
-    const idx = Math.floor(Math.random() * list.length);
-    return list[idx];
+    if (list.length === 0) { Toast.show("该分类暂无可用字卡"); return null; }
+    return list[Math.floor(Math.random() * list.length)];
   },
 
   sendCardToChat(card) {
-    if (!window.sendAuditCard) {
-      Toast.show("聊天注入接口未就绪");
-      return false;
-    }
+    if (!window.sendAuditCard) { Toast.show("聊天注入接口未就绪"); return false; }
     window.sendAuditCard(card.content, card.side);
     return true;
   },
@@ -287,41 +262,24 @@ const AuditCardModule = {
   },
 
   addCard(groupKey, cardItem) {
-    if (groupKey === "system") {
-      Toast.show("系统预设分组不可修改");
-      return false;
-    }
-    if (groupKey === "auditReport") {
-      return this.addCardToCategory("default", cardItem);
-    }
+    if (groupKey === "system") { Toast.show("系统预设分组不可修改"); return false; }
+    if (groupKey === "auditReport") return this.addCardToCategory("default", cardItem);
     const g = this.cardGroups[groupKey];
     if (!g) return false;
-    const newCard = {
-      id: Date.now(),
-      title: cardItem.title || "字卡",
-      content: cardItem.content,
-      side: cardItem.side ?? "bot",
-      isDisabled: cardItem.isDisabled ?? false
-    };
-    g.list.push(newCard);
-    this.saveToStorage();
+    const newCard = { id: Date.now(), title: cardItem.title || "字卡", content: cardItem.content, side: cardItem.side ?? "bot", isDisabled: cardItem.isDisabled ?? false };
+    g.list.push(newCard); this.saveToStorage();
     return newCard;
   },
 
-  // ==========【5.pending待审申请业务】==========
+  // ========== 待审申请，保留原版全部字段 sourceGroupId / targetGroupId ==========
   createPendingApply(action, payload, applicant) {
     if (this.pendingApply.length >= this.auditConfig.dreamEngine.pendingMax) {
       if (this.auditConfig.debug) console.log("pending队列已满，放弃生成申请");
       return null;
     }
     const now = Date.now();
-    const isCool = this.pendingApply.some(ap =>
-      ap.action === action &&
-      ap.cardText === payload.cardText &&
-      (now - ap.lastApplyTime) < this.auditConfig.dreamEngine.applyCoolDownMs
-    );
+    const isCool = this.pendingApply.some(ap => ap.action === action && ap.cardText === payload.cardText && (now - ap.lastApplyTime) < this.auditConfig.dreamEngine.applyCoolDownMs);
     if (isCool) return null;
-
     const applyItem = {
       applyId: String(now),
       action,
@@ -343,7 +301,6 @@ const AuditCardModule = {
     const idx = this.pendingApply.findIndex(p => p.applyId === applyId);
     if (idx === -1) return false;
     const item = this.pendingApply[idx];
-
     const historyRecord = {
       action: item.action,
       cardText: item.cardText,
@@ -360,7 +317,6 @@ const AuditCardModule = {
     return true;
   },
 
-  // ==========【测试工具函数】==========
   clearAllPendingApply() {
     this.pendingApply = [];
     this.saveToStorage();
@@ -368,54 +324,50 @@ const AuditCardModule = {
   },
 
   approveOneApply() {
-    if (!this.pendingApply.length) return;
-    const item = this.pendingApply[0];
-    this.approveApply(item.applyId, "agree", "测试通过");
+    if (this.pendingApply.length) this.approveApply(this.pendingApply[0].applyId, "agree", "测试通过");
   },
-
   rejectOneApply() {
-    if (!this.pendingApply.length) return;
-    const item = this.pendingApply[0];
-    this.approveApply(item.applyId, "reject", "测试驳回");
+    if (this.pendingApply.length) this.approveApply(this.pendingApply[0].applyId, "reject", "测试驳回");
   },
 
-  // ==========【6.梦角拟人引擎】==========
+  // ========== 梦角引擎：使用DS的增强实现 ==========
   scanChatAndGenApply(chatMsgList) {
     const cfg = this.auditConfig.dreamEngine;
-    if (!cfg.enableGrabChat) return;
-    if (this.engineRunning) return;
-
+    if (!cfg.enableGrabChat || this.engineRunning) return;
     const now = Date.now();
-    const fifteenMin = 15 * 60 * 1000;
-    const userRecentMsg = chatMsgList.filter(m => {
-      return m.role === "user"
-        && (now - m.time) < fifteenMin
-        && m.content.length >= 5
-        && m.content.length <= 35;
-    });
+    const userRecentMsg = chatMsgList.filter(m => m.role === "user" && (now - m.time) < 15 * 60 * 1000 && m.content.length >= 5 && m.content.length <= 35);
     if (userRecentMsg.length === 0) return;
-
     const latestUserMsg = userRecentMsg[userRecentMsg.length - 1];
     let prob = cfg.baseProb;
-    const hitEmotion = this.emotionWords.some(w => latestUserMsg.content.includes(w));
-    if (hitEmotion) prob = cfg.emotionProb;
-
+    if (this.emotionWords.some(w => latestUserMsg.content.includes(w))) prob = cfg.emotionProb;
     if (Math.random() < prob) {
-      this.createPendingApply("add", { cardText: latestUserMsg.content }, cfg.dreamNick);
+      const enabledCats = this.getAuditCategories().filter(c => !c.isDisabled);
+      const targetCat = enabledCats.length > 0 ? enabledCats[Math.floor(Math.random() * enabledCats.length)] : this.getAuditCategories()[0];
+      this.createPendingApply("add", { cardText: latestUserMsg.content, targetCatId: targetCat?.id }, this.getContactNick());
     }
   },
 
   runChaosOperate() {
     const cfg = this.auditConfig.dreamEngine;
-    if (!cfg.enableChaos) return;
-    if (Math.random() > cfg.chaosProb) return;
+    if (!cfg.enableChaos || Math.random() > cfg.chaosProb) return;
     const ops = ["delete", "disable", "move"];
-    this.createPendingApply(ops[Math.floor(Math.random() * ops.length)], { cardText: "" }, cfg.dreamNick);
+    const action = ops[Math.floor(Math.random() * ops.length)];
+    const allCards = this.getAllAuditCards().filter(c => !c.isDisabled && !this.getAuditCategoryById(c.categoryId)?.isDisabled);
+    if (allCards.length === 0) return;
+
+    const card = allCards[Math.floor(Math.random() * allCards.length)];
+    const payload = { cardText: card.content, sourceCatId: card.categoryId };
+
+    if (action === "move") {
+      const otherCats = this.getAuditCategories().filter(c => c.id !== card.categoryId && !c.isDisabled);
+      if (otherCats.length === 0) return;
+      payload.targetCatId = otherCats[Math.floor(Math.random() * otherCats.length)].id;
+    }
+    this.createPendingApply(action, payload, this.getContactNick());
   },
 
   runActiveSend() {
-    const cfg = this.auditConfig.dreamEngine;
-    if (!cfg.enableActiveSend) return;
+    if (!this.auditConfig.dreamEngine.enableActiveSend) return;
     const card = this.drawRandomCard("auditReport");
     if (card) this.sendCardToChat(card);
   },
@@ -427,12 +379,9 @@ const AuditCardModule = {
       this.scanChatAndGenApply(chatMsgList);
       this.runChaosOperate();
       this.runActiveSend();
-    } finally {
-      this.engineRunning = false;
-    }
+    } finally { this.engineRunning = false; }
   },
 
-  // ==========【初始化】==========
   init() {
     this.loadFromStorage();
     console.log("AuditCardModule 数据层初始化完成");
