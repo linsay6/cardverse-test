@@ -3,6 +3,7 @@ import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
 import { ChatSettingSubModule } from './chat-setting.js';
 import { ChatExtendPanel } from './chat-extend-panel.js';
+
 export const ChatModule = {
   rootEl: null,
   msgListEl: null,
@@ -397,19 +398,16 @@ export const ChatModule = {
       this.renderMessages();
     },1200);
   },
-    saveHistory() {
+  saveHistory() {
     if(!this.activeContactId) return;
     Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
-  },
-
-  /**
-   * ✅全局统一消息注入出口：供audit、树洞、小屋、塔罗调用
-   * @param {string} text 消息文本
-   * @param {"user"|"bot"} side 消息方向 user=我 bot=TA
-   */
+  }
 };
 
 /**
+ * ✅全局统一消息注入出口：供audit、树洞、小屋、塔罗调用
+ * @param {string} text 消息文本
+ * @param {"user"|"bot"} side 消息方向 user=我 bot=TA
  * 挂载到window全局，所有外部模块直接调用 window.sendAuditCard(text, side)
  * 三层兜底：无会话、无chat实例时toast提示，不崩溃
  */
@@ -428,4 +426,5 @@ window.sendAuditCard = function(text, side = "bot") {
   cm.saveHistory();
   cm.renderMessages();
 };
-export const ChatModule;
+
+export { ChatModule };
