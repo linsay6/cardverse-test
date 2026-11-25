@@ -397,8 +397,35 @@ export const ChatModule = {
       this.renderMessages();
     },1200);
   },
-  saveHistory() {
+    saveHistory() {
     if(!this.activeContactId) return;
     Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
-  }
+  },
+
+  /**
+   * ✅全局统一消息注入出口：供audit、树洞、小屋、塔罗调用
+   * @param {string} text 消息文本
+   * @param {"user"|"bot"} side 消息方向 user=我 bot=TA
+   */
 };
+
+/**
+ * 挂载到window全局，所有外部模块直接调用 window.sendAuditCard(text, side)
+ * 三层兜底：无会话、无chat实例时toast提示，不崩溃
+ */
+window.sendAuditCard = function(text, side = "bot") {
+  if (!window.ChatModule || !window.ChatModule.activeContactId) {
+    window.$Toast?.show("请先选择一个联系人");
+    return;
+  }
+  const cm = window.ChatModule;
+  cm.messageList.push({
+    role: side,
+    content: text,
+    time: Date.now(),
+    data_ma_injected: "1" //标记为模块注入消息
+  });
+  cm.saveHistory();
+  cm.renderMessages();
+};
+export const ChatModule;
