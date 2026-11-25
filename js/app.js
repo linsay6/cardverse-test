@@ -5,6 +5,8 @@ import { CardEditorModule } from './card-editor.js';
 import { ChatModule } from './chat.js';
 import { SettingModule } from './setting.js';
 import { AuditCardModule } from './audit.js';
+// ✅新增：导入审核弹窗面板模块
+import { AuditPanelModule } from './audit-panel.js';
 // 新增导入头像昵称模块，用于后台轮换定时器
 import { ModalAvatarNick } from './modal-avatar-nick.js';
 window.$Toast = Toast;
@@ -65,6 +67,8 @@ async function bootstrap() {
   console.log("应用开始初始化");
   ThemeManager.load();
   TabManager.init();
+  // ✅新增：初始化审核弹窗面板
+  AuditPanelModule.init();
   // 新增：启动头像昵称后台轮换轮询定时器（30秒扫描一次全部联系人）
   ModalAvatarNick.startBackgroundRotate();
   console.log("所有模块初始化完成");
