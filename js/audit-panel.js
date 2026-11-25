@@ -42,12 +42,16 @@ const AuditPanelModule = {
   initFloatBall() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
+    // 开关关闭：销毁悬浮球DOM
     if (!cfg.enable && !forceShow) {
-      if(this.floatBallEl) this.floatBallEl.remove();
+      if (this.floatBallEl) {
+        this.floatBallEl.remove();
+      }
       this.floatBallEl = null;
       return;
     }
-    if(this.floatBallEl){
+    // 已经存在实例，只更新样式，不再重复创建
+    if (this.floatBallEl) {
       this.updateFloatBallStyle();
       return;
     }
@@ -55,16 +59,17 @@ const AuditPanelModule = {
     const ball = document.createElement("div");
     ball.style.cssText = `
       position:fixed;right:16px;bottom:80px;width:${cfg.size}px;height:${cfg.size}px;
-      border-radius:50%;background:${cfg.color || "#7c68ee"};
-      display:flex;align-items:center;justify-content:center;
-      color:#fff;font-weight:bold;cursor:pointer;z-index:9998;
-      transform:translate3d(0,0,0);will-change:transform;
-      user-select:none;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.15);
+      border‑radius:50%;background:${cfg.color || "#7c68ee"};
+      display:flex;align‑items:center;justify‑content:center;
+      color:#fff;font‑weight:bold;cursor:pointer;z‑index:9998;
+      transform:translate3d(0,0,0);will‑change:transform;
+      user‑select:none;overflow:hidden;box‑shadow:0 4px 12px rgba(0,0,0,0.15);
+      touch‑action:manipulation;
     `;
     if (cfg.avatarBase64) {
-      ball.innerHTML = `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      ball.innerHTML = `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object‑fit:cover;border‑radius:50%">`;
     } else {
-      ball.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+      ball.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke‑width="2" stroke‑linecap="round" stroke‑linejoin="round"><path d="M22 11.08V12a10 10 0 1 1‑5.93‑9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
     }
     if (cfg.posX != null && cfg.posY != null) {
       ball.style.transform = `translate3d(${cfg.posX}px, ${cfg.posY}px, 0)`;
@@ -82,16 +87,16 @@ const AuditPanelModule = {
     };
     const moveDrag = (clientX, clientY) => {
       if (!this._isDraggingBall) return;
-      const dx = clientX - downX;
-      const dy = clientY - downY;
-      if(Math.hypot(dx, dy) > this._touchSlop) this._dragMoved = true;
+      const dx = clientX ‑ downX;
+      const dy = clientY ‑ downY;
+      if(Math.hypot(dx, dy) > 8) this._dragMoved = true;
       const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
       const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       const size = parseFloat(getComputedStyle(ball).width);
       let x = this._ballStartX + dx;
       let y = this._ballStartY + dy;
-      x = Math.max(0, Math.min(vw - size, x));
-      y = Math.max(0, Math.min(vh - size, y));
+      x = Math.max(0, Math.min(vw ‑ size, x));
+      y = Math.max(0, Math.min(vh ‑ size, y));
       ball.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     };
     const endDrag = () => {
@@ -117,7 +122,6 @@ const AuditPanelModule = {
     }, { passive:true });
     document.addEventListener("touchmove", e=>{
       if(!this._isDraggingBall) return;
-      e.preventDefault();
       const t = e.touches[0];
       moveDrag(t.clientX, t.clientY);
     }, { passive:false });
@@ -803,9 +807,9 @@ const AuditPanelModule = {
 
               const textwrap = document.createElement("div");
               textwrap.style.cssText = 'flex:1;min-width:0;';
-              textwrap.innerHTML = `
-              <div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${card.content}</div>
-              `;
+             textwrap.innerHTML = `
+<div style="font‑size:12px;color:var(--color‑text‑2);overflow:hidden;white‑space:nowrap;text‑overflow:ellipsis;">${card.content}</div>
+`;
 
               const ops = document.createElement("div");
               ops.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
@@ -982,14 +986,15 @@ const AuditPanelModule = {
     body.appendChild(colorRow);
 
     const sizeRow = document.createElement("div");
-    sizeRow.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
-    sizeRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color-text-2)">大小 ${float.size}px</span>`;
+    sizeRow.style.cssText = "display:flex;align‑items:center;gap:8px;padding:6px 0;font‑size:13px;";
+    sizeRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color‑text‑2)">大小 ${float.size}px</span>`;
     const sizeSlider = document.createElement("input");
     sizeSlider.type = "range";
     sizeSlider.min = 32;
     sizeSlider.max = 80;
     sizeSlider.value = float.size;
     sizeSlider.style.width = "140px";
+    sizeSlider.style.touchAction = "manipulation";
     sizeSlider.oninput = () => {
       float.size = Number(sizeSlider.value);
       sizeRow.querySelector("span").textContent = `大小 ${float.size}px`;
@@ -998,7 +1003,7 @@ const AuditPanelModule = {
     };
     const resetSizeBtn = document.createElement("button");
     resetSizeBtn.textContent = "恢复默认";
-    resetSizeBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);font-size:11px;cursor:pointer;";
+    resetSizeBtn.style = "padding:4px 8px;border:1px solid var(--color‑border);border‑radius:6px;background:var(--color‑bg);font‑size:11px;cursor:pointer;margin‑left:auto;";
     resetSizeBtn.onclick = () => {
       float.size = 48;
       sizeSlider.value = 48;
