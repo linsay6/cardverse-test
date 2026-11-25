@@ -16,8 +16,8 @@ const AuditPanelModule = {
   searchKeyword: "",
   lastSwitchAt: 0,
 
-  init() {
-    EventBus.on("open-panel", (payload) => {
+    init() {
+    EventBus.on("open‑panel", (payload) => {
       if (payload && payload.panel === "audit") this.open();
     });
   },
