@@ -109,31 +109,7 @@ export const DesktopModule = {
       this.render();
     });
 
-    // ========== 新增：审核图标测试弹窗 ==========
-    EventBus.on("open‑panel", (payload)=>{
-      if(payload.panel !== "audit") return;
-      const mask = document.createElement('div');
-      mask.style.cssText = `
-        position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-        background:rgba(0,0,0,0.4);z-index:9999;
-      `;
-      const box = document.createElement('div');
-      box.style.cssText = `width:80%;max-width:420px;background:var(--color-bg);padding:24px;border-radius:16px;`;
-      box.innerHTML = `
-        <h3 style="margin:0 0 16px;color:var(--color-text)">审核面板(测试)</h3>
-        <button id="drawBtn" style="width:100%;padding:12px;border-radius:12px;border:none;background:var(--color-main);color:#fff;margin-bottom:12px">抽一张【审核报告字卡】发送到聊天</button>
-        <button id="closeBtn" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-text)">关闭</button>
-      `;
-      mask.appendChild(box);
-      document.body.appendChild(mask);
-      box.querySelector("#drawBtn").onclick = ()=>{
-        window.AuditCardModule.drawAndSend("auditReport");
-      };
-      box.querySelector("#closeBtn").onclick = ()=>{ mask.remove(); };
-      mask.onclick = (e)=>{ if(e.target === mask) mask.remove(); };
-    });
-
-    // ========== 新增：待审角标自动更新 ==========
+        // ========== 新增：待审角标自动更新 ==========
     EventBus.on("my‑audit‑data‑updated", ()=>{
       this.renderAllCards();
     });
