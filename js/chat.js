@@ -15,48 +15,63 @@ export const ChatModule = {
   viewMode: "chat",
   primaryColor: "#7c68ee",
   bgColor: "#ffffff",
+
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
       console.error("聊天容器找不到", containerSelector);
       return;
     }
+
     const theme = Store.get("app-theme", {});
     this.primaryColor = theme.colorMain || "#7c68ee";
     this.bgColor = theme.colorBg || "#ffffff";
+
     this.render();
+
     document.addEventListener("contact:change", (ev) => {
       this.loadContactSession(ev.detail);
     });
+
     const initCid = Store.get("activeContactId");
-    if(initCid){
+    if (initCid) {
       this.loadContactSession(initCid);
     }
+
     EventBus.on("themeChange", (theme) => {
       this.primaryColor = theme.colorMain || "#7c68ee";
       this.bgColor = theme.colorBg || "#ffffff";
-      if(this.viewMode === "chat") this.renderChatLayout();
+      if (this.viewMode === "chat") {
+        this.renderChatLayout();
+      }
     });
-    EventBus.on("chatThemeChange", ()=>{
+
+    EventBus.on("chatThemeChange", () => {
       this.renderMessages();
     });
-    EventBus.on("contactInfoChange", (cid)=>{
-      if(cid === this.activeContactId){
-        const list = Store.get("contactList",[]);
-        this.activeContactInfo = list.find(item=>item.id === cid);
+
+    EventBus.on("contactInfoChange", (cid) => {
+      if (cid === this.activeContactId) {
+        const list = Store.get("contactList", []);
+        this.activeContactInfo = list.find(item => item.id === cid);
         this.renderMessages();
       }
     });
-    EventBus.on("chatLogClear", (cid)=>{
-      if(cid === this.activeContactId){
+
+    EventBus.on("chatLogClear", (cid) => {
+      if (cid === this.activeContactId) {
         this.messageList = [];
         this.saveHistory();
         this.renderMessages();
       }
     });
+
+    // 将 ChatModule 挂载到全局，方便 sendAuditCard 等外部调用
+    window.ChatModule = this;
   },
-  executeApply(apply, contactObj){
-    switch(apply.targetType){
+
+  executeApply(apply, contactObj) {
+    switch (apply.targetType) {
       case "taAvatar":
         contactObj.avatar = apply.newVal;
         break;
@@ -71,59 +86,106 @@ export const ChatModule = {
         break;
     }
   },
-  // 对外接口：写入系统通知，自动持久化保存；previewAvatar 可选，头像变更时传入base64
-  pushSystemNotice(text, previewAvatar = null){
+
+  pushSystemNotice(text, previewAvatar = null) {
     this.messageList.push({
-      type:"notice",
-      content:text,
+      type: "notice",
+      content: text,
       previewAvatar: previewAvatar,
-      time:Date.now()
+      time: Date.now()
     });
     this.saveHistory();
     this.renderMessages();
   },
-  pushNoticeMessage(text, from="me"){
+
+  pushNoticeMessage(text, from = "me") {
     this.pushSystemNotice(text);
   },
+
   loadContactSession(contactId) {
     const contactList = Store.get("contactList", []);
     const findItem = contactList.find(c => c.id === contactId);
-    if(!findItem){
+
+    if (!findItem) {
       this.activeContactId = null;
       this.activeContactInfo = null;
       this.messageList = [];
       this.render();
       return;
     }
+
     this.activeContactId = contactId;
     this.activeContactInfo = findItem;
-    if(!this.activeContactInfo.taAvatarPool) this.activeContactInfo.taAvatarPool = [];
-    if(!this.activeContactInfo.myAvatarPool) this.activeContactInfo.myAvatarPool = [];
-    if(!this.activeContactInfo.taNickPool) this.activeContactInfo.taNickPool = [];
-    if(!this.activeContactInfo.myNickPool) this.activeContactInfo.myNickPool = [];
-    if(!this.activeContactInfo.pendingApplyList) this.activeContactInfo.pendingApplyList = [];
-    if(!this.activeContactInfo.taAvatarRandom) this.activeContactInfo.taAvatarRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
-    if(!this.activeContactInfo.taNickRandom) this.activeContactInfo.taNickRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
-    if(!this.activeContactInfo.myAvatarRandom) this.activeContactInfo.myAvatarRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
-    if(!this.activeContactInfo.myNickRandom) this.activeContactInfo.myNickRandom = {enable:false,minHour:2,maxHour:6,lastTriggerTs:0};
-    if(!this.activeContactInfo.taApplyIntervalHours) this.activeContactInfo.taApplyIntervalHours = 4;
+
+    if (!this.activeContactInfo.taAvatarPool) this.activeContactInfo.taAvatarPool = [];
+    if (!this.activeContactInfo.myAvatarPool) this.activeContactInfo.myAvatarPool = [];
+    if (!this.activeContactInfo.taNickPool) this.activeContactInfo.taNickPool = [];
+    if (!this.activeContactInfo.myNickPool) this.activeContactInfo.myNickPool = [];
+    if (!this.activeContactInfo.pendingApplyList) this.activeContactInfo.pendingApplyList = [];
+
+    if (!this.activeContactInfo.taAvatarRandom) {
+      this.activeContactInfo.taAvatarRandom = {
+        enable: false,
+        minHour: 2,
+        maxHour: 6,
+        lastTriggerTs: 0
+      };
+    }
+
+    if (!this.activeContactInfo.taNickRandom) {
+      this.activeContactInfo.taNickRandom = {
+        enable: false,
+        minHour: 2,
+        maxHour: 6,
+        lastTriggerTs: 0
+      };
+    }
+
+    if (!this.activeContactInfo.myAvatarRandom) {
+      this.activeContactInfo.myAvatarRandom = {
+        enable: false,
+        minHour: 2,
+        maxHour: 6,
+        lastTriggerTs: 0
+      };
+    }
+
+    if (!this.activeContactInfo.myNickRandom) {
+      this.activeContactInfo.myNickRandom = {
+        enable: false,
+        minHour: 2,
+        maxHour: 6,
+        lastTriggerTs: 0
+      };
+    }
+
+    if (!this.activeContactInfo.taApplyIntervalHours) {
+      this.activeContactInfo.taApplyIntervalHours = 4;
+    }
+
     this.messageList = Store.get(`chat-contact-${contactId}`, []);
     this.render();
+
     Toast.show(`进入对话：${findItem.name}`);
   },
+
   render() {
-    if(this.viewMode === "setting"){
-      ChatSettingSubModule.open(this.rootEl, this.activeContactId, ()=>{
+    if (this.viewMode === "setting") {
+      ChatSettingSubModule.open(this.rootEl, this.activeContactId, () => {
         this.viewMode = "chat";
         this.render();
       });
       return;
     }
+
     this.renderChatLayout();
   },
+
   renderChatLayout() {
     if (!this.rootEl) return;
+
     this.rootEl.innerHTML = "";
+
     const wrap = document.createElement('div');
     wrap.style.height = "100%";
     wrap.style.display = "flex";
@@ -131,6 +193,7 @@ export const ChatModule = {
     wrap.style.background = this.bgColor;
     wrap.style.position = "relative";
     wrap.style.overflow = "hidden";
+
     const chatHeader = document.createElement("div");
     chatHeader.style.padding = "10px 12px";
     chatHeader.style.display = "flex";
@@ -138,6 +201,7 @@ export const ChatModule = {
     chatHeader.style.alignItems = "center";
     chatHeader.style.borderBottom = "1px solid #e5e5e5";
     chatHeader.style.background = this.bgColor;
+
     chatHeader.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px">
         <button id="chat-back-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:${this.bgColor};">←</button>
@@ -146,25 +210,29 @@ export const ChatModule = {
       </div>
       <button id="chat-more-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:${this.bgColor};font-size:18px">⋯</button>
     `;
+
     wrap.appendChild(chatHeader);
+
     this.msgListEl = document.createElement('div');
     this.msgListEl.style.flex = "1";
     this.msgListEl.style.overflowY = "auto";
-    // 隐藏滚动条，保留滚轮功能
     this.msgListEl.style.scrollbarWidth = "none";
     this.msgListEl.style.msOverflowStyle = "none";
     this.msgListEl.style.padding = "12px";
     this.msgListEl.style.boxSizing = "border-box";
     this.msgListEl.id = "msg-list";
+
     const styleHideScroll = document.createElement("style");
     styleHideScroll.textContent = `#msg-list::-webkit-scrollbar{display:none}`;
     document.head.appendChild(styleHideScroll);
+
     const inputWrap = document.createElement('div');
     inputWrap.style.padding = "10px 12px";
     inputWrap.style.borderTop = "1px solid #e5e5e5";
     inputWrap.style.display = "flex";
     inputWrap.style.gap = "8px";
     inputWrap.style.background = this.bgColor;
+
     const extendBtn = document.createElement("button");
     extendBtn.id = "chat-extend-btn";
     extendBtn.innerText = "···";
@@ -173,6 +241,7 @@ export const ChatModule = {
     extendBtn.style.fontSize = "20px";
     extendBtn.style.cursor = "pointer";
     extendBtn.style.padding = "0 4px";
+
     this.inputEl = document.createElement('input');
     this.inputEl.style.flex = "1";
     this.inputEl.style.padding = "10px 12px";
@@ -181,6 +250,7 @@ export const ChatModule = {
     this.inputEl.style.background = "#f6f6f6";
     this.inputEl.style.outline = "none";
     this.inputEl.placeholder = "说点什么...";
+
     const sendBtn = document.createElement('button');
     sendBtn.innerText = "发送";
     sendBtn.style.padding = "10px 16px";
@@ -189,90 +259,112 @@ export const ChatModule = {
     sendBtn.style.background = this.primaryColor;
     sendBtn.style.color = "#fff";
     sendBtn.onclick = () => this.sendMessage();
+
     this.inputEl.onkeydown = (e) => {
       if (e.key === "Enter") this.sendMessage();
     };
+
     inputWrap.appendChild(extendBtn);
     inputWrap.appendChild(this.inputEl);
     inputWrap.appendChild(sendBtn);
+
     wrap.appendChild(this.msgListEl);
     wrap.appendChild(inputWrap);
     this.rootEl.appendChild(wrap);
-    document.getElementById("chat-more-btn").onclick = ()=>{
-      if(!this.activeContactId){
+
+    document.getElementById("chat-more-btn").onclick = () => {
+      if (!this.activeContactId) {
         Toast.show("请先选中联系人");
         return;
       }
       this.viewMode = "setting";
       this.render();
     };
-    document.getElementById("chat-back-btn").onclick = ()=>{
-      if(window.TabManager){
+
+    document.getElementById("chat-back-btn").onclick = () => {
+      if (window.TabManager) {
         window.TabManager.switchTab("setting");
       }
       Toast.show("返回联系人列表");
     };
-    document.getElementById("chat-extend-btn").onclick = ()=>{
-      if(!this.activeContactId){
+
+    document.getElementById("chat-extend-btn").onclick = () => {
+      if (!this.activeContactId) {
         Toast.show("请先选中联系人");
         return;
       }
-      ChatExtendPanel.open(this.rootEl, this.activeContactId, ()=>{});
+      ChatExtendPanel.open(this.rootEl, this.activeContactId, () => { });
     };
+
     this.renderMessages();
   },
-  updateContact(patch){
+
+  updateContact(patch) {
     const list = Store.get("contactList", []);
-    const idx = list.findIndex(x=>x.id === this.activeContactId);
-    if(idx === -1) return;
-    list[idx] = {...list[idx], ...patch};
+    const idx = list.findIndex(x => x.id === this.activeContactId);
+    if (idx === -1) return;
+
+    list[idx] = { ...list[idx], ...patch };
     Store.set("contactList", list);
     this.activeContactInfo = list[idx];
     this.renderMessages();
     Toast.show("已更新");
   },
+
   renderMessages() {
     const titleDom = document.getElementById("chat-title");
     const avatarDom = document.getElementById("chat-header-avatar");
-    if(titleDom && avatarDom){
-      if(this.activeContactInfo){
+
+    if (titleDom && avatarDom) {
+      if (this.activeContactInfo) {
         titleDom.innerText = this.activeContactInfo.name;
         avatarDom.src = this.activeContactInfo.avatar || "";
-      }else{
+      } else {
         titleDom.innerText = "未选择联系人";
         avatarDom.src = "";
       }
     }
+
     if (!this.msgListEl) return;
+
     this.msgListEl.innerHTML = "";
-    let chatTheme = Store.get("chatTheme", {avatarShape:"circle",timePos:"avatarBottom"});
-    const allowTimePos = ["avatarBottom","bubbleOuter","hide"];
-    if(!allowTimePos.includes(chatTheme.timePos)){
+
+    let chatTheme = Store.get("chatTheme", {
+      avatarShape: "circle",
+      timePos: "avatarBottom"
+    });
+
+    const allowTimePos = ["avatarBottom", "bubbleOuter", "hide"];
+    if (!allowTimePos.includes(chatTheme.timePos)) {
       chatTheme.timePos = "avatarBottom";
-      Store.set("chatTheme",chatTheme);
+      Store.set("chatTheme", chatTheme);
     }
+
     const avatarRadius = chatTheme.avatarShape === "circle" ? "50%" : "8px";
     const timePos = chatTheme.timePos;
     const headerAvatar = document.getElementById("chat-header-avatar");
-    if(headerAvatar){
+
+    if (headerAvatar) {
       headerAvatar.style.borderRadius = avatarRadius;
     }
+
     if (!this.activeContactId) {
       this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:var(--color-text-2)">请前往设置选择一个梦角联系人开始对话</div>`;
       return;
     }
+
     if (this.messageList.length === 0) {
       this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:var(--color-text-2)">暂无消息，发送第一条消息吧</div>`;
       return;
     }
+
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
+
     this.messageList.forEach(msg => {
-      // =========【系统通知气泡：头像/昵称变更记录，居中浅灰色气泡】=========
-      if(msg.type === "notice"){
+      if (msg.type === "notice") {
         const noticeEl = document.createElement("div");
         noticeEl.style.margin = "10px auto";
         noticeEl.style.padding = "8px 16px";
-        // 半透明白色 + 毛玻璃模糊，支持聊天壁纸透出
         noticeEl.style.background = "rgba(255, 255, 255, 0.24)";
         noticeEl.style.backdropFilter = "blur(8px)";
         noticeEl.style.webkitBackdropFilter = "blur(8px)";
@@ -283,26 +375,29 @@ export const ChatModule = {
         noticeEl.style.maxWidth = "85%";
         noticeEl.style.wordBreak = "break-all";
         noticeEl.style.border = "1px solid rgba(255,255,255,0.35)";
+
         let innerHtml = `<div>${msg.content}</div>`;
-        // 如果存在previewAvatar，在文字下方渲染圆形预览头像
-        if(msg.previewAvatar){
+        if (msg.previewAvatar) {
           innerHtml += `<div style="margin-top:8px;"><img src="${msg.previewAvatar}" style="width:56px;height:56px;border-radius:999px;object-fit:cover;"></div>`;
         }
         noticeEl.innerHTML = innerHtml;
         this.msgListEl.appendChild(noticeEl);
         return;
       }
+
       const d = new Date(msg.time);
-      const hh = String(d.getHours()).padStart(2,'0');
-      const mm = String(d.getMinutes()).padStart(2,'0');
-      const ss = String(d.getSeconds()).padStart(2,'0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
       const timeStr = `${hh}:${mm}:${ss}`;
+
       const msgItem = document.createElement("div");
       msgItem.style.marginBottom = "14px";
       msgItem.style.display = "flex";
       msgItem.style.alignItems = "flex-start";
-      if(timePos === "avatarBottom"){
-        if(msg.role === "user"){
+
+      if (timePos === "avatarBottom") {
+        if (msg.role === "user") {
           msgItem.style.justifyContent = "flex-end";
           msgItem.innerHTML = `
             <div style="max-width:70%">
@@ -313,7 +408,7 @@ export const ChatModule = {
               <div class="time-label" style="margin-top:4px">${timeStr}</div>
             </div>
           `;
-        }else{
+        } else {
           msgItem.style.justifyContent = "flex-start";
           msgItem.innerHTML = `
             <div style="display:flex;flex-direction:column;align-items:center;margin-right:8px">
@@ -325,13 +420,15 @@ export const ChatModule = {
             </div>
           `;
         }
-      }else{
+      } else {
         let timeHtml = "";
-        if(timePos === "hide") timeHtml = "";
-        else if(timePos === "bubbleOuter"){
+        if (timePos === "hide") {
+          timeHtml = "";
+        } else if (timePos === "bubbleOuter") {
           timeHtml = `<div class="time-label" style="margin-left:6px;align-self:flex-end;white-space:nowrap">${timeStr}</div>`;
         }
-        if(msg.role === "user"){
+
+        if (msg.role === "user") {
           msgItem.style.justifyContent = "flex-end";
           msgItem.style.alignItems = "flex-end";
           msgItem.innerHTML = `
@@ -340,10 +437,10 @@ export const ChatModule = {
               <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-end">
                 <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
               </div>
-              ${timePos==="bubbleOuter"?timeHtml:""}
+              ${timePos === "bubbleOuter" ? timeHtml : ""}
             </div>
           `;
-        }else{
+        } else {
           msgItem.style.justifyContent = "flex-start";
           msgItem.style.alignItems = "flex-end";
           msgItem.innerHTML = `
@@ -352,26 +449,31 @@ export const ChatModule = {
               <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-start">
                 <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
               </div>
-              ${timePos==="bubbleOuter"?timeHtml:""}
+              ${timePos === "bubbleOuter" ? timeHtml : ""}
             </div>
           `;
         }
       }
+
       this.msgListEl.appendChild(msgItem);
     });
-    if(this.isTyping){
+
+    if (this.isTyping) {
       const tip = document.createElement("div");
-      tip.style.color="var(--color-text-2)";
-      tip.style.fontSize="13px";
+      tip.style.color = "var(--color-text-2)";
+      tip.style.fontSize = "13px";
       tip.textContent = `${this.activeContactInfo.name} 正在输入...`;
       this.msgListEl.appendChild(tip);
     }
+
     this.msgListEl.scrollTop = this.msgListEl.scrollHeight;
   },
+
   sendMessage() {
     const content = this.inputEl.value.trim();
     if (!content) return;
-    if(this.activeContactId){
+
+    if (this.activeContactId) {
       this.messageList.push({
         role: "user",
         content,
@@ -379,15 +481,19 @@ export const ChatModule = {
       });
       this.saveHistory();
     }
+
     this.inputEl.value = "";
     this.renderMessages();
-    if(!this.activeContactId){
+
+    if (!this.activeContactId) {
       Toast.show("提示：未选中联系人，消息不会保存");
       return;
     }
+
     this.isTyping = true;
     this.renderMessages();
-    setTimeout(()=>{
+
+    setTimeout(() => {
       this.isTyping = false;
       this.messageList.push({
         role: "bot",
@@ -396,35 +502,44 @@ export const ChatModule = {
       });
       this.saveHistory();
       this.renderMessages();
-    },1200);
+    }, 1200);
   },
+
   saveHistory() {
-    if(!this.activeContactId) return;
+    if (!this.activeContactId) return;
     Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
+  },
+
+  /**
+   * 统一消息注入接口：供审核、树洞、小屋、塔罗等模块调用
+   */
+  sendAuditCard(text, side = "bot") {
+    if (!this.activeContactId) {
+      Toast.show("请先选择一个联系人");
+      return;
+    }
+
+    this.messageList.push({
+      role: side,
+      content: text,
+      time: Date.now(),
+      data_ma_injected: "1"
+    });
+
+    this.saveHistory();
+    this.renderMessages();
   }
 };
 
 /**
- * ✅全局统一消息注入出口：供audit、树洞、小屋、塔罗调用
- * @param {string} text 消息文本
- * @param {"user"|"bot"} side 消息方向 user=我 bot=TA
- * 挂载到window全局，所有外部模块直接调用 window.sendAuditCard(text, side)
- * 三层兜底：无会话、无chat实例时toast提示，不崩溃
+ * 全局别名：外部模块统一调用 window.sendAuditCard(text, side)
  */
-window.sendAuditCard = function(text, side = "bot") {
-  if (!window.ChatModule || !window.ChatModule.activeContactId) {
-    window.$Toast?.show("请先选择一个联系人");
-    return;
+window.sendAuditCard = function (text, side = "bot") {
+  if (window.ChatModule && typeof window.ChatModule.sendAuditCard === "function") {
+    window.ChatModule.sendAuditCard(text, side);
+  } else {
+    Toast.show("聊天模块未就绪");
   }
-  const cm = window.ChatModule;
-  cm.messageList.push({
-    role: side,
-    content: text,
-    time: Date.now(),
-    data_ma_injected: "1" //标记为模块注入消息
-  });
-  cm.saveHistory();
-  cm.renderMessages();
 };
 
 export { ChatModule };
