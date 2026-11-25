@@ -53,7 +53,7 @@ const AuditCardModule = {
       baseProb: 0.05,            // 基础触发概率5%
       emotionProb: 0.30,         // 情绪命中后概率30%
       chaosProb: 0.02,           // 混沌操作概率2%
-      pendingMax: 20,            // pending队列最大条数
+      pendingMax: 20,            // ✅正式引擎保护上限保持20条
       applyCoolDownMs: 60000     // 单条申请60秒冷却
     },
     // 浏览器通知
@@ -159,7 +159,7 @@ const AuditCardModule = {
 
   // ==========【4.pending待审申请业务】==========
   /**
-   * 生成一条待审申请
+   * 生成一条待审申请（正式业务，受pendingMax=20上限约束）
    * @param {string} action add / delete / disable / move / restore
    * @param {object} payload 申请内容
    * @param {string} applicant 申请人昵称："我" / 梦角昵称
@@ -190,7 +190,27 @@ const AuditCardModule = {
       remark: ""
     };
     this.pendingApply.push(applyItem);
-    this.saveToStorage(); // saveToStorage内部自动emit my‑audit‑data‑updated
+    this.saveToStorage();
+    return applyItem;
+  },
+
+  /**
+   * ⚠️测试专用！无视pendingMax上限，仅用于压测角标99+展示，正式业务不要调用
+   */
+  createPendingApplyTestOnly(action, payload, applicant) {
+    const now = Date.now();
+    const applyItem = {
+      applyId: String(now),
+      action,
+      cardText: payload.cardText ?? "",
+      sourceGroupId: payload.sourceGroupId ?? "",
+      targetGroupId: payload.targetGroupId ?? "",
+      applicant,
+      lastApplyTime: now,
+      remark: ""
+    };
+    this.pendingApply.push(applyItem);
+    this.saveToStorage();
     return applyItem;
   },
 
@@ -216,7 +236,7 @@ const AuditCardModule = {
       this.auditHistory = this.auditHistory.slice(0, 100);
     }
     this.pendingApply.splice(idx, 1);
-    this.saveToStorage(); // 内部自动emit事件
+    this.saveToStorage();
     return true;
   },
 
