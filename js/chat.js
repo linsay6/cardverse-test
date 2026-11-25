@@ -4,7 +4,7 @@ import { EventBus } from './core/context.js';
 import { ChatSettingSubModule } from './chat-setting.js';
 import { ChatExtendPanel } from './chat-extend-panel.js';
 
-export const ChatModule = {
+const ChatModule = {
   rootEl: null,
   msgListEl: null,
   inputEl: null,
@@ -66,7 +66,6 @@ export const ChatModule = {
       }
     });
 
-    // 将 ChatModule 挂载到全局，方便 sendAuditCard 等外部调用
     window.ChatModule = this;
   },
 
@@ -510,9 +509,6 @@ export const ChatModule = {
     Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
   },
 
-  /**
-   * 统一消息注入接口：供审核、树洞、小屋、塔罗等模块调用
-   */
   sendAuditCard(text, side = "bot") {
     if (!this.activeContactId) {
       Toast.show("请先选择一个联系人");
@@ -531,9 +527,7 @@ export const ChatModule = {
   }
 };
 
-/**
- * 全局别名：外部模块统一调用 window.sendAuditCard(text, side)
- */
+// 全局挂载接口
 window.sendAuditCard = function (text, side = "bot") {
   if (window.ChatModule && typeof window.ChatModule.sendAuditCard === "function") {
     window.ChatModule.sendAuditCard(text, side);
@@ -542,4 +536,4 @@ window.sendAuditCard = function (text, side = "bot") {
   }
 };
 
-export { ChatModule };
+export default ChatModule;
