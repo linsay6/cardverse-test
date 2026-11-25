@@ -297,7 +297,13 @@ const AuditPanelModule = {
     toolbar.appendChild(rejectAll);
 
     const listWrap = document.createElement("div");
-    listWrap.style.cssText = `flex:1;overflow-y:auto;padding:0;scrollbar-width:none;`;
+    listWrap.style.cssText = `
+    flex:1;
+    overflow‑y:auto;
+    padding:0;
+    scrollbar‑width:none;
+    `;
+    listWrap.style.setProperty('::-webkit‑scrollbar','display:none');
     listWrap.style.setProperty("::-webkit-scrollbar","display:none");
 
     if (list.length === 0) {
