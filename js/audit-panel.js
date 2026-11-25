@@ -22,6 +22,7 @@ const AuditPanelModule = {
   _ballStartX: 0,
   _ballStartY: 0,
   _dragMoved: false,
+  _touchSlop: 8,
 
   init() {
     EventBus.on("open‑panel", (payload) => {
@@ -37,13 +38,19 @@ const AuditPanelModule = {
     this.initFloatBall();
   },
 
-  // ========== 悬浮球 ==========
+  // ========== 悬浮球（修复拖拽单击区分，配置实时生效无需刷新） ==========
   initFloatBall() {
     const cfg = AuditCardModule.auditConfig.floatBall;
-    
-    // URL参数强制显示
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
-    if (!cfg.enable && !forceShow) return;
+    if (!cfg.enable && !forceShow) {
+      if(this.floatBallEl) this.floatBallEl.remove();
+      this.floatBallEl = null;
+      return;
+    }
+    if(this.floatBallEl){
+      this.updateFloatBallStyle();
+      return;
+    }
 
     const ball = document.createElement("div");
     ball.style.cssText = `
@@ -52,37 +59,32 @@ const AuditPanelModule = {
       display:flex;align-items:center;justify-content:center;
       color:#fff;font-weight:bold;cursor:pointer;z-index:9998;
       transform:translate3d(0,0,0);will-change:transform;
-      user-select:none;touch-action:none;overflow:hidden;
-      box-shadow:0 4px 12px rgba(0,0,0,0.15);
+      user-select:none;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.15);
     `;
     if (cfg.avatarBase64) {
       ball.innerHTML = `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     } else {
       ball.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
     }
-
-    // 恢复位置
     if (cfg.posX != null && cfg.posY != null) {
       ball.style.transform = `translate3d(${cfg.posX}px, ${cfg.posY}px, 0)`;
     }
 
-    // 拖拽开始
+    let downX = 0, downY = 0;
     const startDrag = (clientX, clientY) => {
       this._isDraggingBall = true;
       this._dragMoved = false;
-      this._dragStartX = clientX;
-      this._dragStartY = clientY;
+      downX = clientX;
+      downY = clientY;
       const rect = ball.getBoundingClientRect();
       this._ballStartX = rect.left;
       this._ballStartY = rect.top;
     };
-
     const moveDrag = (clientX, clientY) => {
       if (!this._isDraggingBall) return;
-      const dx = clientX - this._dragStartX;
-      const dy = clientY - this._dragStartY;
-      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) this._dragMoved = true;
-
+      const dx = clientX - downX;
+      const dy = clientY - downY;
+      if(Math.hypot(dx, dy) > this._touchSlop) this._dragMoved = true;
       const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
       const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       const size = parseFloat(getComputedStyle(ball).width);
@@ -92,35 +94,33 @@ const AuditPanelModule = {
       y = Math.max(0, Math.min(vh - size, y));
       ball.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     };
-
     const endDrag = () => {
       if (!this._isDraggingBall) return;
-      this._isDraggingBall = false;
-      if (this._dragMoved) {
+      if (!this._dragMoved) {
+        this.open();
+      }else{
         const rect = ball.getBoundingClientRect();
         AuditCardModule.auditConfig.floatBall.posX = rect.left;
         AuditCardModule.auditConfig.floatBall.posY = rect.top;
         AuditCardModule.saveToStorage();
-      } else {
-        this.open();
       }
+      this._isDraggingBall = false;
     };
 
     ball.addEventListener("mousedown", e => startDrag(e.clientX, e.clientY));
+    document.addEventListener("mousemove", e=>moveDrag(e.clientX,e.clientY));
+    document.addEventListener("mouseup", endDrag);
+
     ball.addEventListener("touchstart", e => {
       const t = e.touches[0];
       startDrag(t.clientX, t.clientY);
-    }, { passive: true });
-
-    document.addEventListener("mousemove", e => moveDrag(e.clientX, e.clientY));
-    document.addEventListener("touchmove", e => {
-      if (!this._isDraggingBall) return;
+    }, { passive:true });
+    document.addEventListener("touchmove", e=>{
+      if(!this._isDraggingBall) return;
       e.preventDefault();
       const t = e.touches[0];
       moveDrag(t.clientX, t.clientY);
-    }, { passive: false });
-
-    document.addEventListener("mouseup", endDrag);
+    }, { passive:false });
     document.addEventListener("touchend", endDrag);
 
     document.body.appendChild(ball);
@@ -128,11 +128,20 @@ const AuditPanelModule = {
   },
 
   updateFloatBallStyle() {
-    if (!this.floatBallEl) return;
+    if (!this.floatBallEl) {
+      const cfg = AuditCardModule.auditConfig.floatBall;
+      if(cfg.enable) this.initFloatBall();
+      return;
+    }
     const cfg = AuditCardModule.auditConfig.floatBall;
     this.floatBallEl.style.width = cfg.size + "px";
     this.floatBallEl.style.height = cfg.size + "px";
     this.floatBallEl.style.background = cfg.color;
+    if(cfg.avatarBase64){
+      this.floatBallEl.innerHTML = `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    }else{
+      this.floatBallEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+    }
   },
 
   // ========== 弹窗基础 ==========
@@ -140,6 +149,8 @@ const AuditPanelModule = {
     if (this.panelEl) this.close();
     this.selectedIds = new Set();
     this.searchKeyword = "";
+    this._cardSearch = "";
+    this._selectedCards = new Set();
 
     const mask = document.createElement("div");
     mask.style.cssText = `
@@ -152,6 +163,7 @@ const AuditPanelModule = {
       width:100%;max-width:460px;max-height:86vh;display:flex;flex-direction:column;
       background:var(--color-bg);border-radius:18px;overflow:hidden;
       box-shadow:0 12px 40px rgba(0,0,0,0.25);box-sizing:border-box;
+      accent-color:var(--color-main);
     `;
     mask.appendChild(box);
     document.body.appendChild(mask);
@@ -184,7 +196,7 @@ const AuditPanelModule = {
     };
   },
 
-  // ========== 主渲染 ==========
+  // ========== 主渲染（Tab胶囊样式还原） ==========
   render(box) {
     const tabs = [
       { key: "pending",     name: "待审核", count: AuditCardModule.pendingApply.length },
@@ -195,7 +207,7 @@ const AuditPanelModule = {
 
     const tabBar = document.createElement("div");
     tabBar.style.cssText = `
-      display:flex;gap:4px;padding:12px 12px 0;flex-wrap:wrap;flex-shrink:0;
+      display:flex;gap:6px;padding:12px 12px 0;flex-wrap:wrap;flex-shrink:0;
       border-bottom:1px solid var(--color-border);
     `;
     tabs.forEach(t => {
@@ -204,11 +216,11 @@ const AuditPanelModule = {
       btn.innerHTML = `${t.name}${t.count > 0 ? `<span style="margin-left:4px;font-size:11px;opacity:0.8">${t.count}</span>` : ""}`;
       btn.dataset.tab = t.key;
       btn.style.cssText = `
-        flex:1;padding:10px 4px;border:none;border-radius:999px 999px 0 0;cursor:pointer;
+        flex:1;padding:8px 4px;border:none;border-radius:999px;cursor:pointer;
         font-size:13px;min-height:36px;touch-action:manipulation;
         ${active
           ? "background:var(--color-main);color:#fff"
-          : "background:transparent;color:var(--color-text);"}
+          : "background:transparent;color:var(--color-text);border:1px solid var(--color-border)"}
       `;
       btn.onclick = () => {
         const now = Date.now();
@@ -231,7 +243,7 @@ const AuditPanelModule = {
     tabBar.appendChild(closeBtn);
 
     const body = document.createElement("div");
-    body.style.cssText = `flex:1;overflow:hidden;display:flex;flex-direction:column;`;
+    body.style.cssText = `flex:1;overflow:hidden;display:flex;flex-direction:column;padding:0 12px 12px;box-sizing:border-box;`;
 
     box.innerHTML = "";
     box.appendChild(tabBar);
@@ -243,13 +255,13 @@ const AuditPanelModule = {
     if (this.activeTab === "settings") this.renderSettings(body);
   },
 
-  // ========== Tab1 待审核 ==========
+  // ========== Tab1 待审核（按钮主题色变量） ==========
   renderPending(body) {
     const list = AuditCardModule.pendingApply || [];
 
     const toolbar = document.createElement("div");
     toolbar.style.cssText = `
-      display:flex;gap:6px;padding:12px;flex-wrap:wrap;align-items:center;
+      display:flex;gap:6px;padding:12px 0;margin-bottom:8px;flex-wrap:wrap;align-items:center;
       flex-shrink:0;border-bottom:1px solid var(--color-border);
     `;
     const countTip = document.createElement("span");
@@ -271,7 +283,7 @@ const AuditPanelModule = {
 
     const agreeAll = document.createElement("button");
     agreeAll.textContent = "批量同意";
-    agreeAll.style = "padding:8px 10px;border:none;border-radius:8px;background:#34c759;color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
+    agreeAll.style = "padding:8px 10px;border:none;border-radius:8px;background:var(--color-main);color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
     agreeAll.onclick = () => this.batchApprove("agree");
 
     const rejectAll = document.createElement("button");
@@ -285,7 +297,8 @@ const AuditPanelModule = {
     toolbar.appendChild(rejectAll);
 
     const listWrap = document.createElement("div");
-    listWrap.style.cssText = "flex:1;overflow-y:auto;padding:0 12px 12px;";
+    listWrap.style.cssText = `flex:1;overflow-y:auto;padding:0;scrollbar-width:none;`;
+    listWrap.style.setProperty("::-webkit-scrollbar","display:none");
 
     if (list.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--color-text-2);font-size:13px">暂无待审申请</div>`;
@@ -352,7 +365,7 @@ const AuditPanelModule = {
         btns.style.cssText = `display:flex;gap:8px;`;
         const agreeBtn = document.createElement("button");
         agreeBtn.textContent = "同意";
-        agreeBtn.style = "flex:1;padding:9px;border:none;border-radius:8px;background:#34c759;color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
+        agreeBtn.style = "flex:1;padding:9px;border:none;border-radius:8px;background:var(--color-main);color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
         agreeBtn.onclick = () => this.singleApprove(item, "agree", remarkInput.value);
 
         const rejectBtn = document.createElement("button");
@@ -445,13 +458,13 @@ const AuditPanelModule = {
     }
   },
 
-  // ========== Tab2 历史档案（搜索吸顶 + 隐藏滚动条） ==========
+  // ========== Tab2 历史档案：搜索栏吸顶，隐藏滚动条 ==========
   renderHistory(body) {
     const list = AuditCardModule.auditHistory || [];
 
     const bar = document.createElement("div");
     bar.style.cssText = `
-      display:flex;gap:8px;padding:12px;align-items:center;
+      display:flex;gap:8px;padding:12px 0;align-items:center;
       flex-shrink:0;border-bottom:1px solid var(--color-border);
       position:sticky;top:0;background:var(--color-bg);z-index:1;
     `;
@@ -480,13 +493,9 @@ const AuditPanelModule = {
 
     const listWrap = document.createElement("div");
     listWrap.style.cssText = `
-      flex:1;overflow-y:auto;padding:0 12px 12px;
+      flex:1;overflow-y:auto;padding:0 0 12px 0;
       scrollbar-width:none;
     `;
-    const style = document.createElement("style");
-    style.textContent = `#${listWrap.id || "history-list"}::-webkit-scrollbar{display:none}`;
-    listWrap.id = "history-list";
-    listWrap.appendChild(style);
 
     const kw = this.searchKeyword.toLowerCase();
     const filtered = list.filter(h => {
@@ -502,7 +511,7 @@ const AuditPanelModule = {
     } else {
       filtered.forEach(h => {
         const meta = ACTION_META[h.action] || { label: h.action, color: "#888" };
-        const resultColor = h.auditResult === "agree" ? "#34c759" : "#ff3b30";
+        const resultColor = h.auditResult === "agree" ? "var(--color-main)" : "#ff3b30";
         const row = document.createElement("div");
         row.style.cssText = `border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-top:10px;box-sizing:border-box;`;
         row.innerHTML = `
@@ -526,17 +535,16 @@ const AuditPanelModule = {
     body.appendChild(listWrap);
   },
 
-  // ========== Tab3 字卡库（仅审核报告分类） ==========
+  // ========== Tab3 字卡库：增加勾选、批量转移、整组启用禁用，单行文本溢出省略 ==========
   renderCardLib(body) {
     const M = AuditCardModule;
     const categories = M.getAuditCategories();
     const kw = this._cardSearch || "";
     const selectedCards = this._selectedCards || new Set();
 
-    // 顶部搜索 + 批量输入
     const head = document.createElement("div");
     head.style.cssText = `
-      padding:12px;flex-shrink:0;border-bottom:1px solid var(--color-border);
+      padding:12px 0;flex-shrink:0;border-bottom:1px solid var(--color-border);
       display:flex;flex-direction:column;gap:8px;
     `;
     const searchInput = document.createElement("input");
@@ -560,7 +568,7 @@ const AuditPanelModule = {
     `;
 
     const opRow = document.createElement("div");
-    opRow.style.cssText = "display:flex;gap:8px;";
+    opRow.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;";
 
     const catSelect = document.createElement("select");
     categories.forEach(c => {
@@ -604,11 +612,11 @@ const AuditPanelModule = {
     head.appendChild(textarea);
     head.appendChild(opRow);
 
-    // 批量操作栏
+    // 批量操作栏：增加【批量转移到分组】
     const batchBar = document.createElement("div");
     batchBar.style.cssText = `
-      display:flex;gap:6px;padding:0 12px 8px;flex-wrap:wrap;align-items:center;
-      font-size:12px;
+      display:flex;gap:6px;padding:10px 0;flex-wrap:wrap;align-items:center;
+      font-size:12px;border-bottom:1px solid var(--color-border);flex-shrink:0;
     `;
     const allCheck = document.createElement("label");
     allCheck.style.cssText = "display:flex;align-items:center;gap:4px;cursor:pointer;";
@@ -618,7 +626,7 @@ const AuditPanelModule = {
     const filteredCards = kw
       ? allCards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()) || c.title.toLowerCase().includes(kw.toLowerCase()))
       : allCards;
-    allCheckInput.checked = filteredCards.length > 0 && filteredCards.every(c => selectedCards.has(c.id));
+    allCheckInput.checked = filteredCards.length > 0 && filteredCards.every(c => this._selectedCards.has(c.id));
     allCheckInput.onchange = () => {
       if (allCheckInput.checked) filteredCards.forEach(c => this._selectedCards.add(c.id));
       else this._selectedCards = new Set();
@@ -638,6 +646,37 @@ const AuditPanelModule = {
       this.renderCardLib(body);
     };
 
+    // 批量转移分组
+    const moveWrap = document.createElement("span");
+    moveWrap.style.cssText = "display:flex;gap:4px;align-items:center;";
+    const moveSel = document.createElement("select");
+    categories.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.name;
+      moveSel.appendChild(opt);
+    });
+    moveSel.style.fontSize = "11px";
+    const moveBtn = document.createElement("button");
+    moveBtn.textContent = "批量转移";
+    moveBtn.style = "padding:4px 7px;border:none;border-radius:6px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
+    moveBtn.onclick = ()=>{
+      const targetCat = moveSel.value;
+      const selArr = Array.from(this._selectedCards);
+      if(!selArr.length){Toast.show("请勾选字卡");return;}
+      selArr.forEach(cardId=>{
+        const info = allCards.find(x=>x.id===cardId);
+        if(info && info.categoryId !== targetCat){
+          M.moveCard(cardId, info.categoryId, targetCat);
+        }
+      });
+      this._selectedCards.clear();
+      Toast.show(`已批量转移${selArr.length}张`);
+      this.renderCardLib(body);
+    };
+    moveWrap.appendChild(moveSel);
+    moveWrap.appendChild(moveBtn);
+
     const newCatBtn = document.createElement("button");
     newCatBtn.textContent = "+ 新建分类";
     newCatBtn.style = "padding:5px 8px;border:none;border-radius:6px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;margin-left:auto;";
@@ -651,11 +690,11 @@ const AuditPanelModule = {
 
     batchBar.appendChild(allCheck);
     batchBar.appendChild(dedupBtn);
+    batchBar.appendChild(moveWrap);
     batchBar.appendChild(newCatBtn);
 
-    // 分类列表
     const listWrap = document.createElement("div");
-    listWrap.style.cssText = "flex:1;overflow-y:auto;padding:0 12px 12px;scrollbar-width:none;";
+    listWrap.style.cssText = "flex:1;overflow-y:auto;padding:0 0 12px;scrollbar-width:none;";
 
     if (categories.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--color-text-2);font-size:13px">暂无分类</div>`;
@@ -667,7 +706,7 @@ const AuditPanelModule = {
           ${cat.isDisabled ? "opacity:0.6;" : ""}
         `;
 
-        // 分类头部
+        // 分类头部：新增【整组启用/禁用】勾选框
         const catHead = document.createElement("div");
         catHead.style.cssText = `
           padding:8px 10px;display:flex;align-items:center;gap:6px;
@@ -679,6 +718,15 @@ const AuditPanelModule = {
         expandBtn.style.cssText = "cursor:pointer;font-size:11px;";
         expandBtn.onclick = () => {
           M.toggleCategoryExpand(cat.id);
+          this.renderCardLib(body);
+        };
+
+        // 整组启用禁用
+        const catDisableCheck = document.createElement("input");
+        catDisableCheck.type = "checkbox";
+        catDisableCheck.checked = !cat.isDisabled;
+        catDisableCheck.onchange = ()=>{
+          M.toggleCategoryDisable(cat.id, !catDisableCheck.checked);
           this.renderCardLib(body);
         };
 
@@ -717,6 +765,7 @@ const AuditPanelModule = {
         };
 
         catHead.appendChild(expandBtn);
+        catHead.appendChild(catDisableCheck);
         catHead.appendChild(catName);
         catHead.appendChild(upBtn);
         catHead.appendChild(downBtn);
@@ -724,7 +773,6 @@ const AuditPanelModule = {
         catHead.appendChild(delBtn);
         catEl.appendChild(catHead);
 
-        // 卡片列表
         if (cat.expanded) {
           const cardList = document.createElement("div");
           cardList.style.cssText = "padding:6px 10px;";
@@ -737,25 +785,40 @@ const AuditPanelModule = {
           } else {
             showCards.forEach(card => {
               const cardEl = document.createElement("div");
+              // 单行文本溢出省略
               cardEl.style.cssText = `
                 padding:8px;border:1px solid var(--color-border);border-radius:8px;margin-bottom:6px;
                 ${card.isDisabled ? "opacity:0.5;text-decoration:line-through;" : ""}
+                display:flex;align-items:flex-start;gap:6px;
               `;
-              cardEl.innerHTML = `
-                <div style="font-weight:bold;font-size:12px;color:var(--color-main)">${card.title || "无标题"}</div>
-                <div style="font-size:12px;color:var(--color-text-2);margin:4px 0;word-break:break-all;">${card.content}</div>
+              // 单张字卡勾选
+              const ck = document.createElement("input");
+              ck.type = "checkbox";
+              ck.style.marginTop:"2px";
+              ck.checked = this._selectedCards.has(card.id);
+              ck.onchange = ()=>{
+                if(ck.checked) this._selectedCards.add(card.id);
+                else this._selectedCards.delete(card.id);
+              };
+
+              const textWrap = document.createElement("div");
+              textWrap.style.cssText = `flex:1;min-width:0;`;
+              textWrap.innerHTML = `
+                <div style="font-weight:bold;font-size:12px;color:var(--color-main);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${card.title || "无标题"}</div>
+                <div style="font-size:12px;color:var(--color-text-2);margin:2px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${card.content}</div>
               `;
+
               const ops = document.createElement("div");
-              ops.style.cssText = "display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;";
+              ops.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
 
               const sendBtn = document.createElement("button");
               sendBtn.textContent = "发送";
-              sendBtn.style = "padding:4px 8px;border:none;border-radius:4px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
+              sendBtn.style = "padding:3px 6px;border:none;border-radius:4px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
               sendBtn.onclick = () => M.sendCardToChat(card);
 
               const copyBtn = document.createElement("button");
               copyBtn.textContent = "复制";
-              copyBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
+              copyBtn.style = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
               copyBtn.onclick = () => {
                 navigator.clipboard.writeText(card.content);
                 Toast.show("已复制");
@@ -763,7 +826,7 @@ const AuditPanelModule = {
 
               const editBtn = document.createElement("button");
               editBtn.textContent = "编辑";
-              editBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
+              editBtn.style = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
               editBtn.onclick = () => {
                 const newText = prompt("修改字卡内容", card.content);
                 if (newText !== null) {
@@ -775,7 +838,7 @@ const AuditPanelModule = {
               if (card.isDisabled) {
                 const restoreBtn = document.createElement("button");
                 restoreBtn.textContent = "恢复";
-                restoreBtn.style = "padding:4px 8px;border:none;border-radius:4px;background:#34c759;color:#fff;font-size:11px;cursor:pointer;";
+                restoreBtn.style = "padding:3px 6px;border:none;border-radius:4px;background:#34c759;color:#fff;font-size:11px;cursor:pointer;";
                 restoreBtn.onclick = () => {
                   M.updateCard(cat.id, card.id, { isDisabled: false });
                   this.renderCardLib(body);
@@ -784,7 +847,7 @@ const AuditPanelModule = {
               } else {
                 const disableBtn = document.createElement("button");
                 disableBtn.textContent = "禁用";
-                disableBtn.style = "padding:4px 8px;border:1px solid #ff9500;border-radius:4px;background:transparent;color:#ff9500;font-size:11px;cursor:pointer;";
+                disableBtn.style = "padding:3px 6px;border:1px solid #ff9500;border-radius:4px;background:transparent;color:#ff9500;font-size:11px;cursor:pointer;";
                 disableBtn.onclick = () => {
                   M.updateCard(cat.id, card.id, { isDisabled: true });
                   this.renderCardLib(body);
@@ -794,7 +857,7 @@ const AuditPanelModule = {
 
               const delBtn2 = document.createElement("button");
               delBtn2.textContent = "删除";
-              delBtn2.style = "padding:4px 8px;border:none;border-radius:4px;background:#ff3b30;color:#fff;font-size:11px;cursor:pointer;";
+              delBtn2.style = "padding:3px 6px;border:none;border-radius:4px;background:#ff3b30;color:#fff;font-size:11px;cursor:pointer;";
               delBtn2.onclick = () => {
                 if (!confirm("确定删除这张字卡？")) return;
                 M.deleteCard(cat.id, card.id);
@@ -806,6 +869,9 @@ const AuditPanelModule = {
               ops.appendChild(copyBtn);
               ops.appendChild(editBtn);
               ops.appendChild(delBtn2);
+
+              cardEl.appendChild(ck);
+              cardEl.appendChild(textWrap);
               cardEl.appendChild(ops);
               cardList.appendChild(cardEl);
             });
@@ -822,7 +888,7 @@ const AuditPanelModule = {
     body.appendChild(listWrap);
   },
 
-  // ========== Tab4 设置 ==========
+  // ========== Tab4 设置页面布局修复 ==========
   renderSettings(body) {
     const M = AuditCardModule;
     const cfg = M.auditConfig;
@@ -831,7 +897,7 @@ const AuditPanelModule = {
 
     const sectionTitle = (text) => {
       const el = document.createElement("div");
-      el.style.cssText = "font-weight:bold;font-size:13px;margin:10px 0 8px;color:var(--color-text);";
+      el.style.cssText = "font-weight:bold;font-size:13px;margin:14px 0 8px;color:var(--color-text);";
       el.textContent = text;
       return el;
     };
@@ -848,11 +914,27 @@ const AuditPanelModule = {
       return wrap;
     };
 
-    const numberInput = (label, value, onChange) => {
+    const numberInputMinute = (label, secValue, onChangeSec) => {
       const wrap = document.createElement("div");
       wrap.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
       const span = document.createElement("span");
-      span.style.cssText = "width:110px;color:var(--color-text-2);";
+      span.style.cssText = "width:110px;flex:0 0 110px;color:var(--color-text-2);";
+      span.textContent = label;
+      const input = document.createElement("input");
+      input.type = "number";
+      input.value = Math.round(secValue / 60);
+      input.style = "flex:1;padding:7px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;box-sizing:border-box;";
+      input.onchange = () => onChangeSec(Number(input.value)*60);
+      wrap.appendChild(span);
+      wrap.appendChild(input);
+      return wrap;
+    };
+
+    const numberInputRaw = (label, value, onChange) => {
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
+      const span = document.createElement("span");
+      span.style.cssText = "width:110px;flex:0 0 110px;color:var(--color-text-2);";
       span.textContent = label;
       const input = document.createElement("input");
       input.type = "number";
@@ -864,17 +946,20 @@ const AuditPanelModule = {
       return wrap;
     };
 
-    // 悬浮球设置
+    // 设置整体右移：增加左右内边距
+    body.style.padding = "16px 18px";
+
+    // --------悬浮球设置（滑块缩短，整体右移）--------
     body.appendChild(sectionTitle("悬浮球"));
     body.appendChild(toggle("启用悬浮球", float.enable, v => {
       float.enable = v;
       M.saveToStorage();
-      Toast.show("刷新页面后生效");
+      this.updateFloatBallStyle();
     }));
 
     const colorRow = document.createElement("div");
     colorRow.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
-    colorRow.innerHTML = `<span style="width:110px;color:var(--color-text-2)">悬浮球颜色</span>`;
+    colorRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color-text-2)">悬浮球颜色</span>`;
     const colorInput = document.createElement("input");
     colorInput.type = "color";
     colorInput.value = float.color;
@@ -899,13 +984,13 @@ const AuditPanelModule = {
 
     const sizeRow = document.createElement("div");
     sizeRow.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
-    sizeRow.innerHTML = `<span style="width:110px;color:var(--color-text-2)">大小 ${float.size}px</span>`;
+    sizeRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color-text-2)">大小 ${float.size}px</span>`;
     const sizeSlider = document.createElement("input");
     sizeSlider.type = "range";
     sizeSlider.min = 32;
     sizeSlider.max = 80;
     sizeSlider.value = float.size;
-    sizeSlider.style.flex = "1";
+    sizeSlider.style.width = "140px";
     sizeSlider.oninput = () => {
       float.size = Number(sizeSlider.value);
       sizeRow.querySelector("span").textContent = `大小 ${float.size}px`;
@@ -929,7 +1014,7 @@ const AuditPanelModule = {
     // 头像上传
     const avatarRow = document.createElement("div");
     avatarRow.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
-    avatarRow.innerHTML = `<span style="width:110px;color:var(--color-text-2)">自定义头像</span>`;
+    avatarRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color-text-2)">自定义头像</span>`;
     const avatarPreview = document.createElement("div");
     avatarPreview.style.cssText = `
       width:40px;height:40px;border-radius:50%;overflow:hidden;border:1px solid var(--color-border);
@@ -950,7 +1035,6 @@ const AuditPanelModule = {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (e) => {
-          // 圆形裁剪
           const img = new Image();
           img.onload = () => {
             const size = 128;
@@ -967,7 +1051,7 @@ const AuditPanelModule = {
             ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
             float.avatarBase64 = canvas.toDataURL("image/png");
             M.saveToStorage();
-            Toast.show("头像已更新，刷新页面生效");
+            Toast.show("头像已更新");
             this.renderSettings(body);
           };
           img.src = e.target.result;
@@ -983,7 +1067,7 @@ const AuditPanelModule = {
     resetAvatarBtn.onclick = () => {
       float.avatarBase64 = "";
       M.saveToStorage();
-      Toast.show("已恢复默认头像，刷新页面生效");
+      Toast.show("已恢复默认头像");
       this.renderSettings(body);
     };
     avatarRow.appendChild(avatarPreview);
@@ -997,17 +1081,17 @@ const AuditPanelModule = {
     body.appendChild(toggle("混沌随机变更", engine.enableChaos, v => { engine.enableChaos = v; M.saveToStorage(); }));
     body.appendChild(toggle("主动发消息", engine.enableActiveSend, v => { engine.enableActiveSend = v; M.saveToStorage(); }));
 
-    body.appendChild(sectionTitle("引擎参数"));
-    body.appendChild(numberInput("巡检周期(秒)", engine.scanIntervalSec, v => { engine.scanIntervalSec = v; M.saveToStorage(); }));
-    body.appendChild(numberInput("基础触发概率", engine.baseProb, v => { engine.baseProb = v; M.saveToStorage(); }));
-    body.appendChild(numberInput("情绪命中概率", engine.emotionProb, v => { engine.emotionProb = v; M.saveToStorage(); }));
-    body.appendChild(numberInput("混沌操作概率", engine.chaosProb, v => { engine.chaosProb = v; M.saveToStorage(); }));
-    body.appendChild(numberInput("待审上限", engine.pendingMax, v => { engine.pendingMax = v; M.saveToStorage(); }));
-    body.appendChild(numberInput("冷却(毫秒)", engine.applyCoolDownMs, v => { engine.applyCoolDownMs = v; M.saveToStorage(); }));
+    body.appendChild(sectionTitle("引擎参数（UI单位：分钟，存储：秒）"));
+    body.appendChild(numberInputMinute("巡检周期", engine.scanIntervalSec, v => { engine.scanIntervalSec = v; M.saveToStorage(); }));
+    body.appendChild(numberInputRaw("基础触发概率", engine.baseProb, v => { engine.baseProb = v; M.saveToStorage(); }));
+    body.appendChild(numberInputRaw("情绪命中概率", engine.emotionProb, v => { engine.emotionProb = v; M.saveToStorage(); }));
+    body.appendChild(numberInputRaw("混沌操作概率", engine.chaosProb, v => { engine.chaosProb = v; M.saveToStorage(); }));
+    body.appendChild(numberInputRaw("待审上限", engine.pendingMax, v => { engine.pendingMax = v; M.saveToStorage(); }));
+    body.appendChild(numberInputMinute("冷却时间", engine.applyCoolDownMs/1000, v => { engine.applyCoolDownMs = v*1000; M.saveToStorage(); }));
 
     const nickRow = document.createElement("div");
     nickRow.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
-    nickRow.innerHTML = `<span style="width:110px;color:var(--color-text-2)">梦角昵称</span>`;
+    nickRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color-text-2)">梦角昵称</span>`;
     const nickInput = document.createElement("input");
     nickInput.value = engine.dreamNick;
     nickInput.style = "flex:1;padding:7px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;";
