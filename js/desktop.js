@@ -114,9 +114,9 @@ export const DesktopModule = {
     this.render();
   });
 
-  // ========== 【新增：监听open-panel 唤起审核测试弹窗，从这里开始】 ==========
-  EventBus.on("open-panel", (payload)=>{
-    if(payload.panel !== "audit") return;
+  // 监听open‑panel事件，唤起audit测试弹窗
+  EventBus.on("open-panel", (payload) => {
+    if (payload.panel !== "audit") return;
     const mask = document.createElement('div');
     mask.style.cssText = `
       position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
@@ -131,13 +131,21 @@ export const DesktopModule = {
     `;
     mask.appendChild(box);
     document.body.appendChild(mask);
-    box.querySelector("#drawBtn").onclick = ()=>{
-      window.AuditCardModule.drawAndSend("auditReport");
+
+    box.querySelector("#drawBtn").onclick = () => {
+      if(window.AuditCardModule){
+        window.AuditCardModule.drawAndSend("auditReport");
+      }else{
+        Toast.show("Audit模块未加载");
+      }
     };
-    box.querySelector("#closeBtn").onclick = ()=>{ mask.remove(); };
-    mask.onclick = (e)=>{ if(e.target === mask) mask.remove(); };
+    box.querySelector("#closeBtn").onclick = () => {
+      mask.remove();
+    };
+    mask.onclick = (e) => {
+      if (e.target === mask) mask.remove();
+    };
   });
-  // ========== 【新增结束】 ==========
 }
   enterEditMode() {
     this.isEditMode = true;
