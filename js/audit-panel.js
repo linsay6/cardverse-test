@@ -43,7 +43,7 @@ const AuditPanelModule = {
   },
 
   // ========== 悬浮球【修复】弹窗关闭不会销毁悬浮球，只有配置开关关闭才销毁 ==========
-  initFloatBall() {
+    initFloatBall() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     if (!cfg.enable && !forceShow) {
@@ -111,21 +111,22 @@ const AuditPanelModule = {
       }
       this._isDraggingBall = false;
     };
-
+    // ✅全部事件绑定在ball元素自身，不再document全局；不会被弹窗内部触摸干扰，不拦截页面滑块
     ball.addEventListener("mousedown", e => startDrag(e.clientX, e.clientY));
-    document.addEventListener("mousemove", e=>moveDrag(e.clientX,e.clientY));
-    document.addEventListener("mouseup", endDrag);
+    ball.addEventListener("mousemove", e=>moveDrag(e.clientX,e.clientY));
+    ball.addEventListener("mouseup", endDrag);
 
     ball.addEventListener("touchstart", e => {
       const t = e.touches[0];
       startDrag(t.clientX, t.clientY);
     }, { passive:true });
-    document.addEventListener("touchmove", e=>{
+    ball.addEventListener("touchmove", e=>{
       if(!this._isDraggingBall) return;
+      e.preventDefault();
       const t = e.touches[0];
       moveDrag(t.clientX, t.clientY);
     }, { passive:false });
-    document.addEventListener("touchend", endDrag);
+    ball.addEventListener("touchend", endDrag);
 
     document.body.appendChild(ball);
     this.floatBallEl = ball;
@@ -164,7 +165,7 @@ const AuditPanelModule = {
       background:rgba(0,0,0,0.45);z-index:9999;padding:12px;box-sizing:border-box;
       -webkit-overflow-scrolling:touch;
     `;
-    const box = document.createElement("div");
+        const box = document.createElement("div");
     box.style.cssText = `
       width:100%;max-width:460px;max-height:86vh;display:flex;flex-direction:column;
       background:var(--color-bg);border-radius:18px;overflow:hidden;
@@ -190,7 +191,7 @@ const AuditPanelModule = {
     if (!('ontouchstart' in window)) {
       document.removeEventListener("keydown", this._escHandler);
     }
-    // ⚠️ close()绝对不碰悬浮球实例，悬浮球只受配置开关控制！
+    // ⚠️弹窗关闭绝不碰悬浮球DOM！悬浮球只由配置开关销毁
   },
 
   _escHandler: (e) => {
@@ -313,14 +314,18 @@ const AuditPanelModule = {
 
     const listWrap = document.createElement("div");
     // 【修复】滚动容器统一css min‑height:0
-    listWrap.style.cssText = `
-      flex:1;
-      overflow‑y:auto;
-      min‑height:0;
-      padding:0;
-      scrollbar‑width:none;
-    `;
-    listWrap.style.setProperty("-webkit‑scrollbar","display:none");
+   listWrap.style.cssText = `
+flex:1;
+overflow-y:auto;
+min-height:0;
+padding:0;
+scrollbar-width:none;
+-ms-overflow-style:none;
+`;
+const styleHideScroll = document.createElement("style");
+styleHideScroll.textContent = `#scrollerHide::-webkit-scrollbar{display:none !important}`;
+listWrap.id = "scrollerHide";
+listWrap.appendChild(styleHideScroll);
 
     if (list.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--color-text-2);font-size:13px">暂无待审申请</div>`;
@@ -515,13 +520,17 @@ const AuditPanelModule = {
 
     const listWrap = document.createElement("div");
     listWrap.style.cssText = `
-      flex:1;
-      overflow‑y:auto;
-      min‑height:0;
-      padding:0 0 12px 0;
-      scrollbar‑width:none;
-    `;
-    listWrap.style.setProperty("-webkit‑scrollbar","display:none");
+flex:1;
+overflow-y:auto;
+min-height:0;
+padding:0;
+scrollbar-width:none;
+-ms-overflow-style:none;
+`;
+const styleHideScroll = document.createElement("style");
+styleHideScroll.textContent = `#scrollerHide::-webkit-scrollbar{display:none !important}`;
+listWrap.id = "scrollerHide";
+listWrap.appendChild(styleHideScroll);
 
     const kw = this.searchKeyword.toLowerCase();
     const filtered = list.filter(h => {
@@ -721,13 +730,17 @@ const AuditPanelModule = {
 
     const listWrap = document.createElement("div");
     listWrap.style.cssText = `
-      flex:1;
-      overflow‑y:auto;
-      min‑height:0;
-      padding:0 0 12px;
-      scrollbar‑width:none;
-    `;
-    listWrap.style.setProperty("-webkit‑scrollbar","display:none");
+flex:1;
+overflow-y:auto;
+min-height:0;
+padding:0;
+scrollbar-width:none;
+-ms-overflow-style:none;
+`;
+const styleHideScroll = document.createElement("style");
+styleHideScroll.textContent = `#scrollerHide::-webkit-scrollbar{display:none !important}`;
+listWrap.id = "scrollerHide";
+listWrap.appendChild(styleHideScroll);
 
     if (categories.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--color-text-2);font-size:13px">暂无分类</div>`;
@@ -949,11 +962,15 @@ listWrap.appendChild(catEl);
       return wrap;
     };
 
-    body.style.padding = "16px 18px";
+   body.style.padding = "16px 18px";
     body.style.overflowY = "auto";
     body.style.minHeight = "0";
     body.style.scrollbarWidth = "none";
-    body.style.setProperty("-webkit-scrollbar","display:none");
+    body.style.msOverflowStyle = "none";
+    const styleSetScroll = document.createElement("style");
+    styleSetScroll.textContent = `#settingScroller::-webkit-scrollbar{display:none !important}`;
+    body.id = "settingScroller";
+    body.appendChild(styleSetScroll);
 
     // --------悬浮球设置--------
     body.appendChild(sectionTitle("悬浮球"));
@@ -997,7 +1014,7 @@ listWrap.appendChild(catEl);
     sizeSlider.max = 80;
     sizeSlider.value = float.size;
     sizeSlider.style.width = "140px";
-    sizeSlider.style.touchAction = "none";
+    sizeSlider.style.touchAction = "manipulation";
     sizeSlider.oninput = () => {
       float.size = Number(sizeSlider.value);
       sizeRow.querySelector("span").textContent = `大小 ${float.size}px`;
