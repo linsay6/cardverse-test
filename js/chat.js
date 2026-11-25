@@ -66,6 +66,7 @@ const ChatModule = {
       }
     });
 
+    // init执行时挂载到全局
     window.ChatModule = this;
   },
 
@@ -176,13 +177,11 @@ const ChatModule = {
       });
       return;
     }
-
     this.renderChatLayout();
   },
 
   renderChatLayout() {
     if (!this.rootEl) return;
-
     this.rootEl.innerHTML = "";
 
     const wrap = document.createElement('div');
@@ -200,7 +199,6 @@ const ChatModule = {
     chatHeader.style.alignItems = "center";
     chatHeader.style.borderBottom = "1px solid #e5e5e5";
     chatHeader.style.background = this.bgColor;
-
     chatHeader.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px">
         <button id="chat-back-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:${this.bgColor};">←</button>
@@ -209,7 +207,6 @@ const ChatModule = {
       </div>
       <button id="chat-more-btn" style="width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:${this.bgColor};font-size:18px">⋯</button>
     `;
-
     wrap.appendChild(chatHeader);
 
     this.msgListEl = document.createElement('div');
@@ -266,7 +263,6 @@ const ChatModule = {
     inputWrap.appendChild(extendBtn);
     inputWrap.appendChild(this.inputEl);
     inputWrap.appendChild(sendBtn);
-
     wrap.appendChild(this.msgListEl);
     wrap.appendChild(inputWrap);
     this.rootEl.appendChild(wrap);
@@ -279,14 +275,12 @@ const ChatModule = {
       this.viewMode = "setting";
       this.render();
     };
-
     document.getElementById("chat-back-btn").onclick = () => {
       if (window.TabManager) {
         window.TabManager.switchTab("setting");
       }
       Toast.show("返回联系人列表");
     };
-
     document.getElementById("chat-extend-btn").onclick = () => {
       if (!this.activeContactId) {
         Toast.show("请先选中联系人");
@@ -294,7 +288,6 @@ const ChatModule = {
       }
       ChatExtendPanel.open(this.rootEl, this.activeContactId, () => { });
     };
-
     this.renderMessages();
   },
 
@@ -302,7 +295,6 @@ const ChatModule = {
     const list = Store.get("contactList", []);
     const idx = list.findIndex(x => x.id === this.activeContactId);
     if (idx === -1) return;
-
     list[idx] = { ...list[idx], ...patch };
     Store.set("contactList", list);
     this.activeContactInfo = list[idx];
@@ -313,7 +305,6 @@ const ChatModule = {
   renderMessages() {
     const titleDom = document.getElementById("chat-title");
     const avatarDom = document.getElementById("chat-header-avatar");
-
     if (titleDom && avatarDom) {
       if (this.activeContactInfo) {
         titleDom.innerText = this.activeContactInfo.name;
@@ -323,42 +314,30 @@ const ChatModule = {
         avatarDom.src = "";
       }
     }
-
     if (!this.msgListEl) return;
-
     this.msgListEl.innerHTML = "";
 
-    let chatTheme = Store.get("chatTheme", {
-      avatarShape: "circle",
-      timePos: "avatarBottom"
-    });
-
+    let chatTheme = Store.get("chatTheme", { avatarShape: "circle", timePos: "avatarBottom" });
     const allowTimePos = ["avatarBottom", "bubbleOuter", "hide"];
     if (!allowTimePos.includes(chatTheme.timePos)) {
       chatTheme.timePos = "avatarBottom";
       Store.set("chatTheme", chatTheme);
     }
-
     const avatarRadius = chatTheme.avatarShape === "circle" ? "50%" : "8px";
     const timePos = chatTheme.timePos;
     const headerAvatar = document.getElementById("chat-header-avatar");
-
-    if (headerAvatar) {
-      headerAvatar.style.borderRadius = avatarRadius;
-    }
+    if (headerAvatar) headerAvatar.style.borderRadius = avatarRadius;
 
     if (!this.activeContactId) {
       this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:var(--color-text-2)">请前往设置选择一个梦角联系人开始对话</div>`;
       return;
     }
-
     if (this.messageList.length === 0) {
       this.msgListEl.innerHTML = `<div style="text-align:center;margin-top:40px;color:var(--color-text-2)">暂无消息，发送第一条消息吧</div>`;
       return;
     }
 
     const myCurrentAvatar = this.activeContactInfo?.myAvatar || "";
-
     this.messageList.forEach(msg => {
       if (msg.type === "notice") {
         const noticeEl = document.createElement("div");
@@ -374,7 +353,6 @@ const ChatModule = {
         noticeEl.style.maxWidth = "85%";
         noticeEl.style.wordBreak = "break-all";
         noticeEl.style.border = "1px solid rgba(255,255,255,0.35)";
-
         let innerHtml = `<div>${msg.content}</div>`;
         if (msg.previewAvatar) {
           innerHtml += `<div style="margin-top:8px;"><img src="${msg.previewAvatar}" style="width:56px;height:56px;border-radius:999px;object-fit:cover;"></div>`;
@@ -389,7 +367,6 @@ const ChatModule = {
       const mm = String(d.getMinutes()).padStart(2, '0');
       const ss = String(d.getSeconds()).padStart(2, '0');
       const timeStr = `${hh}:${mm}:${ss}`;
-
       const msgItem = document.createElement("div");
       msgItem.style.marginBottom = "14px";
       msgItem.style.display = "flex";
@@ -421,12 +398,10 @@ const ChatModule = {
         }
       } else {
         let timeHtml = "";
-        if (timePos === "hide") {
-          timeHtml = "";
-        } else if (timePos === "bubbleOuter") {
+        if (timePos === "hide") timeHtml = "";
+        else if (timePos === "bubbleOuter") {
           timeHtml = `<div class="time-label" style="margin-left:6px;align-self:flex-end;white-space:nowrap">${timeStr}</div>`;
         }
-
         if (msg.role === "user") {
           msgItem.style.justifyContent = "flex-end";
           msgItem.style.alignItems = "flex-end";
@@ -436,7 +411,7 @@ const ChatModule = {
               <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-end">
                 <div style="background:#fff;color:#222;padding:8px 12px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.08);word-break:break-all">${msg.content}</div>
               </div>
-              ${timePos === "bubbleOuter" ? timeHtml : ""}
+              ${timePos==="bubbleOuter"?timeHtml:""}
             </div>
           `;
         } else {
@@ -448,92 +423,77 @@ const ChatModule = {
               <div style="max-width:70%;display:flex;flex-direction:column;align-items:flex-start">
                 <div style="background:#222;color:#fff;padding:8px 12px;border-radius:12px;word-break:break-all">${msg.content}</div>
               </div>
-              ${timePos === "bubbleOuter" ? timeHtml : ""}
+              ${timePos==="bubbleOuter"?timeHtml:""}
             </div>
           `;
         }
       }
-
       this.msgListEl.appendChild(msgItem);
     });
 
     if (this.isTyping) {
       const tip = document.createElement("div");
-      tip.style.color = "var(--color-text-2)";
-      tip.style.fontSize = "13px";
+      tip.style.color="var(--color-text-2)";
+      tip.style.fontSize="13px";
       tip.textContent = `${this.activeContactInfo.name} 正在输入...`;
       this.msgListEl.appendChild(tip);
     }
-
     this.msgListEl.scrollTop = this.msgListEl.scrollHeight;
   },
 
   sendMessage() {
     const content = this.inputEl.value.trim();
     if (!content) return;
-
-    if (this.activeContactId) {
-      this.messageList.push({
-        role: "user",
-        content,
-        time: Date.now()
-      });
+    if(this.activeContactId){
+      this.messageList.push({role:"user",content,time:Date.now()});
       this.saveHistory();
     }
-
     this.inputEl.value = "";
     this.renderMessages();
-
-    if (!this.activeContactId) {
+    if(!this.activeContactId){
       Toast.show("提示：未选中联系人，消息不会保存");
       return;
     }
-
     this.isTyping = true;
     this.renderMessages();
-
-    setTimeout(() => {
+    setTimeout(()=>{
       this.isTyping = false;
-      this.messageList.push({
-        role: "bot",
-        content: `${content}`,
-        time: Date.now()
-      });
+      this.messageList.push({role:"bot",content:`${content}`,time:Date.now()});
       this.saveHistory();
       this.renderMessages();
-    }, 1200);
+    },1200);
   },
 
   saveHistory() {
-    if (!this.activeContactId) return;
+    if(!this.activeContactId) return;
     Store.set(`chat-contact-${this.activeContactId}`, this.messageList);
   },
 
+  // 对外统一注入消息接口，供audit、树洞、小屋、塔罗调用
   sendAuditCard(text, side = "bot") {
     if (!this.activeContactId) {
       Toast.show("请先选择一个联系人");
       return;
     }
-
     this.messageList.push({
       role: side,
       content: text,
       time: Date.now(),
       data_ma_injected: "1"
     });
-
     this.saveHistory();
     this.renderMessages();
   }
 };
 
-// 全局挂载接口
-window.sendAuditCard = function (text, side = "bot") {
-  if (window.ChatModule && typeof window.ChatModule.sendAuditCard === "function") {
-    window.ChatModule.sendAuditCard(text, side);
-  } else {
+// 全局别名，控制台/其他模块可直接调用 window.sendAuditCard
+window.sendAuditCard = function(text, side="bot"){
+  if(!window.ChatModule || !window.ChatModule.sendAuditCard){
     Toast.show("聊天模块未就绪");
+    return;
   }
+  window.ChatModule.sendAuditCard(text,side);
 };
 
-export default ChatModule;
+// ✅命名导出，和app.js的 import {ChatModule} 完全匹配
+export { ChatModule };
