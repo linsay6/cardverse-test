@@ -30,7 +30,8 @@ const AuditPanelModule = {
     const mask = document.createElement("div");
     mask.style.cssText = `
       position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-      background:rgba(0,0,0,0.45);z-index:9999;padding:16px;
+      background:rgba(0,0,0,0.45);z-index:9999;padding:12px;box-sizing:border-box;
+      -webkit-overflow-scrolling:touch;
     `;
 
     const box = document.createElement("div");
@@ -38,6 +39,7 @@ const AuditPanelModule = {
       width:100%;max-width:460px;max-height:86vh;display:flex;flex-direction:column;
       background:var(--color-bg);border-radius:18px;overflow:hidden;
       box-shadow:0 12px 40px rgba(0,0,0,0.25);
+      box-sizing:border-box;
     `;
 
     mask.appendChild(box);
@@ -46,7 +48,10 @@ const AuditPanelModule = {
 
     this.render(box);
     this.bindMaskClose(mask);
-    document.addEventListener("keydown", this._escHandler);
+    // 仅电脑端监听ESC
+    if (!('ontouchstart' in window)) {
+      document.addEventListener("keydown", this._escHandler);
+    }
   },
 
   close() {
@@ -54,7 +59,9 @@ const AuditPanelModule = {
       this.panelEl.remove();
       this.panelEl = null;
     }
-    document.removeEventListener("keydown", this._escHandler);
+    if (!('ontouchstart' in window)) {
+      document.removeEventListener("keydown", this._escHandler);
+    }
   },
 
   _escHandler: (e) => {
@@ -78,7 +85,7 @@ const AuditPanelModule = {
 
     const tabBar = document.createElement("div");
     tabBar.style.cssText = `
-      display:flex;gap:6px;padding:12px 12px 0;flex-wrap:wrap;
+      display:flex;gap:4px;padding:12px 12px 0;flex-wrap:wrap;
     `;
     tabs.forEach(t => {
       const btn = document.createElement("button");
@@ -86,14 +93,15 @@ const AuditPanelModule = {
       btn.textContent = t.name;
       btn.dataset.tab = t.key;
       btn.style.cssText = `
-        flex:1;padding:8px 6px;border:none;border-radius:999px;cursor:pointer;
-        font-size:13px;${active
+        flex:1;padding:10px 4px;border:none;border-radius:999px;cursor:pointer;
+        font-size:13px;min-height:36px;touch-action:manipulation;
+        ${active
           ? "background:var(--color-main);color:#fff"
           : "background:transparent;color:var(--color-text);border:1px solid var(--color-border)"}
       `;
       btn.onclick = () => {
         const now = Date.now();
-        if (now - this.lastSwitchAt < 120) return; // 防抖
+        if (now - this.lastSwitchAt < 120) return;
         this.lastSwitchAt = now;
         this.activeTab = t.key;
         this.render(box);
@@ -104,14 +112,15 @@ const AuditPanelModule = {
     const closeBtn = document.createElement("button");
     closeBtn.textContent = "×";
     closeBtn.style.cssText = `
-      width:32px;height:32px;border:none;background:transparent;
-      color:var(--color-text);font-size:20px;cursor:pointer;flex-shrink:0;
+      width:34px;height:34px;border:none;background:transparent;
+      color:var(--color-text);font-size:22px;cursor:pointer;flex-shrink:0;
+      touch-action:manipulation;
     `;
     closeBtn.onclick = () => this.close();
     tabBar.appendChild(closeBtn);
 
     const body = document.createElement("div");
-    body.style.cssText = `flex:1;overflow-y:auto;padding:12px;`;
+    body.style.cssText = `flex:1;overflow-y:auto;padding:12px;box-sizing:border-box;-webkit-overflow-scrolling:touch;`;
 
     box.innerHTML = "";
     box.appendChild(tabBar);
@@ -129,7 +138,7 @@ const AuditPanelModule = {
 
     const toolbar = document.createElement("div");
     toolbar.style.cssText = `
-      display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;
+      display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;
     `;
 
     const total = list.length;
@@ -152,12 +161,12 @@ const AuditPanelModule = {
 
     const agreeAll = document.createElement("button");
     agreeAll.textContent = "批量同意";
-    agreeAll.style = "padding:6px 10px;border:none;border-radius:8px;background:#34c759;color:#fff;font-size:12px;cursor:pointer;";
+    agreeAll.style = "padding:8px 10px;border:none;border-radius:8px;background:#34c759;color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
     agreeAll.onclick = () => this.batchApprove("agree");
 
     const rejectAll = document.createElement("button");
     rejectAll.textContent = "批量驳回";
-    rejectAll.style = "padding:6px 10px;border:none;border-radius:8px;background:#ff3b30;color:#fff;font-size:12px;cursor:pointer;";
+    rejectAll.style = "padding:8px 10px;border:none;border-radius:8px;background:#ff3b30;color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
     rejectAll.onclick = () => this.batchApprove("reject");
 
     toolbar.appendChild(countTip);
@@ -176,6 +185,7 @@ const AuditPanelModule = {
       const card = document.createElement("div");
       card.style.cssText = `
         border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-bottom:8px;
+        box-sizing:border-box;
       `;
 
       const top = document.createElement("div");
@@ -216,7 +226,7 @@ const AuditPanelModule = {
       remarkInput.placeholder = "审批备注（可选）";
       remarkInput.value = item.remark || "";
       remarkInput.style.cssText = `
-        width:100%;box-sizing:border-box;margin:8px 0 6px;padding:7px 8px;
+        width:100%;box-sizing:border-box;margin:8px 0 6px;padding:8px 8px;
         border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);
         color:var(--color-text);font-size:12px;
       `;
@@ -226,12 +236,12 @@ const AuditPanelModule = {
       btns.style.cssText = `display:flex;gap:8px;`;
       const agreeBtn = document.createElement("button");
       agreeBtn.textContent = "同意";
-      agreeBtn.style = "flex:1;padding:7px;border:none;border-radius:8px;background:#34c759;color:#fff;font-size:12px;cursor:pointer;";
+      agreeBtn.style = "flex:1;padding:9px;border:none;border-radius:8px;background:#34c759;color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
       agreeBtn.onclick = () => this.singleApprove(item, "agree", remarkInput.value);
 
       const rejectBtn = document.createElement("button");
       rejectBtn.textContent = "驳回";
-      rejectBtn.style = "flex:1;padding:7px;border:none;border-radius:8px;background:#ff3b30;color:#fff;font-size:12px;cursor:pointer;";
+      rejectBtn.style = "flex:1;padding:9px;border:none;border-radius:8px;background:#ff3b30;color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
       rejectBtn.onclick = () => this.singleApprove(item, "reject", remarkInput.value);
 
       btns.appendChild(agreeBtn);
@@ -339,7 +349,7 @@ const AuditPanelModule = {
     const search = document.createElement("input");
     search.placeholder = "搜索申请人 / 文本 / 类型";
     search.value = this.searchKeyword;
-    search.style = "flex:1;padding:8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;";
+    search.style = "flex:1;padding:8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;box-sizing:border-box;";
     search.oninput = () => {
       this.searchKeyword = search.value.trim();
       this.renderHistory(body);
@@ -347,7 +357,7 @@ const AuditPanelModule = {
 
     const clearBtn = document.createElement("button");
     clearBtn.textContent = "清空全部";
-    clearBtn.style = "padding:8px 10px;border:none;border-radius:8px;background:#ff3b30;color:#fff;font-size:12px;cursor:pointer;";
+    clearBtn.style = "padding:8px 10px;border:none;border-radius:8px;background:#ff3b30;color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
     clearBtn.onclick = () => {
       if (!confirm("确定清空全部历史档案？此操作不可恢复")) return;
       AuditCardModule.auditHistory = [];
@@ -378,9 +388,9 @@ const AuditPanelModule = {
       const meta = ACTION_META[h.action] || { label: h.action, color: "#888" };
       const resultColor = h.auditResult === "agree" ? "#34c759" : "#ff3b30";
       const row = document.createElement("div");
-      row.style.cssText = `border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-bottom:8px;`;
+      row.style.cssText = `border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-bottom:8px;box-sizing:border-box;`;
       row.innerHTML = `
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
           <span style="padding:2px 8px;border-radius:999px;font-size:11px;color:#fff;background:${meta.color}">${meta.label}</span>
           <span style="padding:2px 8px;border-radius:999px;font-size:11px;color:#fff;background:${resultColor}">${h.auditResult === "agree" ? "同意" : "驳回"}</span>
           <span style="font-size:11px;color:var(--color-text-2);margin-left:auto">${h.applicant || "我"}</span>
@@ -409,7 +419,7 @@ const AuditPanelModule = {
       const btn = document.createElement("button");
       btn.textContent = `${g.name}(${g.list.length})`;
       btn.style = `
-        flex:1;padding:7px 4px;border:none;border-radius:999px;font-size:12px;cursor:pointer;
+        flex:1;padding:8px 4px;border:none;border-radius:999px;font-size:12px;cursor:pointer;min-height:34px;touch-action:manipulation;
         ${segState === key ? "background:var(--color-main);color:#fff" : "background:transparent;color:var(--color-text);border:1px solid var(--color-border)"}
       `;
       btn.onclick = () => { this._libTab = key; this.renderCardLib(body); };
@@ -423,14 +433,14 @@ const AuditPanelModule = {
 
     if (!isSystem) {
       const form = document.createElement("div");
-      form.style.cssText = `border:1px dashed var(--color-border);border-radius:12px;padding:10px;margin-bottom:10px;`;
+      form.style.cssText = `border:1px dashed var(--color-border);border-radius:12px;padding:10px;margin-bottom:10px;box-sizing:border-box;`;
       form.innerHTML = `
-        <input id="lib-title" placeholder="标题（可选）" style="width:100%;box-sizing:border-box;padding:7px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;margin-bottom:6px;">
-        <textarea id="lib-content" rows="2" placeholder="字卡内容" style="width:100%;box-sizing:border-box;padding:7px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;resize:none;margin-bottom:6px;"></textarea>
+        <input id="lib-title" placeholder="标题（可选）" style="width:100%;box-sizing:border-box;padding:8px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;margin-bottom:6px;">
+        <textarea id="lib-content" rows="2" placeholder="字卡内容" style="width:100%;box-sizing:border-box;padding:8px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;resize:none;margin-bottom:6px;"></textarea>
       `;
       const addBtn = document.createElement("button");
       addBtn.textContent = "添加到当前分组";
-      addBtn.style = "width:100%;padding:8px;border:none;border-radius:8px;background:var(--color-main);color:#fff;font-size:12px;cursor:pointer;";
+      addBtn.style = "width:100%;padding:9px;border:none;border-radius:8px;background:var(--color-main);color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
       addBtn.onclick = () => {
         const title = form.querySelector("#lib-title").value.trim();
         const content = form.querySelector("#lib-content").value.trim();
@@ -451,7 +461,7 @@ const AuditPanelModule = {
     list.forEach(card => {
       const row = document.createElement("div");
       row.style.cssText = `
-        border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-bottom:8px;
+        border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-bottom:8px;box-sizing:border-box;
         ${card.isDisabled ? "opacity:0.5;text-decoration:line-through;" : ""}
       `;
       row.innerHTML = `
@@ -463,7 +473,7 @@ const AuditPanelModule = {
 
       const sendBtn = document.createElement("button");
       sendBtn.textContent = "发送";
-      sendBtn.style = "padding:5px 10px;border:none;border-radius:6px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
+      sendBtn.style = "padding:6px 10px;border:none;border-radius:6px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;touch-action:manipulation;";
       sendBtn.onclick = () => { M.sendCardToChat(card); };
 
       ops.appendChild(sendBtn);
@@ -471,7 +481,7 @@ const AuditPanelModule = {
       if (!isSystem) {
         const delBtn = document.createElement("button");
         delBtn.textContent = "删除";
-        delBtn.style = "padding:5px 10px;border:none;border-radius:6px;background:#ff3b30;color:#fff;font-size:11px;cursor:pointer;";
+        delBtn.style = "padding:6px 10px;border:none;border-radius:6px;background:#ff3b30;color:#fff;font-size:11px;cursor:pointer;touch-action:manipulation;";
         delBtn.onclick = () => {
           const idx = list.indexOf(card);
           list.splice(idx, 1);
@@ -520,7 +530,7 @@ const AuditPanelModule = {
       const input = document.createElement("input");
       input.type = "number";
       input.value = value;
-      input.style = "flex:1;padding:6px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;";
+      input.style = "flex:1;padding:7px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;box-sizing:border-box;";
       input.onchange = () => onChange(Number(input.value));
       wrap.appendChild(span);
       wrap.appendChild(input);
@@ -547,7 +557,7 @@ const AuditPanelModule = {
     body.appendChild(sectionTitle("数据导入导出"));
     const exportBtn = document.createElement("button");
     exportBtn.textContent = "导出 JSON";
-    exportBtn.style = "width:100%;padding:9px;margin-bottom:8px;border:none;border-radius:8px;background:var(--color-main);color:#fff;font-size:12px;cursor:pointer;";
+    exportBtn.style = "width:100%;padding:10px;margin-bottom:8px;border:none;border-radius:8px;background:var(--color-main);color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
     exportBtn.onclick = () => {
       const data = {
         customCards: M.cardGroups.custom.list,
@@ -569,7 +579,7 @@ const AuditPanelModule = {
 
     const importBtn = document.createElement("button");
     importBtn.textContent = "导入 JSON";
-    importBtn.style = "width:100%;padding:9px;border:none;border-radius:8px;border:1px solid var(--color-border);background:transparent;color:var(--color-text);font-size:12px;cursor:pointer;";
+    importBtn.style = "width:100%;padding:10px;border:none;border-radius:8px;border:1px solid var(--color-border);background:transparent;color:var(--color-text);font-size:12px;cursor:pointer;touch-action:manipulation;";
     importBtn.onclick = () => {
       const fileInput = document.createElement("input");
       fileInput.type = "file";
