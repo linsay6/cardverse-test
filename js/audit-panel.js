@@ -12,7 +12,6 @@ const ACTION_META = {
 const AuditPanelModule = {
   panelEl: null,
   activeTab: "pending",
-  // 【修复】提升到顶层，不要open()的时候重置，解决添加字卡渲染丢失
   selectedIds: new Set(),
   _selectedCards: new Set(),
   searchKeyword: "",
@@ -42,8 +41,8 @@ const AuditPanelModule = {
     this.initFloatBall();
   },
 
-  // ========== 悬浮球【修复】弹窗关闭不会销毁悬浮球，只有配置开关关闭才销毁 ==========
-    initFloatBall() {
+  // ========== 悬浮球 ==========
+  initFloatBall() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     if (!cfg.enable && !forceShow) {
@@ -61,10 +60,10 @@ const AuditPanelModule = {
       position:fixed;right:16px;bottom:80px;width:${cfg.size}px;height:${cfg.size}px;
       border-radius:50%;background:${cfg.color || "#7c68ee"};
       display:flex;align-items:center;justify-content:center;
-      color:#fff;font-weight:bold;cursor:pointer;z-index:9998;
+      color:#fff;font-weight:bold;cursor:pointer;z-index:99999;
       transform:translate3d(0,0,0);will-change:transform;
       user-select:none;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.15);
-      touch-action:manipulation;
+      touch-action:none;
     `;
     if (cfg.avatarBase64) {
       ball.innerHTML = `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
@@ -76,6 +75,8 @@ const AuditPanelModule = {
     }
 
     let downX = 0, downY = 0;
+    let rafId = null;
+    
     const startDrag = (clientX, clientY) => {
       this._isDraggingBall = true;
       this._dragMoved = false;
@@ -97,7 +98,12 @@ const AuditPanelModule = {
       let y = this._ballStartY + dy;
       x = Math.max(0, Math.min(vw - size, x));
       y = Math.max(0, Math.min(vh - size, y));
-      ball.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      if(!rafId) {
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          ball.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        });
+      }
     };
     const endDrag = () => {
       if (!this._isDraggingBall) return;
@@ -111,10 +117,11 @@ const AuditPanelModule = {
       }
       this._isDraggingBall = false;
     };
-    // ✅全部事件绑定在ball元素自身，不再document全局；不会被弹窗内部触摸干扰，不拦截页面滑块
+
     ball.addEventListener("mousedown", e => startDrag(e.clientX, e.clientY));
     ball.addEventListener("mousemove", e=>moveDrag(e.clientX,e.clientY));
     ball.addEventListener("mouseup", endDrag);
+    ball.addEventListener("mouseleave", endDrag);
 
     ball.addEventListener("touchstart", e => {
       const t = e.touches[0];
@@ -122,11 +129,12 @@ const AuditPanelModule = {
     }, { passive:true });
     ball.addEventListener("touchmove", e=>{
       if(!this._isDraggingBall) return;
-      e.preventDefault();
+      if(e.cancelable) e.preventDefault();
       const t = e.touches[0];
       moveDrag(t.clientX, t.clientY);
     }, { passive:false });
     ball.addEventListener("touchend", endDrag);
+    ball.addEventListener("touchcancel", endDrag);
 
     document.body.appendChild(ball);
     this.floatBallEl = ball;
@@ -154,18 +162,17 @@ const AuditPanelModule = {
     }
   },
 
-  // ========== 弹窗基础【修复】open不再重置 _selectedCards / _cardSearch ==========
+  // ========== 弹窗 ==========
   open() {
     if (this.panelEl) this.close();
     this.selectedIds = new Set();
-    // 【重点】不再重置 _selectedCards、_cardSearch，字卡库状态保留
     const mask = document.createElement("div");
     mask.style.cssText = `
       position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-      background:rgba(0,0,0,0.45);z-index:9999;padding:12px;box-sizing:border-box;
+      background:rgba(0,0,0,0.45);z-index:100000;padding:12px;box-sizing:border-box;
       -webkit-overflow-scrolling:touch;
     `;
-        const box = document.createElement("div");
+    const box = document.createElement("div");
     box.style.cssText = `
       width:100%;max-width:460px;max-height:86vh;display:flex;flex-direction:column;
       background:var(--color-bg);border-radius:18px;overflow:hidden;
@@ -191,7 +198,6 @@ const AuditPanelModule = {
     if (!('ontouchstart' in window)) {
       document.removeEventListener("keydown", this._escHandler);
     }
-    // ⚠️弹窗关闭绝不碰悬浮球DOM！悬浮球只由配置开关销毁
   },
 
   _escHandler: (e) => {
@@ -251,7 +257,6 @@ const AuditPanelModule = {
     tabBar.appendChild(closeBtn);
 
     const body = document.createElement("div");
-    // 【修复滚动关键】flex子项增加 min‑height:0，允许收缩触发滚动
     body.style.cssText = `
       flex:1;
       display:flex;
@@ -273,7 +278,9 @@ const AuditPanelModule = {
 
   // ========== Tab1 待审核 ==========
   renderPending(body) {
-    const list = AuditCardModule.pendingApply || [];
+    const M = AuditCardModule;
+    const list = M.pendingApply || [];
+    const cats = M.getAuditCategories();
 
     const toolbar = document.createElement("div");
     toolbar.style.cssText = `
@@ -313,19 +320,14 @@ const AuditPanelModule = {
     toolbar.appendChild(rejectAll);
 
     const listWrap = document.createElement("div");
-    // 【修复】滚动容器统一css min‑height:0
-   listWrap.style.cssText = `
-flex:1;
-overflow-y:auto;
-min-height:0;
-padding:0;
-scrollbar-width:none;
--ms-overflow-style:none;
-`;
-const styleHideScroll = document.createElement("style");
-styleHideScroll.textContent = `#scrollerHide::-webkit-scrollbar{display:none !important}`;
-listWrap.id = "scrollerHide";
-listWrap.appendChild(styleHideScroll);
+    listWrap.style.cssText = `
+      flex:1;overflow-y:auto;min-height:0;padding:0;
+      scrollbar-width:none;-ms-overflow-style:none;
+    `;
+    const styleHideScroll = document.createElement("style");
+    styleHideScroll.textContent = `#scrollerHide::-webkit-scrollbar{display:none !important}`;
+    listWrap.id = "scrollerHide";
+    listWrap.appendChild(styleHideScroll);
 
     if (list.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--color-text-2);font-size:13px">暂无待审申请</div>`;
@@ -337,6 +339,7 @@ listWrap.appendChild(styleHideScroll);
           border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-top:10px;
           box-sizing:border-box;
         `;
+
         const top = document.createElement("div");
         top.style.cssText = `display:flex;align-items:center;gap:6px;margin-bottom:6px;`;
 
@@ -357,6 +360,7 @@ listWrap.appendChild(styleHideScroll);
 
         const applicant = document.createElement("span");
         applicant.style.cssText = `font-size:11px;color:var(--color-text-2);margin-left:auto;`;
+        // 使用申请人字段，如果是梦角引擎发起则已经存了实时昵称
         applicant.textContent = item.applicant || "我";
 
         top.appendChild(check);
@@ -365,18 +369,63 @@ listWrap.appendChild(styleHideScroll);
 
         const text = document.createElement("div");
         text.style.cssText = `font-size:13px;margin:4px 0;white-space:pre-wrap;word-break:break-all;`;
-        const actionText = {
-          add: `申请新增字卡：「${item.cardText || "无文本"}」`,
-          delete: `申请删除字卡：「${item.cardText || "无文本"}」`,
-          disable: `申请禁用字卡：「${item.cardText || "无文本"}」`,
-          restore: `申请恢复字卡：「${item.cardText || "无文本"}」`,
-          move: `申请迁移字卡：「${item.cardText || "无文本"}」`
-        };
-        text.textContent = actionText[item.action] || item.cardText;
+        const catInfo = M.getAuditCategoryById(item.targetCatId || item.sourceCatId);
+        const catName = catInfo ? catInfo.name : "未知分类";
+        
+        let actionDesc = "";
+        switch(item.action) {
+          case "add": actionDesc = `申请新增字卡到【${catName}】：「${item.cardText}」`; break;
+          case "delete": actionDesc = `申请删除【${catName}】中的字卡：「${item.cardText}」`; break;
+          case "disable": actionDesc = `申请禁用【${catName}】中的字卡：「${item.cardText}」`; break;
+          case "restore": actionDesc = `申请恢复【${catName}】中的字卡：「${item.cardText}」`; break;
+          case "move": {
+            const src = M.getAuditCategoryById(item.sourceCatId);
+            const dst = M.getAuditCategoryById(item.targetCatId);
+            actionDesc = `申请将字卡「${item.cardText}」从【${src?.name || "未知"}】迁移至【${dst?.name || "未知"}】`;
+            break;
+          }
+          default: actionDesc = item.cardText;
+        }
+        text.textContent = actionDesc;
+
+        card.appendChild(top);
+        card.appendChild(text);
+
+        // 分类下拉框
+        if (item.action === "add" || item.action === "move") {
+          const selectWrap = document.createElement("div");
+          selectWrap.style.cssText = "display:flex;gap:6px;margin:8px 0;font-size:12px;align-items:center;";
+          selectWrap.innerHTML = item.action === "move" ? `<span>源分类：</span>` : "";
+          
+          if (item.action === "move") {
+            const srcSel = document.createElement("select");
+            cats.forEach(c => {
+              const opt = document.createElement("option");
+              opt.value = c.id; opt.textContent = c.name;
+              if (c.id === item.sourceCatId) opt.selected = true;
+              srcSel.appendChild(opt);
+            });
+            srcSel.onchange = () => { item.sourceCatId = srcSel.value; };
+            selectWrap.appendChild(srcSel);
+            selectWrap.appendChild(document.createTextNode(" 目标分类："));
+          }
+
+          const tgtSel = document.createElement("select");
+          cats.forEach(c => {
+            const opt = document.createElement("option");
+            opt.value = c.id; opt.textContent = c.name;
+            if (c.id === item.targetCatId) opt.selected = true;
+            tgtSel.appendChild(opt);
+          });
+          tgtSel.onchange = () => { item.targetCatId = tgtSel.value; };
+          selectWrap.appendChild(tgtSel);
+          card.appendChild(selectWrap);
+        }
 
         const time = document.createElement("div");
         time.style.cssText = `font-size:11px;color:var(--color-text-2);`;
         time.textContent = new Date(item.lastApplyTime).toLocaleString();
+        card.appendChild(time);
 
         const remarkInput = document.createElement("input");
         remarkInput.placeholder = "审批备注（可选）";
@@ -387,13 +436,20 @@ listWrap.appendChild(styleHideScroll);
           color:var(--color-text);font-size:12px;
         `;
         remarkInput.oninput = () => { item.remark = remarkInput.value; };
+        card.appendChild(remarkInput);
 
         const btns = document.createElement("div");
         btns.style.cssText = `display:flex;gap:8px;`;
         const agreeBtn = document.createElement("button");
         agreeBtn.textContent = "同意";
         agreeBtn.style = "flex:1;padding:9px;border:none;border-radius:8px;background:var(--color-main);color:#fff;font-size:12px;cursor:pointer;touch-action:manipulation;";
-        agreeBtn.onclick = () => this.singleApprove(item, "agree", remarkInput.value);
+        agreeBtn.onclick = () => {
+          if (item.action === "move" && item.sourceCatId === item.targetCatId) {
+            Toast.show("源分类与目标分类不能相同");
+            return;
+          }
+          this.singleApprove(item, "agree", remarkInput.value);
+        };
 
         const rejectBtn = document.createElement("button");
         rejectBtn.textContent = "驳回";
@@ -402,12 +458,8 @@ listWrap.appendChild(styleHideScroll);
 
         btns.appendChild(agreeBtn);
         btns.appendChild(rejectBtn);
-
-        card.appendChild(top);
-        card.appendChild(text);
-        card.appendChild(time);
-        card.appendChild(remarkInput);
         card.appendChild(btns);
+
         listWrap.appendChild(card);
       });
     }
@@ -467,12 +519,12 @@ listWrap.appendChild(styleHideScroll);
       }
       case "disable": {
         const hit = findCard(item.cardText);
-        if (hit) M.updateCard(hit.categoryId, hit.id, { isDisabled: true });
+        if (hit) M.updateCard(hit.categoryId, hit.id, { isDisabled: true, disabledBy: item.applicant });
         break;
       }
       case "restore": {
         const hit = findCard(item.cardText);
-        if (hit) M.updateCard(hit.categoryId, hit.id, { isDisabled: false });
+        if (hit) M.updateCard(hit.categoryId, hit.id, { isDisabled: false, disabledBy: null });
         break;
       }
       case "move": {
@@ -520,17 +572,13 @@ listWrap.appendChild(styleHideScroll);
 
     const listWrap = document.createElement("div");
     listWrap.style.cssText = `
-flex:1;
-overflow-y:auto;
-min-height:0;
-padding:0;
-scrollbar-width:none;
--ms-overflow-style:none;
-`;
-const styleHideScroll = document.createElement("style");
-styleHideScroll.textContent = `#scrollerHide::-webkit-scrollbar{display:none !important}`;
-listWrap.id = "scrollerHide";
-listWrap.appendChild(styleHideScroll);
+      flex:1;overflow-y:auto;min-height:0;padding:0;
+      scrollbar-width:none;-ms-overflow-style:none;
+    `;
+    const styleHideScroll = document.createElement("style");
+    styleHideScroll.textContent = `#scrollerHide::-webkit-scrollbar{display:none !important}`;
+    listWrap.id = "scrollerHide";
+    listWrap.appendChild(styleHideScroll);
 
     const kw = this.searchKeyword.toLowerCase();
     const filtered = list.filter(h => {
@@ -633,7 +681,7 @@ listWrap.appendChild(styleHideScroll);
     submitAuditBtn.onclick = () => {
       const lines = textarea.value.split(/\r?\n/).map(s => s.trim()).filter(s => !!s);
       if (lines.length === 0) { Toast.show("请输入字卡内容"); return; }
-      lines.forEach(line => M.createPendingApply("add", { cardText: line, targetCatId: catSelect.value }, "我"));
+      lines.forEach(line => M.createPendingApply("add", { cardText: line, targetCatId: catSelect.value }, M.getMyNick()));
       Toast.show(`已提交 ${lines.length} 条审核申请`);
       textarea.value = "";
       this.renderCardLib(body);
@@ -647,7 +695,6 @@ listWrap.appendChild(styleHideScroll);
     head.appendChild(textarea);
     head.appendChild(opRow);
 
-    // 批量操作栏
     const batchBar = document.createElement("div");
     batchBar.style.cssText = `
       display:flex;gap:6px;padding:10px 0;flex-wrap:wrap;align-items:center;
@@ -681,7 +728,6 @@ listWrap.appendChild(styleHideScroll);
       this.renderCardLib(body);
     };
 
-    // 批量转移分组
     const moveWrap = document.createElement("span");
     moveWrap.style.cssText = "display:flex;gap:4px;align-items:center;";
     const moveSel = document.createElement("select");
@@ -730,17 +776,13 @@ listWrap.appendChild(styleHideScroll);
 
     const listWrap = document.createElement("div");
     listWrap.style.cssText = `
-flex:1;
-overflow-y:auto;
-min-height:0;
-padding:0;
-scrollbar-width:none;
--ms-overflow-style:none;
-`;
-const styleHideScroll = document.createElement("style");
-styleHideScroll.textContent = `#scrollerHide::-webkit-scrollbar{display:none !important}`;
-listWrap.id = "scrollerHide";
-listWrap.appendChild(styleHideScroll);
+      flex:1;overflow-y:auto;min-height:0;padding:0;
+      scrollbar-width:none;-ms-overflow-style:none;
+    `;
+    const styleHideScroll = document.createElement("style");
+    styleHideScroll.textContent = `#scrollerHide::-webkit-scrollbar{display:none !important}`;
+    listWrap.id = "scrollerHide";
+    listWrap.appendChild(styleHideScroll);
 
     if (categories.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--color-text-2);font-size:13px">暂无分类</div>`;
@@ -800,11 +842,14 @@ listWrap.appendChild(styleHideScroll);
         delBtn.textContent = "删除";
         delBtn.style = "padding:2px 6px;border:1px solid #ff3b30;border-radius:4px;background:transparent;color:#ff3b30;font-size:11px;cursor:pointer;";
         delBtn.onclick = () => {
-          const targetId = prompt("删除后卡片将转移到目标分类ID，输入目标分类ID：", "default");
-          if (!targetId) return;
-          if (M.deleteCategory(cat.id, targetId.trim())) {
-            Toast.show("分类已删除");
-            this.renderCardLib(body);
+          if (cat.cards.length > 0) {
+            this.showTransferModal(cat, categories, body);
+          } else {
+            if (confirm(`确定删除空分类「${cat.name}」？`)) {
+              M.deleteCategory(cat.id, null);
+              Toast.show("分类已删除");
+              this.renderCardLib(body);
+            }
           }
         };
 
@@ -818,83 +863,102 @@ listWrap.appendChild(styleHideScroll);
         catEl.appendChild(catHead);
 
         if (cat.expanded) {
-  const cardList = document.createElement("div");
-  cardList.style.cssText = "padding:6px 10px;";
-  const showCards = kw
-    ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
-    : cat.cards;
+          const cardList = document.createElement("div");
+          cardList.style.cssText = "padding:6px 10px;";
+          const showCards = kw
+            ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
+            : cat.cards;
 
-  if (showCards.length === 0) {
-    cardList.innerHTML = `<div style="text-align:center;padding:10px 0;color:var(--color-text-2);font-size:12px">该分类暂无匹配字卡</div>`;
-  } else {
-    showCards.forEach(card => {
-      const cardEl = document.createElement("div");
-      cardEl.style.cssText = `
-        padding:8px;border:1px solid var(--color-border);border-radius:8px;margin-bottom:6px;
-        ${card.isDisabled ? "opacity:0.5;text-decoration:line-through;" : ""}
-        display:flex;align-items:flex-start;gap:6px;
-      `;
-      const ck = document.createElement("input");
-      ck.type = "checkbox";
-      ck.style.cssText = "margin-top:2px";
-      ck.checked = this._selectedCards.has(card.id);
-      ck.onchange = ()=>{
-        if(ck.checked) this._selectedCards.add(card.id);
-        else this._selectedCards.delete(card.id);
-      };
+          if (showCards.length === 0) {
+            cardList.innerHTML = `<div style="text-align:center;padding:10px 0;color:var(--color-text-2);font-size:12px">该分类暂无匹配字卡</div>`;
+          } else {
+            showCards.forEach(card => {
+              const cardEl = document.createElement("div");
+              cardEl.style.cssText = `
+                padding:8px;border:1px solid var(--color-border);border-radius:8px;margin-bottom:6px;
+                ${card.isDisabled ? "opacity:0.6;background:var(--color-bg);" : ""}
+                display:flex;align-items:flex-start;gap:6px;
+              `;
+              const ck = document.createElement("input");
+              ck.type = "checkbox";
+              ck.style.cssText = "margin-top:2px";
+              ck.checked = this._selectedCards.has(card.id);
+              ck.onchange = ()=>{
+                if(ck.checked) this._selectedCards.add(card.id);
+                else this._selectedCards.delete(card.id);
+              };
 
-      const textwrap = document.createElement("div");
-      textwrap.style.cssText = "flex:1;min-width:0;";
-      textwrap.innerHTML = `
-        <div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
-          ${card.content}
-        </div>
-      `;
+              const textwrap = document.createElement("div");
+              textwrap.style.cssText = "flex:1;min-width:0;";
+              let badgeHtml = "";
+              if (card.isDisabled) {
+                const by = card.disabledBy;
+                const isBoth = by && by !== M.getMyNick();
+                const badgeText = isBoth ? "双方禁用" : "单方禁用";
+                badgeHtml = `<span style="font-size:10px;padding:1px 4px;border-radius:4px;background:#ff3b30;color:#fff;margin-left:6px;white-space:nowrap;">${badgeText}</span>`;
+              }
+              textwrap.innerHTML = `
+                <div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;${card.isDisabled ? 'text-decoration:line-through;' : ''}">
+                  ${card.content} ${badgeHtml}
+                </div>
+              `;
 
-      const ops = document.createElement("div");
-      ops.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
+              const ops = document.createElement("div");
+              ops.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
 
-      const sendBtn = document.createElement("button");
-      sendBtn.textContent = "发送";
-      sendBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
-      sendBtn.onclick = () => M.sendCardToChat(card);
+              const sendBtn = document.createElement("button");
+              sendBtn.textContent = "发送";
+              sendBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
+              sendBtn.onclick = () => {
+                if (M.sendCardToChat(card)) Toast.show("已发送到聊天");
+              };
 
-      const copyBtn = document.createElement("button");
-      copyBtn.textContent = "复制";
-      copyBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
-      copyBtn.onclick = () => {
-        navigator.clipboard.writeText(card.content);
-        Toast.show("已复制");
-      };
+              const editBtn = document.createElement("button");
+              editBtn.textContent = "编辑";
+              editBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
+              editBtn.onclick = () => {
+                const newText = prompt("编辑字卡内容：", card.content);
+                if (newText && newText.trim()) {
+                  M.updateCard(cat.id, card.id, { content: newText.trim() });
+                  this.renderCardLib(body);
+                }
+              };
 
-      const editBtn = document.createElement("button");
-      editBtn.textContent = "编辑";
-      editBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
+              const toggleDisableBtn = document.createElement("button");
+              toggleDisableBtn.textContent = card.isDisabled ? "启用" : "禁用";
+              toggleDisableBtn.style.cssText = "padding:3px 6px;border:1px solid " + (card.isDisabled ? "var(--color-main)" : "#ff9500") + ";border-radius:4px;background:var(--color-bg);color:" + (card.isDisabled ? "var(--color-main)" : "#ff9500") + ";font-size:11px;cursor:pointer;";
+              toggleDisableBtn.onclick = () => {
+                if (card.isDisabled) {
+                  M.updateCard(cat.id, card.id, { isDisabled: false, disabledBy: null });
+                } else {
+                  M.updateCard(cat.id, card.id, { isDisabled: true, disabledBy: M.getMyNick() });
+                }
+                this.renderCardLib(body);
+              };
 
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "删除";
-      delBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:#ff3b30;color:#fff;font-size:11px;cursor:pointer;";
-      delBtn.onclick = () => {
-        if(!confirm("确定删除这张字卡？")) return;
-        M.deleteCard(cat.id, card.id);
-        Toast.show("已删除");
-        this.renderCardLib(body);
-      };
+              const delBtn = document.createElement("button");
+              delBtn.textContent = "删除";
+              delBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:#ff3b30;color:#fff;font-size:11px;cursor:pointer;";
+              delBtn.onclick = () => {
+                if(!confirm("确定删除这张字卡？")) return;
+                M.deleteCard(cat.id, card.id);
+                this.renderCardLib(body);
+              };
 
-      ops.appendChild(sendBtn);
-      ops.appendChild(copyBtn);
-      ops.appendChild(editBtn);
-      ops.appendChild(delBtn);
+              ops.appendChild(sendBtn);
+              ops.appendChild(editBtn);
+              ops.appendChild(toggleDisableBtn);
+              ops.appendChild(delBtn);
 
-      cardEl.appendChild(ck);
-      cardEl.appendChild(textwrap);
-      cardEl.appendChild(ops);
-      cardList.appendChild(cardEl);
-    }); // 【重点！这里是forEach的闭合，很多人漏这个}
-  }
-  catEl.appendChild(cardList);
-}
-listWrap.appendChild(catEl);
+              cardEl.appendChild(ck);
+              cardEl.appendChild(textwrap);
+              cardEl.appendChild(ops);
+              cardList.appendChild(cardEl);
+            });
+          }
+          catEl.appendChild(cardList);
+        }
+        listWrap.appendChild(catEl);
       });
     }
 
@@ -904,7 +968,54 @@ listWrap.appendChild(catEl);
     body.appendChild(listWrap);
   },
 
-  // ========== Tab4 设置【修复布局；删除梦角昵称输入；滑块touch‑action；输入框右对齐】 ==========
+  // 删除分类转移模态框
+  showTransferModal(cat, categories, body) {
+    const mask = document.createElement("div");
+    mask.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:100001;";
+    const modal = document.createElement("div");
+    modal.style.cssText = "background:var(--color-bg);border-radius:14px;padding:20px;width:80%;max-width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.2);";
+    modal.innerHTML = `<div style="font-weight:bold;margin-bottom:12px;color:var(--color-text);">转移字卡</div>
+      <div style="font-size:13px;color:var(--color-text-2);margin-bottom:8px;">将「${cat.name}」中的 ${cat.cards.length} 张字卡转移到：</div>`;
+    
+    const sel = document.createElement("select");
+    sel.style.cssText = "width:100%;padding:8px;margin-bottom:16px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);";
+    categories.forEach(c => {
+      if (c.id !== cat.id) {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.name;
+        sel.appendChild(opt);
+      }
+    });
+    modal.appendChild(sel);
+
+    const btnRow = document.createElement("div");
+    btnRow.style.cssText = "display:flex;gap:8px;justify-content:flex-end;";
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "取消";
+    cancelBtn.style.cssText = "padding:8px 16px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:13px;cursor:pointer;";
+    cancelBtn.onclick = () => mask.remove();
+
+    const confirmBtn = document.createElement("button");
+    confirmBtn.textContent = "确认转移并删除";
+    confirmBtn.style.cssText = "padding:8px 16px;border:none;border-radius:8px;background:var(--color-main);color:#fff;font-size:13px;cursor:pointer;";
+    confirmBtn.onclick = () => {
+      const targetCatId = sel.value;
+      if (!targetCatId) return;
+      AuditCardModule.deleteCategory(cat.id, targetCatId);
+      Toast.show("分类已删除，字卡已转移");
+      mask.remove();
+      this.renderCardLib(body);
+    };
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(confirmBtn);
+    modal.appendChild(btnRow);
+    mask.appendChild(modal);
+    document.body.appendChild(mask);
+  },
+
+  // ========== Tab4 设置 ==========
   renderSettings(body) {
     const M = AuditCardModule;
     const cfg = M.auditConfig;
@@ -930,16 +1041,17 @@ listWrap.appendChild(catEl);
       return wrap;
     };
 
+    // 输入框右对齐布局
     const numberInputMinute = (label, secValue, onChangeSec) => {
       const wrap = document.createElement("div");
-      wrap.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
+      wrap.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px;";
       const span = document.createElement("span");
-      span.style.cssText = "width:110px;flex:0 0 110px;color:var(--color-text-2);";
+      span.style.cssText = "color:var(--color-text-2);";
       span.textContent = label;
       const input = document.createElement("input");
       input.type = "number";
       input.value = Math.round(secValue / 60);
-      input.style = "flex:1;padding:7px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;box-sizing:border-box;";
+      input.style = "width:90px;padding:7px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;box-sizing:border-box;text-align:right;";
       input.onchange = () => onChangeSec(Number(input.value)*60);
       wrap.appendChild(span);
       wrap.appendChild(input);
@@ -948,21 +1060,21 @@ listWrap.appendChild(catEl);
 
     const numberInputRaw = (label, value, onChange) => {
       const wrap = document.createElement("div");
-      wrap.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
+      wrap.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px;";
       const span = document.createElement("span");
-      span.style.cssText = "width:110px;flex:0 0 110px;color:var(--color-text-2);";
+      span.style.cssText = "color:var(--color-text-2);";
       span.textContent = label;
       const input = document.createElement("input");
       input.type = "number";
       input.value = value;
-      input.style = "flex:1;padding:7px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;box-sizing:border-box;";
+      input.style = "width:90px;padding:7px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;box-sizing:border-box;text-align:right;";
       input.onchange = () => onChange(Number(input.value));
       wrap.appendChild(span);
       wrap.appendChild(input);
       return wrap;
     };
 
-   body.style.padding = "16px 18px";
+    body.style.padding = "16px 18px";
     body.style.overflowY = "auto";
     body.style.minHeight = "0";
     body.style.scrollbarWidth = "none";
@@ -972,7 +1084,7 @@ listWrap.appendChild(catEl);
     body.id = "settingScroller";
     body.appendChild(styleSetScroll);
 
-    // --------悬浮球设置--------
+    // -------- 悬浮球设置 --------
     body.appendChild(sectionTitle("悬浮球"));
     body.appendChild(toggle("启用悬浮球", float.enable, v => {
       float.enable = v;
@@ -981,8 +1093,10 @@ listWrap.appendChild(catEl);
     }));
 
     const colorRow = document.createElement("div");
-    colorRow.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
-    colorRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color-text-2)">悬浮球颜色</span>`;
+    colorRow.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px;";
+    colorRow.innerHTML = `<span style="color:var(--color-text-2)">悬浮球颜色</span>`;
+    const colorWrap = document.createElement("div");
+    colorWrap.style.cssText = "display:flex;align-items:center;gap:8px;";
     const colorInput = document.createElement("input");
     colorInput.type = "color";
     colorInput.value = float.color;
@@ -994,51 +1108,59 @@ listWrap.appendChild(catEl);
     };
     const resetColorBtn = document.createElement("button");
     resetColorBtn.textContent = "恢复默认";
-    resetColorBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);font-size:11px;cursor:pointer;margin-left:auto;";
+    resetColorBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);font-size:11px;cursor:pointer;";
     resetColorBtn.onclick = () => {
       float.color = "#7c68ee";
       colorInput.value = float.color;
       M.saveToStorage();
       this.updateFloatBallStyle();
     };
-    colorRow.appendChild(colorInput);
-    colorRow.appendChild(resetColorBtn);
+    colorWrap.appendChild(colorInput);
+    colorWrap.appendChild(resetColorBtn);
+    colorRow.appendChild(colorWrap);
     body.appendChild(colorRow);
 
     const sizeRow = document.createElement("div");
-    sizeRow.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
-    sizeRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color-text-2)">大小 ${float.size}px</span>`;
+    sizeRow.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px;";
+    const sizeLabel = document.createElement("span");
+    sizeLabel.style.cssText = "color:var(--color-text-2);";
+    sizeLabel.textContent = `大小 ${float.size}px`;
+    const sizeWrap = document.createElement("div");
+    sizeWrap.style.cssText = "display:flex;align-items:center;gap:8px;";
     const sizeSlider = document.createElement("input");
     sizeSlider.type = "range";
     sizeSlider.min = 32;
     sizeSlider.max = 80;
     sizeSlider.value = float.size;
-    sizeSlider.style.width = "140px";
+    sizeSlider.style.width = "100px";
     sizeSlider.style.touchAction = "manipulation";
     sizeSlider.oninput = () => {
       float.size = Number(sizeSlider.value);
-      sizeRow.querySelector("span").textContent = `大小 ${float.size}px`;
+      sizeLabel.textContent = `大小 ${float.size}px`;
       M.saveToStorage();
       this.updateFloatBallStyle();
     };
     const resetSizeBtn = document.createElement("button");
     resetSizeBtn.textContent = "恢复默认";
-    resetSizeBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);font-size:11px;cursor:pointer;margin-left:auto;";
+    resetSizeBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);font-size:11px;cursor:pointer;";
     resetSizeBtn.onclick = () => {
       float.size = 48;
       sizeSlider.value = 48;
-      sizeRow.querySelector("span").textContent = `大小 48px`;
+      sizeLabel.textContent = `大小 48px`;
       M.saveToStorage();
       this.updateFloatBallStyle();
     };
-    sizeRow.appendChild(sizeSlider);
-    sizeRow.appendChild(resetSizeBtn);
+    sizeWrap.appendChild(sizeSlider);
+    sizeWrap.appendChild(resetSizeBtn);
+    sizeRow.appendChild(sizeLabel);
+    sizeRow.appendChild(sizeWrap);
     body.appendChild(sizeRow);
 
-    // 头像上传
     const avatarRow = document.createElement("div");
-    avatarRow.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
-    avatarRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color-text-2)">自定义头像</span>`;
+    avatarRow.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px;";
+    avatarRow.innerHTML = `<span style="color:var(--color-text-2)">自定义头像</span>`;
+    const avatarWrap = document.createElement("div");
+    avatarWrap.style.cssText = "display:flex;align-items:center;gap:8px;";
     const avatarPreview = document.createElement("div");
     avatarPreview.style.cssText = `
       width:40px;height:40px;border-radius:50%;overflow:hidden;border:1px solid var(--color-border);
@@ -1076,6 +1198,7 @@ listWrap.appendChild(catEl);
             float.avatarBase64 = canvas.toDataURL("image/png");
             M.saveToStorage();
             Toast.show("头像已更新");
+            this.updateFloatBallStyle();
             this.renderSettings(body);
           };
           img.src = e.target.result;
@@ -1087,34 +1210,35 @@ listWrap.appendChild(catEl);
     };
     const resetAvatarBtn = document.createElement("button");
     resetAvatarBtn.textContent = "恢复默认";
-    resetAvatarBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);font-size:11px;cursor:pointer;margin-left:auto;";
+    resetAvatarBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);font-size:11px;cursor:pointer;";
     resetAvatarBtn.onclick = () => {
       float.avatarBase64 = "";
       M.saveToStorage();
       Toast.show("已恢复默认头像");
+      this.updateFloatBallStyle();
       this.renderSettings(body);
     };
-    avatarRow.appendChild(avatarPreview);
-    avatarRow.appendChild(uploadBtn);
-    avatarRow.appendChild(resetAvatarBtn);
+    avatarWrap.appendChild(avatarPreview);
+    avatarWrap.appendChild(uploadBtn);
+    avatarWrap.appendChild(resetAvatarBtn);
+    avatarRow.appendChild(avatarWrap);
     body.appendChild(avatarRow);
 
-    // 引擎设置
+    // -------- 梦角引擎 --------
     body.appendChild(sectionTitle("梦角拟人引擎"));
     body.appendChild(toggle("抓取聊天生成申请", engine.enableGrabChat, v => { engine.enableGrabChat = v; M.saveToStorage(); }));
     body.appendChild(toggle("混沌随机变更", engine.enableChaos, v => { engine.enableChaos = v; M.saveToStorage(); }));
     body.appendChild(toggle("主动发消息", engine.enableActiveSend, v => { engine.enableActiveSend = v; M.saveToStorage(); }));
 
-    body.appendChild(sectionTitle("引擎参数（UI单位：分钟，存储：秒）"));
-    body.appendChild(numberInputMinute("巡检周期", engine.scanIntervalSec, v => { engine.scanIntervalSec = v; M.saveToStorage(); }));
+    body.appendChild(sectionTitle("引擎参数"));
+    body.appendChild(numberInputMinute("巡检周期(分)", engine.scanIntervalSec, v => { engine.scanIntervalSec = v; M.saveToStorage(); }));
     body.appendChild(numberInputRaw("基础触发概率", engine.baseProb, v => { engine.baseProb = v; M.saveToStorage(); }));
     body.appendChild(numberInputRaw("情绪命中概率", engine.emotionProb, v => { engine.emotionProb = v; M.saveToStorage(); }));
     body.appendChild(numberInputRaw("混沌操作概率", engine.chaosProb, v => { engine.chaosProb = v; M.saveToStorage(); }));
-    body.appendChild(numberInputRaw("待审上限", engine.pendingMax, v => { engine.pendingMax = v; M.saveToStorage(); }));
-    body.appendChild(numberInputMinute("冷却时间", engine.applyCoolDownMs/1000, v => { engine.applyCoolDownMs = v*1000; M.saveToStorage(); }));
+    body.appendChild(numberInputRaw("待审上限(条)", engine.pendingMax, v => { engine.pendingMax = v; M.saveToStorage(); }));
+    body.appendChild(numberInputMinute("冷却时间(分)", engine.applyCoolDownMs/1000, v => { engine.applyCoolDownMs = v*1000; M.saveToStorage(); }));
 
-    // 【删除】梦角昵称输入框
-
+    // -------- 其他设置 --------
     body.appendChild(sectionTitle("通知与调试"));
     body.appendChild(toggle("浏览器通知", cfg.notification.enable, v => { cfg.notification.enable = v; M.saveToStorage(); }));
     body.appendChild(toggle("debug 日志", cfg.debug, v => { cfg.debug = v; M.saveToStorage(); }));
