@@ -975,7 +975,7 @@ export const DesktopModule = {
     });
   },
 
-  handleCardClick(cardId) {
+    handleCardClick(cardId) {
     const meta = this.getCardMeta(cardId);
     if (!meta) return;
     if (meta.isDev) {
@@ -989,7 +989,8 @@ export const DesktopModule = {
         setTimeout(() => { document.dispatchEvent(new CustomEvent('setting:open-contact')); }, 80);
       }
     } else if (meta.type === 'action') {
-      Toast.show(`【${meta.name}】功能开发中`);
+      // ✅不直接toast，向外广播open‑panel事件，业务模块自己监听弹出面板
+      EventBus.emit('open‑panel', { panel: meta.action });
     }
   },
 
