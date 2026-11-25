@@ -190,7 +190,7 @@ const AuditCardModule = {
       remark: ""
     };
     this.pendingApply.push(applyItem);
-    this.saveToStorage();
+    this.saveToStorage(); // saveToStorage内部自动emit my‑audit‑data‑updated
     return applyItem;
   },
 
@@ -200,7 +200,6 @@ const AuditCardModule = {
     if (idx === -1) return false;
     const item = this.pendingApply[idx];
 
-    // --------这里未来UI层审批后，在此处执行add/delete/disable/move/restore真实变更--------
     // 当前数据层只做：移入历史档案，pending移除；真实字卡操作留给后续UI扩展
     const historyRecord = {
       action: item.action,
@@ -217,8 +216,33 @@ const AuditCardModule = {
       this.auditHistory = this.auditHistory.slice(0, 100);
     }
     this.pendingApply.splice(idx, 1);
-    this.saveToStorage();
+    this.saveToStorage(); // 内部自动emit事件
     return true;
+  },
+
+  // ==========【测试控制台工具函数】==========
+  clearAllPendingApply() {
+    this.pendingApply = [];
+    this.saveToStorage();
+    console.log("[Audit] 已清空全部待审申请");
+  },
+
+  approveOneApply() {
+    if (!this.pendingApply.length) {
+      console.log("[Audit] 没有待审申请可通过");
+      return;
+    }
+    const item = this.pendingApply[0];
+    this.approveApply(item.applyId, "agree", "测试通过");
+  },
+
+  rejectOneApply() {
+    if (!this.pendingApply.length) {
+      console.log("[Audit] 没有待审申请可驳回");
+      return;
+    }
+    const item = this.pendingApply[0];
+    this.approveApply(item.applyId, "reject", "测试驳回");
   },
 
   // ==========【5.梦角拟人引擎纯数据逻辑（无UI，定时器业务）】==========
@@ -251,7 +275,7 @@ const AuditCardModule = {
 
     const rand = Math.random();
     if (rand < prob) {
-      // 生成add新增卡片待审申请，申请人标记为梦角（后续传入当前梦角nick）
+      // 生成add新增卡片待审申请，申请人标记为梦角
       this.createPendingApply("add", { cardText: latestUserMsg.content }, "梦角");
     }
   },
@@ -261,7 +285,6 @@ const AuditCardModule = {
     const cfg = this.auditConfig.dreamEngine;
     if (!cfg.enableChaos) return;
     if (Math.random() > cfg.chaosProb) return;
-    // 仅示例数据层：只生成pending申请，不直接修改卡
     const ops = ["delete", "disable", "move"];
     const pickOp = ops[Math.floor(Math.random() * ops.length)];
     this.createPendingApply(pickOp, { cardText: "" }, "梦角");
