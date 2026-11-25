@@ -333,10 +333,10 @@ const AuditCardModule = {
 
   // ==========【模块初始化】==========
   init() {
-    this.loadFromStorage();
-    console.log("AuditCardModule 数据层初始化完成");
-  }
-};
+    EventBus.on("open‑panel", (payload) => {
+      if (payload && payload.panel === "audit") this.open();
+    });
+  },
 
 // 挂载全局，控制台调试使用
 window.AuditCardModule = AuditCardModule;
