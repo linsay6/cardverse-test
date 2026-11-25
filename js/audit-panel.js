@@ -12,9 +12,13 @@ const ACTION_META = {
 const AuditPanelModule = {
   panelEl: null,
   activeTab: "pending",
+  // 【修复】提升到顶层，不要open()的时候重置，解决添加字卡渲染丢失
   selectedIds: new Set(),
+  _selectedCards: new Set(),
   searchKeyword: "",
+  _cardSearch: "",
   lastSwitchAt: 0,
+
   floatBallEl: null,
   _isDraggingBall: false,
   _dragStartX: 0,
@@ -38,7 +42,7 @@ const AuditPanelModule = {
     this.initFloatBall();
   },
 
-  // ========== 悬浮球（修复拖拽单击区分，配置实时生效无需刷新） ==========
+  // ========== 悬浮球【修复】弹窗关闭不会销毁悬浮球，只有配置开关关闭才销毁 ==========
   initFloatBall() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
@@ -51,6 +55,7 @@ const AuditPanelModule = {
       this.updateFloatBallStyle();
       return;
     }
+
     const ball = document.createElement("div");
     ball.style.cssText = `
       position:fixed;right:16px;bottom:80px;width:${cfg.size}px;height:${cfg.size}px;
@@ -84,7 +89,7 @@ const AuditPanelModule = {
       if (!this._isDraggingBall) return;
       const dx = clientX - downX;
       const dy = clientY - downY;
-      if(Math.hypot(dx, dy) > 8) this._dragMoved = true;
+      if(Math.hypot(dx, dy) > this._touchSlop) this._dragMoved = true;
       const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
       const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       const size = parseFloat(getComputedStyle(ball).width);
@@ -124,15 +129,20 @@ const AuditPanelModule = {
 
     document.body.appendChild(ball);
     this.floatBallEl = ball;
-},
+  },
 
   updateFloatBallStyle() {
-    if (!this.floatBallEl) {
-      const cfg = AuditCardModule.auditConfig.floatBall;
-      if(cfg.enable) this.initFloatBall();
+    const cfg = AuditCardModule.auditConfig.floatBall;
+    const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
+    if (!cfg.enable && !forceShow) {
+      if(this.floatBallEl) this.floatBallEl.remove();
+      this.floatBallEl = null;
       return;
     }
-    const cfg = AuditCardModule.auditConfig.floatBall;
+    if (!this.floatBallEl) {
+      this.initFloatBall();
+      return;
+    }
     this.floatBallEl.style.width = cfg.size + "px";
     this.floatBallEl.style.height = cfg.size + "px";
     this.floatBallEl.style.background = cfg.color;
@@ -143,14 +153,11 @@ const AuditPanelModule = {
     }
   },
 
-  // ========== 弹窗基础 ==========
+  // ========== 弹窗基础【修复】open不再重置 _selectedCards / _cardSearch ==========
   open() {
     if (this.panelEl) this.close();
     this.selectedIds = new Set();
-    this.searchKeyword = "";
-    this._cardSearch = "";
-    this._selectedCards = new Set();
-
+    // 【重点】不再重置 _selectedCards、_cardSearch，字卡库状态保留
     const mask = document.createElement("div");
     mask.style.cssText = `
       position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
@@ -183,6 +190,7 @@ const AuditPanelModule = {
     if (!('ontouchstart' in window)) {
       document.removeEventListener("keydown", this._escHandler);
     }
+    // ⚠️ close()绝对不碰悬浮球实例，悬浮球只受配置开关控制！
   },
 
   _escHandler: (e) => {
@@ -195,7 +203,7 @@ const AuditPanelModule = {
     };
   },
 
-  // ========== 主渲染（Tab胶囊样式还原） ==========
+  // ========== 主渲染 ==========
   render(box) {
     const tabs = [
       { key: "pending",     name: "待审核", count: AuditCardModule.pendingApply.length },
@@ -242,7 +250,15 @@ const AuditPanelModule = {
     tabBar.appendChild(closeBtn);
 
     const body = document.createElement("div");
-    body.style.cssText = `flex:1;overflow:hidden;display:flex;flex-direction:column;padding:0 12px 12px;box-sizing:border-box;`;
+    // 【修复滚动关键】flex子项增加 min‑height:0，允许收缩触发滚动
+    body.style.cssText = `
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      padding:0 12px 12px;
+      box-sizing:border-box;
+    `;
 
     box.innerHTML = "";
     box.appendChild(tabBar);
@@ -254,7 +270,7 @@ const AuditPanelModule = {
     if (this.activeTab === "settings") this.renderSettings(body);
   },
 
-  // ========== Tab1 待审核（按钮主题色变量） ==========
+  // ========== Tab1 待审核 ==========
   renderPending(body) {
     const list = AuditCardModule.pendingApply || [];
 
@@ -296,14 +312,15 @@ const AuditPanelModule = {
     toolbar.appendChild(rejectAll);
 
     const listWrap = document.createElement("div");
+    // 【修复】滚动容器统一css min‑height:0
     listWrap.style.cssText = `
-    flex:1;
-    overflow‑y:auto;
-    padding:0;
-    scrollbar‑width:none;
+      flex:1;
+      overflow‑y:auto;
+      min‑height:0;
+      padding:0;
+      scrollbar‑width:none;
     `;
-    listWrap.style.setProperty('::-webkit‑scrollbar','display:none');
-    listWrap.style.setProperty("::-webkit-scrollbar","display:none");
+    listWrap.style.setProperty("-webkit‑scrollbar","display:none");
 
     if (list.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--color-text-2);font-size:13px">暂无待审申请</div>`;
@@ -463,7 +480,7 @@ const AuditPanelModule = {
     }
   },
 
-  // ========== Tab2 历史档案：搜索栏吸顶，隐藏滚动条 ==========
+  // ========== Tab2 历史档案 ==========
   renderHistory(body) {
     const list = AuditCardModule.auditHistory || [];
 
@@ -498,9 +515,13 @@ const AuditPanelModule = {
 
     const listWrap = document.createElement("div");
     listWrap.style.cssText = `
-      flex:1;overflow-y:auto;padding:0 0 12px 0;
-      scrollbar-width:none;
+      flex:1;
+      overflow‑y:auto;
+      min‑height:0;
+      padding:0 0 12px 0;
+      scrollbar‑width:none;
     `;
+    listWrap.style.setProperty("-webkit‑scrollbar","display:none");
 
     const kw = this.searchKeyword.toLowerCase();
     const filtered = list.filter(h => {
@@ -540,7 +561,7 @@ const AuditPanelModule = {
     body.appendChild(listWrap);
   },
 
-  // ========== Tab3 字卡库：增加勾选、批量转移、整组启用禁用，单行文本溢出省略 ==========
+  // ========== Tab3 字卡库 ==========
   renderCardLib(body) {
     const M = AuditCardModule;
     const categories = M.getAuditCategories();
@@ -617,7 +638,7 @@ const AuditPanelModule = {
     head.appendChild(textarea);
     head.appendChild(opRow);
 
-    // 批量操作栏：增加【批量转移到分组】
+    // 批量操作栏
     const batchBar = document.createElement("div");
     batchBar.style.cssText = `
       display:flex;gap:6px;padding:10px 0;flex-wrap:wrap;align-items:center;
@@ -629,12 +650,12 @@ const AuditPanelModule = {
     allCheckInput.type = "checkbox";
     const allCards = M.getAllAuditCards();
     const filteredCards = kw
-      ? allCards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()) || c.title.toLowerCase().includes(kw.toLowerCase()))
+      ? allCards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
       : allCards;
     allCheckInput.checked = filteredCards.length > 0 && filteredCards.every(c => this._selectedCards.has(c.id));
     allCheckInput.onchange = () => {
       if (allCheckInput.checked) filteredCards.forEach(c => this._selectedCards.add(c.id));
-      else this._selectedCards = new Set();
+      else this._selectedCards.clear();
       this.renderCardLib(body);
     };
     allCheck.appendChild(allCheckInput);
@@ -699,7 +720,14 @@ const AuditPanelModule = {
     batchBar.appendChild(newCatBtn);
 
     const listWrap = document.createElement("div");
-    listWrap.style.cssText = "flex:1;overflow-y:auto;padding:0 0 12px;scrollbar-width:none;";
+    listWrap.style.cssText = `
+      flex:1;
+      overflow‑y:auto;
+      min‑height:0;
+      padding:0 0 12px;
+      scrollbar‑width:none;
+    `;
+    listWrap.style.setProperty("-webkit‑scrollbar","display:none");
 
     if (categories.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--color-text-2);font-size:13px">暂无分类</div>`;
@@ -711,7 +739,6 @@ const AuditPanelModule = {
           ${cat.isDisabled ? "opacity:0.6;" : ""}
         `;
 
-        // 分类头部：新增【整组启用/禁用】勾选框
         const catHead = document.createElement("div");
         catHead.style.cssText = `
           padding:8px 10px;display:flex;align-items:center;gap:6px;
@@ -726,7 +753,6 @@ const AuditPanelModule = {
           this.renderCardLib(body);
         };
 
-        // 整组启用禁用
         const catDisableCheck = document.createElement("input");
         catDisableCheck.type = "checkbox";
         catDisableCheck.checked = !cat.isDisabled;
@@ -782,7 +808,7 @@ const AuditPanelModule = {
           const cardList = document.createElement("div");
           cardList.style.cssText = "padding:6px 10px;";
           const showCards = kw
-            ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()) || c.title.toLowerCase().includes(kw.toLowerCase()))
+            ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
             : cat.cards;
 
           if (showCards.length === 0) {
@@ -790,10 +816,14 @@ const AuditPanelModule = {
           } else {
             showCards.forEach(card => {
               const cardEl = document.createElement("div");
-              // 单行文本溢出省略
+              cardEl.style.cssText = `
+                padding:8px;border:1px solid var(--color-border);border-radius:8px;margin-bottom:6px;
+                ${card.isDisabled ? "opacity:0.5;text-decoration:line-through;" : ""}
+                display:flex;align-items:flex-start;gap:6px;
+              `;
               const ck = document.createElement("input");
               ck.type = "checkbox";
-              ck.style.marginTop="2px";
+              ck.style.marginTop:"2px";
               ck.checked = this._selectedCards.has(card.id);
               ck.onchange = ()=>{
                 if(ck.checked) this._selectedCards.add(card.id);
@@ -801,9 +831,10 @@ const AuditPanelModule = {
               };
 
               const textwrap = document.createElement("div");
-              textwrap.style.cssText = 'flex:1;min-width:0;';
-             textwrap.innerHTML = `
-<div style="font‑size:12px;color:var(--color‑text‑2);overflow:hidden;white‑space:nowrap;text‑overflow:ellipsis;">${card.content}</div>
+              textwrap.style.cssText = `flex:1;min-width:0;`;
+              // 【修复】只渲染content一行，不再显示title
+              textwrap.innerHTML = `
+<div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${card.content}</div>
 `;
 
               const ops = document.createElement("div");
@@ -869,7 +900,7 @@ const AuditPanelModule = {
               ops.appendChild(delBtn2);
 
               cardEl.appendChild(ck);
-              cardEl.appendChild(textWrap);
+              cardEl.appendChild(textwrap);
               cardEl.appendChild(ops);
               cardList.appendChild(cardEl);
             });
@@ -886,7 +917,7 @@ const AuditPanelModule = {
     body.appendChild(listWrap);
   },
 
-  // ========== Tab4 设置页面布局修复 ==========
+  // ========== Tab4 设置【修复布局；删除梦角昵称输入；滑块touch‑action；输入框右对齐】 ==========
   renderSettings(body) {
     const M = AuditCardModule;
     const cfg = M.auditConfig;
@@ -944,10 +975,13 @@ const AuditPanelModule = {
       return wrap;
     };
 
-    // 设置整体右移：增加左右内边距
     body.style.padding = "16px 18px";
+    body.style.overflowY = "auto";
+    body.style.minHeight = "0";
+    body.style.scrollbarWidth = "none";
+    body.style.setProperty("-webkit-scrollbar","display:none");
 
-    // --------悬浮球设置（滑块缩短，整体右移）--------
+    // --------悬浮球设置--------
     body.appendChild(sectionTitle("悬浮球"));
     body.appendChild(toggle("启用悬浮球", float.enable, v => {
       float.enable = v;
@@ -981,15 +1015,15 @@ const AuditPanelModule = {
     body.appendChild(colorRow);
 
     const sizeRow = document.createElement("div");
-    sizeRow.style.cssText = "display:flex;align‑items:center;gap:8px;padding:6px 0;font‑size:13px;";
-    sizeRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color‑text‑2)">大小 ${float.size}px</span>`;
+    sizeRow.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
+    sizeRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color-text-2)">大小 ${float.size}px</span>`;
     const sizeSlider = document.createElement("input");
     sizeSlider.type = "range";
     sizeSlider.min = 32;
     sizeSlider.max = 80;
     sizeSlider.value = float.size;
     sizeSlider.style.width = "140px";
-    sizeSlider.style.touchAction = "manipulation";
+    sizeSlider.style.touchAction = "none";
     sizeSlider.oninput = () => {
       float.size = Number(sizeSlider.value);
       sizeRow.querySelector("span").textContent = `大小 ${float.size}px`;
@@ -998,7 +1032,7 @@ const AuditPanelModule = {
     };
     const resetSizeBtn = document.createElement("button");
     resetSizeBtn.textContent = "恢复默认";
-    resetSizeBtn.style = "padding:4px 8px;border:1px solid var(--color‑border);border‑radius:6px;background:var(--color‑bg);font‑size:11px;cursor:pointer;margin‑left:auto;";
+    resetSizeBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);font-size:11px;cursor:pointer;margin-left:auto;";
     resetSizeBtn.onclick = () => {
       float.size = 48;
       sizeSlider.value = 48;
@@ -1088,18 +1122,7 @@ const AuditPanelModule = {
     body.appendChild(numberInputRaw("待审上限", engine.pendingMax, v => { engine.pendingMax = v; M.saveToStorage(); }));
     body.appendChild(numberInputMinute("冷却时间", engine.applyCoolDownMs/1000, v => { engine.applyCoolDownMs = v*1000; M.saveToStorage(); }));
 
-    const nickRow = document.createElement("div");
-    nickRow.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;";
-    nickRow.innerHTML = `<span style="width:110px;flex:0 0 110px;color:var(--color-text-2)">梦角昵称</span>`;
-    const nickInput = document.createElement("input");
-    nickInput.value = engine.dreamNick;
-    nickInput.style = "flex:1;padding:7px 8px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg);color:var(--color-text);font-size:12px;";
-    nickInput.onchange = () => {
-      engine.dreamNick = nickInput.value.trim();
-      M.saveToStorage();
-    };
-    nickRow.appendChild(nickInput);
-    body.appendChild(nickRow);
+    // 【删除】梦角昵称输入框
 
     body.appendChild(sectionTitle("通知与调试"));
     body.appendChild(toggle("浏览器通知", cfg.notification.enable, v => { cfg.notification.enable = v; M.saveToStorage(); }));
