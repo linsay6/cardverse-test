@@ -805,55 +805,66 @@ const AuditPanelModule = {
         catEl.appendChild(catHead);
 
         if (cat.expanded) {
-          const cardList = document.createElement("div");
-          cardList.style.cssText = "padding:6px 10px;";
-          const showCards = kw
-            ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
-            : cat.cards;
+  const cardList = document.createElement("div");
+  cardList.style.cssText = "padding:6px 10px;";
+  const showCards = kw
+    ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
+    : cat.cards;
 
-          if (showCards.length === 0) {
-            cardList.innerHTML = `<div style="text-align:center;padding:10px 0;color:var(--color-text-2);font-size:12px">该分类暂无匹配字卡</div>`;
-          } else {
-            showCards.forEach(card => {
-              const cardEl = document.createElement("div");
-              cardEl.style.cssText = `
-                padding:8px;border:1px solid var(--color-border);border-radius:8px;margin-bottom:6px;
-                ${card.isDisabled ? "opacity:0.5;text-decoration:line-through;" : ""}
-                display:flex;align-items:flex-start;gap:6px;
-              `;
-              const ck = document.createElement("input");
-              ck.type = "checkbox";
-              ck.style.marginTop:"2px";
-              ck.checked = this._selectedCards.has(card.id);
-              ck.onchange = ()=>{
-                if(ck.checked) this._selectedCards.add(card.id);
-                else this._selectedCards.delete(card.id);
-              };
+  if (showCards.length === 0) {
+    cardList.innerHTML = `<div style="text-align:center;padding:10px 0;color:var(--color-text-2);font-size:12px">该分类暂无匹配字卡</div>`;
+  } else {
+    showCards.forEach(card => {
+      const cardEl = document.createElement("div");
+      cardEl.style.cssText = `
+        padding:8px;border:1px solid var(--color-border);border-radius:8px;margin-bottom:6px;
+        ${card.isDisabled ? "opacity:0.5;text-decoration:line-through;" : ""}
+        display:flex;align-items:flex-start;gap:6px;
+      `;
+      const ck = document.createElement("input");
+      ck.type = "checkbox";
+      ck.style.cssText = "margin-top:2px";
+      ck.checked = this._selectedCards.has(card.id);
+      ck.onchange = ()=>{
+        if(ck.checked) this._selectedCards.add(card.id);
+        else this._selectedCards.delete(card.id);
+      };
 
-              const textwrap = document.createElement("div");
-              textwrap.style.cssText = `flex:1;min-width:0;`;
-              // 【修复】只渲染content一行，不再显示title
-             textwrap.innerHTML = `
-  <div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
-    ${card.content}
-  </div>
-`;
+      const textwrap = document.createElement("div");
+      textwrap.style.cssText = "flex:1;min-width:0;";
+      // 【修复】只渲染content一行，不再显示title
+      textwrap.innerHTML = `
+        <div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
+          ${card.content}
+        </div>
+      `;
 
-              const ops = document.createElement("div");
-              ops.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
+      const ops = document.createElement("div");
+      ops.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
 
-              const sendBtn = document.createElement("button");
-              sendBtn.textContent = "发送";
-              sendBtn.style = "padding:3px 6px;border:none;border-radius:4px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
-              sendBtn.onclick = () => M.sendCardToChat(card);
+      const sendBtn = document.createElement("button");
+      sendBtn.textContent = "发送";
+      sendBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
+      sendBtn.onclick = () => M.sendCardToChat(card);
 
-              const copyBtn = document.createElement("button");
-              copyBtn.textContent = "复制";
-              copyBtn.style = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
-              copyBtn.onclick = () => {
-                navigator.clipboard.writeText(card.content);
-                Toast.show("已复制");
-              };
+      const copyBtn = document.createElement("button");
+      copyBtn.textContent = "复制";
+      copyBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(card.content);
+        Toast.show("已复制");
+      };
+      
+      // 记得把按钮append进ops，不然页面不显示
+      ops.appendChild(sendBtn);
+      ops.appendChild(copyBtn);
+      cardEl.appendChild(ck);
+      cardEl.appendChild(textwrap);
+      cardEl.appendChild(ops);
+      cardList.appendChild(cardEl);
+    })
+  }
+}
 
               const editBtn = document.createElement("button");
               editBtn.textContent = "编辑";
