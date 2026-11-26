@@ -814,45 +814,87 @@ font-weight:bold;z-index:10;white-space:nowrap;
           this.saveConfig();
           this.render();
           Toast.show(isOccupied?"目标格子已有图标，原有图标已自动后移":"移动完成","success");
-        };
+                };
+      }
+      // 只有编辑模式开启拖拽，普通浏览模式禁止拖拽
+      if(this.isEditMode){
+        this.bindDragEvents(wrapEl, cardEl, cardData, pageIndex);
       }
     }
   },
+  /**
+   * 对标鸿蒙 DesktopGrid.ets：长按才触发拖拽，短按为点击
+   */
   bindDragEvents(wrapEl, cardEl, cardData, pageIndex) {
     const self = this;
-    const startDrag = (clientX, clientY) => {
-      self.draggingCardId = cardData.id;
-      self.dragStartX = clientX;
-      self.dragStartY = clientY;
-      self.cardOrigX = cardData.x;
-      self.cardOrigY = cardData.y;
-      self.dragSourcePageIndex = pageIndex;
-      cardEl.classList.add('dragging');
-      wrapEl.style.zIndex = '999';
-      wrapEl.style.transform = '';
-      self.dragGlobalMoveHandler = (evt)=>{
-        let cx,cy;
-        if(evt.touches){ cx = evt.touches[0].clientX; cy = evt.touches[0].clientY; }
-        else{ cx = evt.clientX; cy = evt.clientY; }
-        self.onGlobalDragMove(cx,cy,wrapEl,cardEl,cardData);
-      };
-      self.dragGlobalUpHandler = ()=>{
-        self.onGlobalDragEnd(wrapEl,cardEl,cardData,pageIndex);
-        document.removeEventListener('mousemove', self.dragGlobalMoveHandler);
-        document.removeEventListener('mouseup', self.dragGlobalUpHandler);
-        document.removeEventListener('touchmove', self.dragGlobalMoveHandler);
-        document.removeEventListener('touchend', self.dragGlobalUpHandler);
-        self.dragGlobalMoveHandler = null;
-        self.dragGlobalUpHandler = null;
-      };
-      document.addEventListener('mousemove', self.dragGlobalMoveHandler);
-      document.addEventListener('mouseup', self.dragGlobalUpHandler);
-      document.addEventListener('touchmove', self.dragGlobalMoveHandler, {passive:false});
-      document.addEventListener('touchend', self.dragGlobalUpHandler);
+    let longPressTimer = null;
+    const LONG_PRESS_MS = 220; // 长按阈值，220ms长按触发拖拽
+
+    function clearTimer(){
+      if(longPressTimer){
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    }
+
+    const startHold = (clientX, clientY) => {
+      clearTimer();
+      // 长按定时器
+      longPressTimer = setTimeout(()=>{
+        self.startRealDrag(clientX, clientY, wrapEl, cardEl, cardData, pageIndex);
+      }, LONG_PRESS_MS);
     };
-    wrapEl.addEventListener('mousedown', (e) => { startDrag(e.clientX, e.clientY); });
-    wrapEl.addEventListener('touchstart', (e) => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); }, { passive: true });
+
+    wrapEl.addEventListener('mousedown', (e) => {
+      // 如果点的是按钮，不触发长按
+      if(["card-del-btn","card-icon-btn","card-move-btn"].some(cls=>e.target.classList.contains(cls))) return;
+      startHold(e.clientX, e.clientY);
+    });
+    wrapEl.addEventListener('mouseup', clearTimer);
+    wrapEl.addEventListener('mouseleave', clearTimer);
+
+    wrapEl.addEventListener('touchstart', (e) => {
+      if(["card-del-btn","card-icon-btn","card-move-btn"].some(cls=>e.target.classList.contains(cls))) return;
+      const t = e.touches[0];
+      startHold(t.clientX, t.clientY);
+    }, { passive:true });
+    wrapEl.addEventListener('touchend', clearTimer);
+    wrapEl.addEventListener('touchcancel', clearTimer);
   },
+  // 真正开始拖拽（长按触发后执行）
+  startRealDrag(clientX, clientY, wrapEl, cardEl, cardData, pageIndex){
+    const self = this;
+    self.draggingCardId = cardData.id;
+    self.dragStartX = clientX;
+    self.dragStartY = clientY;
+    self.cardOrigX = cardData.x;
+    self.cardOrigY = cardData.y;
+    self.dragSourcePageIndex = pageIndex;
+    cardEl.classList.add('dragging');
+    wrapEl.style.zIndex = '999';
+    wrapEl.style.transform = '';
+
+    self.dragGlobalMoveHandler = (evt)=>{
+      let cx,cy;
+      if(evt.touches){ cx = evt.touches[0].clientX; cy = evt.touches[0].clientY; }
+      else{ cx = evt.clientX; cy = evt.clientY; }
+      self.onGlobalDragMove(cx,cy,wrapEl,cardEl,cardData);
+    };
+    self.dragGlobalUpHandler = ()=>{
+      self.onGlobalDragEnd(wrapEl,cardEl,cardData,pageIndex);
+      document.removeEventListener('mousemove', self.dragGlobalMoveHandler);
+      document.removeEventListener('mouseup', self.dragGlobalUpHandler);
+      document.removeEventListener('touchmove', self.dragGlobalMoveHandler);
+      document.removeEventListener('touchend', self.dragGlobalUpHandler);
+      self.dragGlobalMoveHandler = null;
+      self.dragGlobalUpHandler = null;
+    };
+    document.addEventListener('mousemove', self.dragGlobalMoveHandler);
+    document.addEventListener('mouseup', self.dragGlobalUpHandler);
+    document.addEventListener('touchmove', self.dragGlobalMoveHandler, {passive:false});
+    document.addEventListener('touchend', self.dragGlobalUpHandler);
+  },
+
   onGlobalDragMove(clientX, clientY, wrapEl, cardEl, cardData){
     if(this.draggingCardId === null) return;
     const dx = clientX - this.dragStartX;
@@ -867,7 +909,10 @@ font-weight:bold;z-index:10;white-space:nowrap;
       if(this.config.currentPage < this.config.pages.length -1) this.switchPage(this.config.currentPage +1);
     }
   },
-    onGlobalDragEnd(wrapEl, cardEl, cardData, pageIndex){
+      /**
+   * 对标鸿蒙元服务 DesktopGrid.ets：拖拽松手，网格交换换位，而不是向下挤压
+   */
+  onGlobalDragEnd(wrapEl, cardEl, cardData, pageIndex){
     if (this.draggingCardId !== cardData.id) return;
     cardEl.classList.remove('dragging');
     wrapEl.style.zIndex = '';
@@ -875,6 +920,7 @@ font-weight:bold;z-index:10;white-space:nowrap;
     let deltaX = 0,deltaY=0;
     const match = transformStr.match(/translate\((.+?)px,\s*(.+?)px\)/);
     if(match){ deltaX = parseFloat(match[1])||0; deltaY = parseFloat(match[2])||0; }
+
     const newRealX = this.cardOrigX + deltaX;
     const newRealY = this.cardOrigY + deltaY;
     const wrap = document.getElementById('desktop-pages-wrap');
@@ -882,40 +928,25 @@ font-weight:bold;z-index:10;white-space:nowrap;
     const rect = wrap.getBoundingClientRect();
     const maxX = rect.width - CARD_WIDTH;
     const maxY = rect.height - CARD_HEIGHT - LABEL_HEIGHT;
+
     let finalX = Math.max(0, Math.min(maxX, newRealX));
     let finalY = Math.max(0, Math.min(maxY, newRealY));
+
     const pageW = wrap.clientWidth > 0 ? wrap.clientWidth : 375;
     const { marginLeft, gap } = this.getGridInfo(pageW);
+    // 计算目标网格行列
     const col = Math.round((finalX - marginLeft) / (CARD_WIDTH + gap));
     const row = Math.round((finalY - 16) / (CARD_HEIGHT + V_GAP + LABEL_HEIGHT));
     const snapX = Math.round(marginLeft + col * (CARD_WIDTH + gap));
     const snapY = 16 + row * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
+
+    // 吸附到网格
     if (Math.abs(finalX - snapX) < SNAP_DISTANCE) finalX = snapX;
     if (Math.abs(finalY - snapY) < SNAP_DISTANCE) finalY = snapY;
+
     const currentPage = this.config.pages[this.config.currentPage];
-    let hasOverlap = false;
-    for(const otherCard of currentPage.cards){
-      if(otherCard.id === cardData.id) continue;
-      const overlap = !(
-        finalX + CARD_WIDTH < otherCard.x
-        || finalX > otherCard.x + CARD_WIDTH
-        || finalY + CARD_HEIGHT < otherCard.y
-        || finalY > otherCard.y + CARD_HEIGHT
-      );
-      if(overlap){
-        hasOverlap = true;
-        const shiftRowHeight = CARD_HEIGHT + V_GAP + LABEL_HEIGHT;
-        for(const c of currentPage.cards){
-          if(c.id === cardData.id) continue;
-          if(c.y >= otherCard.y){
-            c.y += shiftRowHeight;
-          }
-        }
-        break;
-      }
-    }
-    cardData.x = finalX;
-    cardData.y = finalY;
+
+    // ========== 跨页面拖拽处理 ==========
     if(pageIndex !== this.config.currentPage){
       const srcPage = this.config.pages[pageIndex];
       const srcIdx = srcPage.cards.findIndex(c=>c.id === cardData.id);
@@ -930,13 +961,52 @@ font-weight:bold;z-index:10;white-space:nowrap;
         srcPage.cards.push(cardData);
         Toast.show('目标页面已满，放回原页面');
       }
+      wrapEl.style.transform = '';
+      this.saveConfig();
+      this.render();
+      this.draggingCardId = null;
+      return;
     }
+
+    // ========== 同页面：查找目标网格位置上是否存在别的卡片，交换位置（DesktopGrid核心逻辑） ==========
+    let swapTargetCard = null;
+    for(const otherCard of currentPage.cards){
+      if(otherCard.id === cardData.id) continue;
+      // 判断是否落到另外一个卡片的网格区域
+      const overlap = !(
+        finalX + CARD_WIDTH < otherCard.x
+        || finalX > otherCard.x + CARD_WIDTH
+        || finalY + CARD_HEIGHT < otherCard.y
+        || finalY > otherCard.y + CARD_HEIGHT
+      );
+      if(overlap){
+        swapTargetCard = otherCard;
+        break;
+      }
+    }
+
+    if(swapTargetCard){
+      // 交换两个卡片的xy，【交换位置，而不是向下挤！对标鸿蒙DesktopGrid】
+      const tempX = cardData.x;
+      const tempY = cardData.y;
+      cardData.x = swapTargetCard.x;
+      cardData.y = swapTargetCard.y;
+      swapTargetCard.x = tempX;
+      swapTargetCard.y = tempY;
+      Toast.show("已交换图标位置");
+    }else{
+      // 目标格子为空，直接落到吸附网格
+      cardData.x = finalX;
+      cardData.y = finalY;
+      Toast.show('布局已保存');
+    }
+
     wrapEl.style.transform = '';
     this.saveConfig();
     this.render();
-    if(!hasOverlap) Toast.show('布局已保存');
     this.draggingCardId = null;
   },
+
   bindPageScroll() {
     const wrap = document.getElementById('desktop-pages-wrap');
     if (!wrap) return;
