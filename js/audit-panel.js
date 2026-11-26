@@ -55,7 +55,7 @@ const AuditPanelModule = {
   },
 
   // ========== 悬浮球 ==========
-      initFloatBall() {
+     initFloatBall() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     // 销毁旧DOM
@@ -120,13 +120,11 @@ const AuditPanelModule = {
     this.badgeEl = badge;
     // 初始化角标
     this.updateBadge();
-
     // 读取配置，0是合法值，仅null/undefined用默认
     let currentX = (cfg.posX === null || cfg.posX === undefined) ? 50 : cfg.posX;
     let currentY = (cfg.posY === null || cfg.posY === undefined) ? 80 : cfg.posY;
     wrapper.style.left = `${currentX}px`;
     wrapper.style.top = `${currentY}px`;
-
     let rafId = null;
     let dragState = {
       dragging: false,
@@ -135,6 +133,12 @@ const AuditPanelModule = {
       offsetY:0
     };
 
+    // 【关键】捕获阶段拦截所有原生click，彻底干掉浏览器合成click事件，杜绝拖拽松手弹窗
+    ball.addEventListener("click",(e)=>{
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    },true);
+
     const startDrag = (clientX, clientY) => {
       dragState.dragging = true;
       dragState.moved = false;
@@ -142,13 +146,13 @@ const AuditPanelModule = {
       dragState.offsetX = clientX - rect.left;
       dragState.offsetY = clientY - rect.top;
     };
-
     const moveDrag = (clientX, clientY) => {
       if (!dragState.dragging) return;
       let x = clientX - dragState.offsetX;
       let y = clientY - dragState.offsetY;
-
-      if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) > this._touchSlop){
+      // 修复：全部英文减号
+      const dist = Math.hypot( (clientX - dragState.offsetX) - x , (clientY - dragState.offsetY) - y );
+      if( dist > this._touchSlop ){
         dragState.moved = true;
       }
       const vw = document.documentElement.clientWidth;
@@ -156,7 +160,6 @@ const AuditPanelModule = {
       const size = ball.offsetWidth;
       x = Math.max(0, Math.min(vw - size, x));
       y = Math.max(0, Math.min(vh - size, y));
-
       if(!rafId){
         rafId = requestAnimationFrame(()=>{
           rafId = null;
@@ -164,16 +167,14 @@ const AuditPanelModule = {
           wrapper.style.top = `${y}px`;
           currentX = x;
           currentY = y;
-          // 每一帧同步更新内存配置对象，开关悬浮球重建DOM位置不会丢失
           cfg.posX = currentX;
           cfg.posY = currentY;
         });
       }
     };
-
     const endDrag = () => {
       if (!dragState.dragging) return;
-      // =========【核心】抬起瞬间判断：没有发生拖拽位移就打开弹窗，拖拽过就不打开弹窗；彻底不使用click事件=========
+      // 抬起：没有拖拽位移→轻点打开弹窗；拖拽过→保存位置，不打开弹窗
       if (!dragState.moved) {
         this.open();
       } else {
@@ -181,7 +182,6 @@ const AuditPanelModule = {
       }
       dragState.dragging = false;
     };
-
     // =========鼠标事件=========
     ball.addEventListener("mousedown", e=>{
       e.preventDefault();
@@ -195,10 +195,9 @@ const AuditPanelModule = {
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
     });
-
-    // =========触屏事件【去掉passive:true，允许preventDefault阻止浏览器合成鼠标/click事件】=========
+    // =========触屏事件=========
     ball.addEventListener("touchstart", e=>{
-      e.preventDefault(); // 关键！阻止浏览器自动生成mousedown/mouseup/click合成事件，从根源避免拖拽后弹窗
+      // 不调用e.preventDefault()，部分移动端浏览器拒绝touchstart preventDefault，会报错；靠捕获click拦截合成事件
       const t = e.touches[0];
       startDrag(t.clientX, t.clientY);
       const touchMove = (te)=>{
@@ -216,7 +215,7 @@ const AuditPanelModule = {
       document.addEventListener("touchmove", touchMove, {passive:false});
       document.addEventListener("touchend", touchEnd);
       document.addEventListener("touchcancel", touchEnd);
-    });
+    }, {passive:true});
   },
 
       updateFloatBallStyle() {
