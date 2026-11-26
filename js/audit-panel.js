@@ -42,7 +42,7 @@ const AuditPanelModule = {
   },
 
   // ========== 悬浮球 ==========
-    initFloatBall() {
+      initFloatBall() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     if (!cfg.enable && !forceShow) {
@@ -52,34 +52,87 @@ const AuditPanelModule = {
     }
     if(this.floatBallEl){
       this.updateFloatBallStyle();
+      this.updateBadge();
       return;
     }
+    // 外层wrapper：transform挂载在这里，放置球体+角标
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = `
+      position:fixed;
+      z-index:99999;
+      pointer-events:none;
+    `;
     const ball = document.createElement("div");
     ball.style.cssText = `
-      position:fixed;
+      position:relative;
       border-radius:50%;
       background:${cfg.color || "#7c68ee"};
       display:flex;align-items:center;justify-content:center;
-      color:#fff;font-weight:bold;cursor:pointer;z-index:99999;
+      color:#fff;font-weight:bold;cursor:pointer;
       transform:translate3d(0,0,0);will-change:transform;
       user-select:none;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.15);
       touch-action:none;
       width:${cfg.size}px;height:${cfg.size}px;
+      pointer-events:auto;
     `;
+    // 红色待审角标DOM
+    const badge = document.createElement("div");
+    badge.className = "audit-badge";
+    badge.style.cssText = `
+      position:absolute;
+      top:-4px;
+      right:-4px;
+      min-width:18px;
+      height:18px;
+      padding:0 4px;
+      background:#ef4444;
+      color:#fff;
+      font-size:11px;
+      font-weight:bold;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 2px 4px rgba(0,0,0,0.2);
+    `;
+    ball.appendChild(badge);
     if (cfg.avatarBase64) {
-      ball.innerHTML = `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      ball.innerHTML += `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     } else {
-      ball.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+      ball.innerHTML += `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
     }
+    wrapper.appendChild(ball);
+    document.body.appendChild(wrapper);
+    this.floatBallEl = wrapper;
+    this.ballInner = ball;
+    this.badgeEl = badge;
+
+    // 更新悬浮球角标函数
+    this.updateBadge = ()=>{
+      const count = AuditCardModule.pendingApply.length;
+      if(count <= 0){
+        this.badgeEl.style.display = "none";
+        return;
+      }
+      this.badgeEl.style.display = "flex";
+      this.badgeEl.innerText = count > 99 ? "99+" : String(count);
+    };
+    this.updateBadge();
+
+    // 监听待审队列变化自动刷新角标
+    EventBus.on("my‑audit‑data‑updated", ()=>{
+      this.updateBadge();
+    });
+
     if (cfg.posX != null && cfg.posY != null) {
-      ball.style.transform = `translate3d(${cfg.posX}px, ${cfg.posY}px, 0)`;
+      wrapper.style.transform = `translate3d(${cfg.posX}px, ${cfg.posY}px, 0)`;
     }
 
     let rafId = null;
     let dragState = {
       dragging: false,
       moved: false,
-      startX:0, startY:0, ballOriginX:0, ballOriginY:0
+      startX:0, startY:0, wrapperOriginX:0, wrapperOriginY:0
     };
 
     const startDrag = (clientX, clientY) => {
@@ -87,9 +140,9 @@ const AuditPanelModule = {
       dragState.moved = false;
       dragState.startX = clientX;
       dragState.startY = clientY;
-      const rect = ball.getBoundingClientRect();
-      dragState.ballOriginX = rect.left;
-      dragState.ballOriginY = rect.top;
+      const rect = wrapper.getBoundingClientRect();
+      dragState.wrapperOriginX = rect.left;
+      dragState.wrapperOriginY = rect.top;
     };
     const moveDrag = (clientX, clientY) => {
       if (!dragState.dragging) return;
@@ -99,14 +152,14 @@ const AuditPanelModule = {
       const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
       const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       const size = parseFloat(getComputedStyle(ball).width);
-      let x = dragState.ballOriginX + dx;
-      let y = dragState.ballOriginY + dy;
+      let x = dragState.wrapperOriginX + dx;
+      let y = dragState.wrapperOriginY + dy;
       x = Math.max(0, Math.min(vw - size, x));
       y = Math.max(0, Math.min(vh - size, y));
       if(!rafId) {
         rafId = requestAnimationFrame(() => {
           rafId = null;
-          ball.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+          wrapper.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         });
       }
     };
@@ -115,7 +168,7 @@ const AuditPanelModule = {
       if (!dragState.moved) {
         this.open();
       }else{
-        const rect = ball.getBoundingClientRect();
+        const rect = wrapper.getBoundingClientRect();
         AuditCardModule.auditConfig.floatBall.posX = rect.left;
         AuditCardModule.auditConfig.floatBall.posY = rect.top;
         AuditCardModule.saveToStorage();
@@ -123,15 +176,17 @@ const AuditPanelModule = {
       dragState.dragging = false;
     };
 
-    // 球内部只监听down，move/up放到document，解决鼠标移出悬浮球还在拖拽bug
     ball.addEventListener("mousedown", e => {
       e.preventDefault();
       startDrag(e.clientX, e.clientY);
-      document.addEventListener("mousemove", moveDrag);
-      document.addEventListener("mouseup", ()=>{
+      const onMouseMove = (e)=>moveDrag(e.clientX,e.clientY);
+      const onMouseUp = ()=>{
         endDrag();
-        document.removeEventListener("mousemove", moveDrag);
-      }, {once:true});
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
     });
 
     ball.addEventListener("touchstart", e => {
@@ -150,12 +205,9 @@ const AuditPanelModule = {
         document.removeEventListener("touchcancel", touchEnd);
       };
       document.addEventListener("touchmove", touchMove, {passive:false});
-      document.addEventListener("touchend", touchEnd, {once:true});
-      document.addEventListener("touchcancel", touchEnd, {once:true});
+      document.addEventListener("touchend", touchEnd);
+      document.addEventListener("touchcancel", touchEnd);
     }, { passive:true });
-
-    document.body.appendChild(ball);
-    this.floatBallEl = ball;
   },
 
     updateFloatBallStyle() {
@@ -170,20 +222,25 @@ const AuditPanelModule = {
       this.initFloatBall();
       return;
     }
-    // 全部热更新，不重建DOM
-    this.floatBallEl.style.width = cfg.size + "px";
-    this.floatBallEl.style.height = cfg.size + "px";
-    this.floatBallEl.style.background = cfg.color || "#7c68ee";
-    // 恢复图标/头像
+    const ball = this.ballInner;
+    ball.style.width = cfg.size + "px";
+    ball.style.height = cfg.size + "px";
+    ball.style.background = cfg.color || "#7c68ee";
+    // 删除旧图片/svg，保留badge角标节点，不能直接innerHTML覆盖
+    const oldImg = ball.querySelector("img");
+    const oldSvg = ball.querySelector("svg");
+    if(oldImg) oldImg.remove();
+    if(oldSvg) oldSvg.remove();
     if(cfg.avatarBase64){
-      this.floatBallEl.innerHTML = `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      ball.insertAdjacentHTML("beforeend",`<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`);
     }else{
-      this.floatBallEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+      ball.insertAdjacentHTML("beforeend",`<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`);
     }
-    // 恢复拖拽保存的位置
+    // transform挂载外层wrapper
     if(cfg.posX != null && cfg.posY != null){
       this.floatBallEl.style.transform = `translate3d(${cfg.posX}px, ${cfg.posY}px, 0)`;
     }
+    this.updateBadge();
   },
 
   // ========== 弹窗 ==========
@@ -1125,10 +1182,12 @@ const AuditPanelModule = {
     colorInput.type = "color";
     colorInput.value = float.color;
     colorInput.style.cssText = "width:40px;height:28px;border:none;padding:0;cursor:pointer;";
-    colorInput.oninput = () => {
+      colorInput.oninput = () => {
       float.color = colorInput.value;
-      M.saveToStorage();
       this.updateFloatBallStyle();
+    };
+    colorInput.onchange = () => {
+      M.saveToStorage();
     };
     const resetColorBtn = document.createElement("button");
     resetColorBtn.textContent = "恢复默认";
@@ -1161,8 +1220,10 @@ const AuditPanelModule = {
     sizeSlider.oninput = () => {
       float.size = Number(sizeSlider.value);
       sizeLabel.textContent = `大小 ${float.size}px`;
-      M.saveToStorage();
       this.updateFloatBallStyle();
+    };
+    sizeSlider.onchange = () => {
+      M.saveToStorage();
     };
     const resetSizeBtn = document.createElement("button");
     resetSizeBtn.textContent = "恢复默认";
