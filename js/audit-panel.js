@@ -890,16 +890,15 @@ const AuditPanelModule = {
     if (categories.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--color-text-2);font-size:13px">暂无分类</div>`;
     } else {
-      categories.forEach(cat => {
+            categories.forEach(cat => {
         const catEl = document.createElement("div");
         catEl.style.cssText = `
           border:1px solid var(--color-border);border-radius:12px;margin-bottom:10px;overflow:hidden;
           ${cat.isDisabled ? "opacity:0.6;" : ""}
         `;
-
         const catHead = document.createElement("div");
         catHead.style.cssText = `
-          padding:8px 10px;display:flex;align-items:center;gap:6px;
+          padding:8px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
           background:color-mix(in srgb, var(--color-main) 8%, transparent);
           font-size:13px;font-weight:bold;color:var(--color-text);
         `;
@@ -910,7 +909,6 @@ const AuditPanelModule = {
           M.toggleCategoryExpand(cat.id);
           this.renderCardLib(body);
         };
-
         const catDisableCheck = document.createElement("input");
         catDisableCheck.type = "checkbox";
         catDisableCheck.checked = !cat.isDisabled;
@@ -919,20 +917,62 @@ const AuditPanelModule = {
           this.renderCardLib(body);
         };
 
+        //=====【新增】分类组内全选复选框 =====
+        const groupCheck = document.createElement("input");
+        groupCheck.type = "checkbox";
+        groupCheck.dataset.catId = cat.id;
+        const showCardsGroup = kw
+          ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
+          : cat.cards;
+        const allSelectedInGroup = showCardsGroup.length>0 && showCardsGroup.every(c=>this._selectedCards.has(c.id));
+        const someSelectedInGroup = showCardsGroup.some(c=>this._selectedCards.has(c.id));
+        groupCheck.checked = allSelectedInGroup;
+        groupCheck.indeterminate = !allSelectedInGroup && someSelectedInGroup;
+
+        groupCheck.onchange = ()=>{
+          if(groupCheck.checked){
+            showCardsGroup.forEach(c=>this._selectedCards.add(c.id));
+          }else{
+            showCardsGroup.forEach(c=>this._selectedCards.delete(c.id));
+          }
+          this.renderCardLib(body);
+        };
+
         const catName = document.createElement("span");
         catName.textContent = `${cat.name} (${cat.cards.length})`;
         catName.style.flex = "1";
+
+        //=====【新增】整组启用 / 整组禁用按钮 =====
+        const groupEnableBtn = document.createElement("button");
+        groupEnableBtn.textContent = "整组启用";
+        groupEnableBtn.style = "padding:2px 5px;border:1px solid var(--color-main);border-radius:4px;background:var(--color-bg);color:var(--color-main);font-size:10px;cursor:pointer;";
+        groupEnableBtn.onclick = ()=>{
+          cat.cards.forEach(card=>{
+            M.updateCard(cat.id, card.id, {isDisabled:false, disabledBy:null});
+          });
+          Toast.show(`已将「${cat.name}」全部字卡设置为启用`);
+          this.renderCardLib(body);
+        };
+        const groupDisableBtn = document.createElement("button");
+        groupDisableBtn.textContent = "整组禁用";
+        groupDisableBtn.style = "padding:2px 5px;border:1px solid #ff9500;border-radius:4px;background:var(--color-bg);color:#ff9500;font-size:10px;cursor:pointer;";
+        groupDisableBtn.onclick = ()=>{
+          const myNick = M.getMyNick();
+          cat.cards.forEach(card=>{
+            M.updateCard(cat.id, card.id, {isDisabled:true, disabledBy: myNick});
+          });
+          Toast.show(`已将「${cat.name}」全部字卡设置为禁用`);
+          this.renderCardLib(body);
+        };
 
         const upBtn = document.createElement("button");
         upBtn.textContent = "↑";
         upBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
         upBtn.onclick = () => { M.moveCategorySort(cat.id, "up"); this.renderCardLib(body); };
-
         const downBtn = document.createElement("button");
         downBtn.textContent = "↓";
         downBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
         downBtn.onclick = () => { M.moveCategorySort(cat.id, "down"); this.renderCardLib(body); };
-
         const renameBtn = document.createElement("button");
         renameBtn.textContent = "重命名";
         renameBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
@@ -940,7 +980,6 @@ const AuditPanelModule = {
           const name = prompt("输入新名称", cat.name);
           if (name) { M.renameCategory(cat.id, name.trim()); this.renderCardLib(body); }
         };
-
         const delBtn = document.createElement("button");
         delBtn.textContent = "删除";
         delBtn.style = "padding:2px 6px;border:1px solid #ff3b30;border-radius:4px;background:transparent;color:#ff3b30;font-size:11px;cursor:pointer;";
@@ -955,10 +994,12 @@ const AuditPanelModule = {
             }
           }
         };
-
         catHead.appendChild(expandBtn);
         catHead.appendChild(catDisableCheck);
+        catHead.appendChild(groupCheck); //组全选框插入头部
         catHead.appendChild(catName);
+        catHead.appendChild(groupEnableBtn);
+        catHead.appendChild(groupDisableBtn);
         catHead.appendChild(upBtn);
         catHead.appendChild(downBtn);
         catHead.appendChild(renameBtn);
@@ -971,7 +1012,6 @@ const AuditPanelModule = {
           const showCards = kw
             ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
             : cat.cards;
-
           if (showCards.length === 0) {
             cardList.innerHTML = `<div style="text-align:center;padding:10px 0;color:var(--color-text-2);font-size:12px">该分类暂无匹配字卡</div>`;
           } else {
@@ -986,11 +1026,22 @@ const AuditPanelModule = {
               ck.type = "checkbox";
               ck.style.cssText = "margin-top:2px";
               ck.checked = this._selectedCards.has(card.id);
+              //===== 修改：单张勾选不整页重绘，只更新本组头部 groupCheck 的 indeterminate / checked状态 =====
               ck.onchange = ()=>{
                 if(ck.checked) this._selectedCards.add(card.id);
                 else this._selectedCards.delete(card.id);
+                //只找当前分类头部复选框更新DOM状态，不调用render
+                const gCheckDom = catHead.querySelector('input[type="checkbox"][data-cat-id="'+cat.id+'"]');
+                if(gCheckDom){
+                  const curShow = kw
+                    ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
+                    : cat.cards;
+                  const allSel = curShow.length>0 && curShow.every(c=>this._selectedCards.has(c.id));
+                  const someSel = curShow.some(c=>this._selectedCards.has(c.id));
+                  gCheckDom.checked = allSel;
+                  gCheckDom.indeterminate = !allSel && someSel;
+                }
               };
-
               const textwrap = document.createElement("div");
               textwrap.style.cssText = "flex:1;min-width:0;";
               let badgeHtml = "";
@@ -1005,17 +1056,14 @@ const AuditPanelModule = {
                   ${card.content} ${badgeHtml}
                 </div>
               `;
-
               const ops = document.createElement("div");
               ops.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
-
               const sendBtn = document.createElement("button");
               sendBtn.textContent = "发送";
               sendBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
               sendBtn.onclick = () => {
                 if (M.sendCardToChat(card)) Toast.show("已发送到聊天");
               };
-
               const editBtn = document.createElement("button");
               editBtn.textContent = "编辑";
               editBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
@@ -1026,7 +1074,6 @@ const AuditPanelModule = {
                   this.renderCardLib(body);
                 }
               };
-
               const toggleDisableBtn = document.createElement("button");
               toggleDisableBtn.textContent = card.isDisabled ? "启用" : "禁用";
               toggleDisableBtn.style.cssText = "padding:3px 6px;border:1px solid " + (card.isDisabled ? "var(--color-main)" : "#ff9500") + ";border-radius:4px;background:var(--color-bg);color:" + (card.isDisabled ? "var(--color-main)" : "#ff9500") + ";font-size:11px;cursor:pointer;";
@@ -1038,7 +1085,6 @@ const AuditPanelModule = {
                 }
                 this.renderCardLib(body);
               };
-
               const delBtn = document.createElement("button");
               delBtn.textContent = "删除";
               delBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:#ff3b30;color:#fff;font-size:11px;cursor:pointer;";
@@ -1047,12 +1093,10 @@ const AuditPanelModule = {
                 M.deleteCard(cat.id, card.id);
                 this.renderCardLib(body);
               };
-
               ops.appendChild(sendBtn);
               ops.appendChild(editBtn);
               ops.appendChild(toggleDisableBtn);
               ops.appendChild(delBtn);
-
               cardEl.appendChild(ck);
               cardEl.appendChild(textwrap);
               cardEl.appendChild(ops);
