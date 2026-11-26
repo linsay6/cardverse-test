@@ -904,7 +904,7 @@ const AuditPanelModule = {
     if (categories.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--color-text-2);font-size:13px">暂无分类</div>`;
     } else {
-           categories.forEach(cat => {
+              categories.forEach(cat => {
         const catEl = document.createElement("div");
         catEl.style.cssText = `
           border:1px solid var(--color-border);border-radius:12px;margin-bottom:10px;overflow:hidden;
@@ -912,12 +912,12 @@ const AuditPanelModule = {
         const catHead = document.createElement("div");
         catHead.style.cssText = `
           padding:8px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
-          background:color‑mix(in srgb, var(--color‑main) 8%, transparent);
-          font‑size:13px;font‑weight:bold;color:var(--color‑text);
+          background:color-mix(in srgb, var(--color-main) 8%, transparent);
+          font-size:13px;font-weight:bold;color:var(--color-text);
         `;
         const expandBtn = document.createElement("span");
         expandBtn.textContent = cat.expanded ? "▼" : "▶";
-        expandBtn.style.cssText = "cursor:pointer;font‑size:11px;";
+        expandBtn.style.cssText = "cursor:pointer;font-size:11px;";
         expandBtn.onclick = () => {
           M.toggleCategoryExpand(cat.id);
           this.renderCardLib(body);
@@ -955,10 +955,8 @@ const AuditPanelModule = {
         catName.textContent = `${cat.name} (${cat.cards.length})`;
         catName.style.flex = "1";
 
-        //=====【新增】整组启用 / 整组禁用按钮 =====
-                // 整组状态切换按钮（自动切换：整组禁用 / 整组启用）
+        //=====【整组状态切换按钮：自动切换整组禁用 / 整组启用】=====
         const groupToggleBtn = document.createElement("button");
-        // 判断本组是否全部禁用
         const allCardDisabled = cat.cards.length > 0 && cat.cards.every(c => c.isDisabled);
         if(allCardDisabled){
           groupToggleBtn.textContent = "整组启用";
@@ -985,22 +983,22 @@ const AuditPanelModule = {
 
         const upBtn = document.createElement("button");
         upBtn.textContent = "↑";
-        upBtn.style = "padding:2px 6px;border:1px solid var(--color‑border);border‑radius:4px;background:var(--color‑bg);font‑size:11px;cursor:pointer;";
+        upBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
         upBtn.onclick = () => { M.moveCategorySort(cat.id, "up"); this.renderCardLib(body); };
         const downBtn = document.createElement("button");
         downBtn.textContent = "↓";
-        downBtn.style = "padding:2px 6px;border:1px solid var(--color‑border);border‑radius:4px;background:var(--color‑bg);font‑size:11px;cursor:pointer;";
+        downBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
         downBtn.onclick = () => { M.moveCategorySort(cat.id, "down"); this.renderCardLib(body); };
         const renameBtn = document.createElement("button");
         renameBtn.textContent = "重命名";
-        renameBtn.style = "padding:2px 6px;border:1px solid var(--color‑border);border‑radius:4px;background:var(--color‑bg);font‑size:11px;cursor:pointer;";
+        renameBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
         renameBtn.onclick = () => {
           const name = prompt("输入新名称", cat.name);
           if (name) { M.renameCategory(cat.id, name.trim()); this.renderCardLib(body); }
         };
         const delBtn = document.createElement("button");
         delBtn.textContent = "删除";
-        delBtn.style = "padding:2px 6px;border:1px solid #ff3b30;border‑radius:4px;background:transparent;color:#ff3b30;font‑size:11px;cursor:pointer;";
+        delBtn.style = "padding:2px 6px;border:1px solid #ff3b30;border-radius:4px;background:transparent;color:#ff3b30;font-size:11px;cursor:pointer;";
         delBtn.onclick = () => {
           if (cat.cards.length > 0) {
             this.showTransferModal(cat, categories, body);
@@ -1014,7 +1012,7 @@ const AuditPanelModule = {
         };
         catHead.appendChild(expandBtn);
         catHead.appendChild(catDisableCheck);
-        catHead.appendChild(groupCheck); //组全选框插入头部
+        catHead.appendChild(groupCheck);
         catHead.appendChild(catName);
         catHead.appendChild(groupToggleBtn);
         catHead.appendChild(upBtn);
@@ -1025,31 +1023,29 @@ const AuditPanelModule = {
 
         if (cat.expanded) {
           const cardList = document.createElement("div");
-          // 修复：分类禁用状态，仅卡片列表透明度降低；头部catHead按钮不受opacity影响，保证可点击
+          // 修复：分类禁用仅卡片列表变灰，头部按钮完全可点击
           cardList.style.cssText = `padding:6px 10px;${cat.isDisabled ? "opacity:0.6;" : ""}`;
           const showCards = kw
             ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
             : cat.cards;
           if (showCards.length === 0) {
-            cardList.innerHTML = `<div style="text‑align:center;padding:10px 0;color:var(--color‑text‑2);font‑size:12px">该分类暂无匹配字卡</div>`;
+            cardList.innerHTML = `<div style="text-align:center;padding:10px 0;color:var(--color-text-2);font-size:12px">该分类暂无匹配字卡</div>`;
           } else {
             showCards.forEach(card => {
               const cardEl = document.createElement("div");
               cardEl.style.cssText = `
-                padding:8px;border:1px solid var(--color‑border);border‑radius:8px;margin‑bottom:6px;
-                ${card.isDisabled ? "opacity:0.6;background:var(--color‑bg);" : ""}
-                display:flex;align‑items:flex‑start;gap:6px;
+                padding:8px;border:1px solid var(--color-border);border-radius:8px;margin-bottom:6px;
+                ${card.isDisabled ? "opacity:0.6;background:var(--color-bg);" : ""}
+                display:flex;align-items:flex-start;gap:6px;
               `;
               const ck = document.createElement("input");
               ck.type = "checkbox";
-              ck.style.cssText = "margin‑top:2px";
+              ck.style.cssText = "margin-top:2px";
               ck.checked = this._selectedCards.has(card.id);
-              //===== 修改：单张勾选不整页重绘，只更新本组头部 groupCheck 的 indeterminate / checked状态 =====
               ck.onchange = ()=>{
                 if(ck.checked) this._selectedCards.add(card.id);
                 else this._selectedCards.delete(card.id);
-                //只找当前分类头部复选框更新DOM状态，不调用render
-                const gCheckDom = catHead.querySelector('input[type="checkbox"][data‑cat‑id="'+cat.id+'"]');
+                const gCheckDom = catHead.querySelector('input[type="checkbox"][data-cat-id="'+cat.id+'"]');
                 if(gCheckDom){
                   const curShow = kw
                     ? cat.cards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
@@ -1060,15 +1056,18 @@ const AuditPanelModule = {
                   gCheckDom.indeterminate = !allSel && someSel;
                 }
               };
+
               const textwrap = document.createElement("div");
-              textwrap.style.cssText = "flex:1;min‑width:0;";
+              textwrap.style.cssText = "flex:1;min-width:0;";
               let badgeHtml = "";
               if (card.isDisabled) {
                 const by = card.disabledBy;
                 const isBoth = by && by !== M.getMyNick();
                 const badgeText = isBoth ? "双方禁用" : "单方禁用";
-             badgeHtml = `<span style="font-size:10px;padding:1px 4px;border-radius:4px;background:#ff3b30;color:#fff;white-space:nowrap;">${badgeText}</span>`;
+                // 去掉左边margin，放到下一行靠右
+                badgeHtml = `<span style="font-size:10px;padding:1px 4px;border-radius:4px;background:#ff3b30;color:#fff;white-space:nowrap;">${badgeText}</span>`;
               }
+              // ✅布局修改：字卡文本一行；下一行单独div，text‑align:right实现右下角标签
               textwrap.innerHTML = `
                 <div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;${card.isDisabled ? 'text-decoration:line-through;' : ''}">
                   ${card.content}
@@ -1077,17 +1076,21 @@ const AuditPanelModule = {
                   ${badgeHtml}
                 </div>
               `;
+
+              // ========= 这里完整保留全部4个按钮：发送、编辑、启用/禁用、删除 =========
               const ops = document.createElement("div");
-              ops.style.cssText = "display:flex;gap:4px;flex‑wrap:wrap;";
+              ops.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
+
               const sendBtn = document.createElement("button");
               sendBtn.textContent = "发送";
-              sendBtn.style.cssText = "padding:3px 6px;border:none;border‑radius:4px;background:var(--color‑main);color:#fff;font‑size:11px;cursor:pointer;";
+              sendBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
               sendBtn.onclick = () => {
                 if (M.sendCardToChat(card)) Toast.show("已发送到聊天");
               };
+
               const editBtn = document.createElement("button");
               editBtn.textContent = "编辑";
-              editBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color‑border);border‑radius:4px;background:var(--color‑bg);color:var(--color‑text);font‑size:11px;cursor:pointer;";
+              editBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
               editBtn.onclick = () => {
                 const newText = prompt("编辑字卡内容：", card.content);
                 if (newText && newText.trim()) {
@@ -1095,9 +1098,10 @@ const AuditPanelModule = {
                   this.renderCardLib(body);
                 }
               };
+
               const toggleDisableBtn = document.createElement("button");
               toggleDisableBtn.textContent = card.isDisabled ? "启用" : "禁用";
-              toggleDisableBtn.style.cssText = "padding:3px 6px;border:1px solid " + (card.isDisabled ? "var(--color‑main)" : "#ff9500") + ";border‑radius:4px;background:var(--color‑bg);color:" + (card.isDisabled ? "var(--color‑main)" : "#ff9500") + ";font‑size:11px;cursor:pointer;";
+              toggleDisableBtn.style.cssText = "padding:3px 6px;border:1px solid " + (card.isDisabled ? "var(--color-main)" : "#ff9500") + ";border-radius:4px;background:var(--color-bg);color:" + (card.isDisabled ? "var(--color-main)" : "#ff9500") + ";font-size:11px;cursor:pointer;";
               toggleDisableBtn.onclick = () => {
                 if (card.isDisabled) {
                   M.updateCard(cat.id, card.id, { isDisabled: false, disabledBy: null });
@@ -1106,18 +1110,22 @@ const AuditPanelModule = {
                 }
                 this.renderCardLib(body);
               };
+
               const delBtn = document.createElement("button");
               delBtn.textContent = "删除";
-              delBtn.style.cssText = "padding:3px 6px;border:none;border‑radius:4px;background:#ff3b30;color:#fff;font‑size:11px;cursor:pointer;";
+              delBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:#ff3b30;color:#fff;font-size:11px;cursor:pointer;";
               delBtn.onclick = () => {
                 if(!confirm("确定删除这张字卡？")) return;
                 M.deleteCard(cat.id, card.id);
                 this.renderCardLib(body);
               };
+
+              // ⚠️重要：全部append进去，少一个就少一个按钮
               ops.appendChild(sendBtn);
               ops.appendChild(editBtn);
               ops.appendChild(toggleDisableBtn);
               ops.appendChild(delBtn);
+
               cardEl.appendChild(ck);
               cardEl.appendChild(textwrap);
               cardEl.appendChild(ops);
