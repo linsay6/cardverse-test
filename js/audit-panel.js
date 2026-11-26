@@ -27,7 +27,7 @@ const AuditPanelModule = {
   _dragMoved: false,
   _touchSlop: 8,
 
-  init() {
+    init() {
     EventBus.on("open‑panel", (payload) => {
       if (payload && payload.panel === "audit") this.open();
     });
@@ -37,8 +37,21 @@ const AuditPanelModule = {
     });
     EventBus.on("my‑audit‑data‑updated", () => {
       if (this.panelEl) this.render(this.panelEl.firstElementChild);
+      // 角标更新，只在这里注册一次，不在initFloatBall内部重复注册
+      this.updateBadge?.();
     });
     this.initFloatBall();
+  },
+  // ✅提升为顶层正式方法，不再在initFloatBall内部动态定义
+  updateBadge() {
+    if(!this.badgeEl) return;
+    const count = AuditCardModule.pendingApply.length;
+    if(count <= 0){
+      this.badgeEl.style.display = "none";
+      return;
+    }
+    this.badgeEl.style.display = "flex";
+    this.badgeEl.innerText = count > 99 ? "99+" : String(count);
   },
 
   // ========== 悬浮球 ==========
@@ -55,7 +68,7 @@ const AuditPanelModule = {
     if (!cfg.enable && !forceShow) {
       return;
     }
-    // fixed外层wrapper，不再用transform，改用left/top
+    // 外层wrapper，不用pointer-events:none
     const wrapper = document.createElement("div");
     wrapper.style.cssText = `
       position:fixed;
@@ -68,6 +81,7 @@ const AuditPanelModule = {
       background:${cfg.color || "#7c68ee"};
       display:flex;align-items:center;justify-content:center;
       color:#fff;font-weight:bold;cursor:pointer;
+      transform:translate3d(0,0,0);will-change:transform;
       user-select:none;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.15);
       touch-action:none;
       width:${cfg.size}px;height:${cfg.size}px;
@@ -106,84 +120,83 @@ const AuditPanelModule = {
     this.ballInner = ball;
     this.badgeEl = badge;
 
-    this.updateBadge = ()=>{
-      const count = AuditCardModule.pendingApply.length;
-      if(!this.badgeEl) return;
-      if(count <= 0){
-        this.badgeEl.style.display = "none";
-        return;
-      }
-      this.badgeEl.style.display = "flex";
-      this.badgeEl.innerText = count > 99 ? "99+" : String(count);
-    };
+    // 初始化渲染角标，事件总线已经在init()注册，这里不再重复on注册
     this.updateBadge();
-    EventBus.on("my-audit-data-updated", ()=>{
-      this.updateBadge();
-    });
 
-    // 读取保存的位置，使用left/top代替transform
-    let currentX = cfg.posX ?? 50;
-    let currentY = cfg.posY ?? 80;
-    wrapper.style.left = `${currentX}px`;
-    wrapper.style.top = `${currentY}px`;
+    // 读取保存的位置
+    let currentTransformX = cfg.posX ?? 0;
+    let currentTransformY = cfg.posY ?? 0;
+    wrapper.style.transform = `translate3d(${currentTransformX}px, ${currentTransformY}px, 0)`;
 
     let rafId = null;
     let dragState = {
       dragging: false,
       moved: false,
-      offsetX:0,
-      offsetY:0
+      pointerStartX:0,
+      pointerStartY:0,
+      transformStartX:0,
+      transformStartY:0
     };
 
     const startDrag = (clientX, clientY) => {
       dragState.dragging = true;
       dragState.moved = false;
-      const rect = wrapper.getBoundingClientRect();
-      dragState.offsetX = clientX - rect.left;
-      dragState.offsetY = clientY - rect.top;
+      dragState.pointerStartX = clientX;
+      dragState.pointerStartY = clientY;
+      dragState.transformStartX = currentTransformX;
+      dragState.transformStartY = currentTransformY;
     };
 
     const moveDrag = (clientX, clientY) => {
       if (!dragState.dragging) return;
-      const dx = clientX - dragState.offsetX;
-      const dy = clientY - dragState.offsetY;
+      const dx = clientX - dragState.pointerStartX;
+      const dy = clientY - dragState.pointerStartY;
       if (Math.hypot(dx, dy) > this._touchSlop) {
         dragState.moved = true;
       }
-      const vw = document.documentElement.clientWidth;
-      const vh = document.documentElement.clientHeight;
-      const size = ball.offsetWidth;
-      let x = dx;
-      let y = dy;
+      const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      const size = parseFloat(getComputedStyle(ball).width);
+      let x = dragState.transformStartX + dx;
+      let y = dragState.transformStartY + dy;
       x = Math.max(0, Math.min(vw - size, x));
       y = Math.max(0, Math.min(vh - size, y));
       if (!rafId) {
         rafId = requestAnimationFrame(() => {
           rafId = null;
-          wrapper.style.left = `${x}px`;
-          wrapper.style.top = `${y}px`;
-          currentX = x;
-          currentY = y;
+          wrapper.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+          currentTransformX = x;
+          currentTransformY = y;
         });
       }
     };
 
     const endDrag = () => {
       if (!dragState.dragging) return;
-      if (!dragState.moved) {
-        this.open();
-      } else {
-        AuditCardModule.auditConfig.floatBall.posX = currentX;
-        AuditCardModule.auditConfig.floatBall.posY = currentY;
+      if (dragState.moved) {
+        AuditCardModule.auditConfig.floatBall.posX = currentTransformX;
+        AuditCardModule.auditConfig.floatBall.posY = currentTransformY;
         AuditCardModule.saveToStorage();
       }
       dragState.dragging = false;
     };
 
-    ball.addEventListener("mousedown", e=>{
+    // ✅重点：独立click事件处理；拖拽发生移动就阻止打开弹窗，轻点才打开
+    ball.addEventListener("click", (e)=>{
+      if(dragState.moved){
+        // 发生拖拽动作，点击无效，阻止
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
+      // 无拖拽：点击打开审核面板
+      this.open();
+    });
+
+    ball.addEventListener("mousedown", e => {
       e.preventDefault();
       startDrag(e.clientX, e.clientY);
-      const onMouseMove = (e)=>moveDrag(e.clientX, e.clientY);
+      const onMouseMove = (e)=>moveDrag(e.clientX,e.clientY);
       const onMouseUp = ()=>{
         endDrag();
         document.removeEventListener("mousemove", onMouseMove);
@@ -193,7 +206,7 @@ const AuditPanelModule = {
       document.addEventListener("mouseup", onMouseUp);
     });
 
-    ball.addEventListener("touchstart", e=>{
+    ball.addEventListener("touchstart", e => {
       const t = e.touches[0];
       startDrag(t.clientX, t.clientY);
       const touchMove = (te)=>{
@@ -211,8 +224,9 @@ const AuditPanelModule = {
       document.addEventListener("touchmove", touchMove, {passive:false});
       document.addEventListener("touchend", touchEnd);
       document.addEventListener("touchcancel", touchEnd);
-    }, {passive:true});
+    }, { passive:true });
   },
+
   updateFloatBallStyle() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
