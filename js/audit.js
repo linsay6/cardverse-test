@@ -273,14 +273,17 @@ const AuditCardModule = {
   },
 
   // ========== 待审申请，保留原版全部字段 sourceGroupId / targetGroupId ==========
-  createPendingApply(action, payload, applicant) {
+      createPendingApply(action, payload, applicant) {
     if (this.pendingApply.length >= this.auditConfig.dreamEngine.pendingMax) {
-      if (this.auditConfig.debug) console.log("pending队列已满，放弃生成申请");
+      if (this.auditConfig.debug) console.log("[createPendingApply]pending队列已满，放弃生成申请");
       return null;
     }
     const now = Date.now();
     const isCool = this.pendingApply.some(ap => ap.action === action && ap.cardText === payload.cardText && (now - ap.lastApplyTime) < this.auditConfig.dreamEngine.applyCoolDownMs);
-    if (isCool) return null;
+    if (isCool) {
+      if(this.auditConfig.debug) console.log("[createPendingApply]冷却限制，跳过",payload.cardText);
+      return null;
+    }
     const applyItem = {
       applyId: String(now),
       action,
@@ -294,6 +297,7 @@ const AuditCardModule = {
       remark: ""
     };
     this.pendingApply.push(applyItem);
+    if(this.auditConfig.debug) console.log("[createPendingApply]✅成功新增待审申请", applyItem);
     this.saveToStorage();
     return applyItem;
   },
