@@ -956,26 +956,31 @@ const AuditPanelModule = {
         catName.style.flex = "1";
 
         //=====【新增】整组启用 / 整组禁用按钮 =====
-        const groupEnableBtn = document.createElement("button");
-        groupEnableBtn.textContent = "整组启用";
-        groupEnableBtn.style = "padding:2px 5px;border:1px solid var(--color‑main);border‑radius:4px;background:var(--color‑bg);color:var(--color‑main);font‑size:10px;cursor:pointer;";
-        groupEnableBtn.onclick = ()=>{
-          cat.cards.forEach(card=>{
-            M.updateCard(cat.id, card.id, {isDisabled:false, disabledBy:null});
-          });
-          Toast.show(`已将「${cat.name}」全部字卡设置为启用`);
-          this.renderCardLib(body);
-        };
-        const groupDisableBtn = document.createElement("button");
-        groupDisableBtn.textContent = "整组禁用";
-        groupDisableBtn.style = "padding:2px 5px;border:1px solid #ff9500;border‑radius:4px;background:var(--color‑bg);color:#ff9500;font‑size:10px;cursor:pointer;";
-        groupDisableBtn.onclick = ()=>{
-          const myNick = M.getMyNick();
-          cat.cards.forEach(card=>{
-            M.updateCard(cat.id, card.id, {isDisabled:true, disabledBy: myNick});
-          });
-          Toast.show(`已将「${cat.name}」全部字卡设置为禁用`);
-          this.renderCardLib(body);
+                // 整组状态切换按钮（自动切换：整组禁用 / 整组启用）
+        const groupToggleBtn = document.createElement("button");
+        // 判断本组是否全部禁用
+        const allCardDisabled = cat.cards.length > 0 && cat.cards.every(c => c.isDisabled);
+        if(allCardDisabled){
+          groupToggleBtn.textContent = "整组启用";
+          groupToggleBtn.style = "padding:2px 5px;border:1px solid var(--color-main);border-radius:4px;background:var(--color-bg);color:var(--color-main);font-size:10px;cursor:pointer;";
+          groupToggleBtn.onclick = ()=>{
+            cat.cards.forEach(card=>{
+              M.updateCard(cat.id, card.id, {isDisabled:false, disabledBy:null});
+            });
+            Toast.show(`已将「${cat.name}」全部字卡设置为启用`);
+            this.renderCardLib(body);
+          };
+        }else{
+          groupToggleBtn.textContent = "整组禁用";
+          groupToggleBtn.style = "padding:2px 5px;border:1px solid #ff9500;border-radius:4px;background:var(--color-bg);color:#ff9500;font-size:10px;cursor:pointer;";
+          groupToggleBtn.onclick = ()=>{
+            const myNick = M.getMyNick();
+            cat.cards.forEach(card=>{
+              M.updateCard(cat.id, card.id, {isDisabled:true, disabledBy: myNick});
+            });
+            Toast.show(`已将「${cat.name}」全部字卡设置为禁用`);
+            this.renderCardLib(body);
+          };
         };
 
         const upBtn = document.createElement("button");
@@ -1011,8 +1016,7 @@ const AuditPanelModule = {
         catHead.appendChild(catDisableCheck);
         catHead.appendChild(groupCheck); //组全选框插入头部
         catHead.appendChild(catName);
-        catHead.appendChild(groupEnableBtn);
-        catHead.appendChild(groupDisableBtn);
+        catHead.appendChild(groupToggleBtn);
         catHead.appendChild(upBtn);
         catHead.appendChild(downBtn);
         catHead.appendChild(renameBtn);
@@ -1063,11 +1067,14 @@ const AuditPanelModule = {
                 const by = card.disabledBy;
                 const isBoth = by && by !== M.getMyNick();
                 const badgeText = isBoth ? "双方禁用" : "单方禁用";
-                badgeHtml = `<span style="font‑size:10px;padding:1px 4px;border‑radius:4px;background:#ff3b30;color:#fff;margin‑left:6px;white‑space:nowrap;">${badgeText}</span>`;
+             badgeHtml = `<span style="font-size:10px;padding:1px 4px;border-radius:4px;background:#ff3b30;color:#fff;white-space:nowrap;">${badgeText}</span>`;
               }
               textwrap.innerHTML = `
-                <div style="font‑size:12px;color:var(--color‑text‑2);overflow:hidden;white‑space:nowrap;text‑overflow:ellipsis;${card.isDisabled ? 'text‑decoration:line‑through;' : ''}">
-                  ${card.content} ${badgeHtml}
+                <div style="font-size:12px;color:var(--color-text-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;${card.isDisabled ? 'text-decoration:line-through;' : ''}">
+                  ${card.content}
+                </div>
+                <div style="text-align:right;margin-top:3px;">
+                  ${badgeHtml}
                 </div>
               `;
               const ops = document.createElement("div");
