@@ -1500,7 +1500,8 @@ const AuditPanelModule = {
     body.appendChild(numberInputRaw("情绪命中概率", engine.emotionProb, v => { engine.emotionProb = v; M.saveToStorage(); }));
     body.appendChild(numberInputRaw("混沌操作概率", engine.chaosProb, v => { engine.chaosProb = v; M.saveToStorage(); }));
     body.appendChild(numberInputRaw("主动发送概率", engine.activeSendProb, v => { engine.activeSendProb = v; M.saveToStorage(); }));
-    body.appendChild(numberInputMinute("主动发送冷却(分)", engine.activeSendCoolDownMs, v => { engine.activeSendCoolDownMs = v; M.saveToStorage(); }));
+    // 主动发送冷却：读取时毫秒转分钟，保存时分钟转毫秒
+    body.appendChild(numberInputRaw("主动发送冷却(分)", engine.activeSendCoolDownMs / 60000, v => {engine.activeSendCoolDownMs = v * 60000;M.saveToStorage();}));
     body.appendChild(numberInputRaw("待审上限(条)", engine.pendingMax, v => { engine.pendingMax = v; M.saveToStorage(); }));
     body.appendChild(numberInputMinute("冷却时间(分)", engine.applyCoolDownMs, v => { engine.applyCoolDownMs = v; M.saveToStorage(); }));
 
