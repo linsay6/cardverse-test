@@ -1499,8 +1499,10 @@ const AuditPanelModule = {
     body.appendChild(numberInputRaw("基础触发概率", engine.baseProb, v => { engine.baseProb = v; M.saveToStorage(); }));
     body.appendChild(numberInputRaw("情绪命中概率", engine.emotionProb, v => { engine.emotionProb = v; M.saveToStorage(); }));
     body.appendChild(numberInputRaw("混沌操作概率", engine.chaosProb, v => { engine.chaosProb = v; M.saveToStorage(); }));
+    body.appendChild(numberInputRaw("主动发送概率", engine.activeSendProb, v => { engine.activeSendProb = v; M.saveToStorage(); }));
+    body.appendChild(numberInputMinute("主动发送冷却(分)", engine.activeSendCoolDownMs, v => { engine.activeSendCoolDownMs = v; M.saveToStorage(); }));
     body.appendChild(numberInputRaw("待审上限(条)", engine.pendingMax, v => { engine.pendingMax = v; M.saveToStorage(); }));
-    body.appendChild(numberInputMinute("冷却时间(分)", engine.applyCoolDownMs/1000, v => { engine.applyCoolDownMs = v*1000; M.saveToStorage(); }));
+    body.appendChild(numberInputMinute("冷却时间(分)", engine.applyCoolDownMs, v => { engine.applyCoolDownMs = v; M.saveToStorage(); }));
 
     // -------- 其他设置 --------
     body.appendChild(sectionTitle("通知与调试"));
