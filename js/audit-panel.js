@@ -117,7 +117,7 @@ const AuditPanelModule = {
       this.badgeEl.innerText = count > 99 ? "99+" : String(count);
     };
     this.updateBadge();
-    EventBus.on("my‑audit‑data‑updated", ()=>{
+    EventBus.on("my-audit-data-updated", ()=>{
       this.updateBadge();
     });
 
@@ -131,7 +131,7 @@ const AuditPanelModule = {
     let dragState = {
       dragging: false,
       moved: false,
-      offsetX:0, // 鼠标按下点距离球体左上角偏移
+      offsetX:0,
       offsetY:0
     };
 
@@ -139,7 +139,6 @@ const AuditPanelModule = {
       dragState.dragging = true;
       dragState.moved = false;
       const rect = wrapper.getBoundingClientRect();
-      // 记录鼠标相对于球体左上角的偏移，解决鼠标和球体错位
       dragState.offsetX = clientX - rect.left;
       dragState.offsetY = clientY - rect.top;
     };
@@ -148,19 +147,18 @@ const AuditPanelModule = {
       if (!dragState.dragging) return;
       const dx = clientX - dragState.offsetX;
       const dy = clientY - dragState.offsetY;
-      if(Math.hypot(clientX‑dragState.offsetX‑currentX, clientY‑dragState.offsetY‑currentY) > this._touchSlop){
+      if (Math.hypot(dx, dy) > this._touchSlop) {
         dragState.moved = true;
       }
       const vw = document.documentElement.clientWidth;
       const vh = document.documentElement.clientHeight;
       const size = ball.offsetWidth;
-      // 边界限制：允许x=0，完整拖到屏幕最左
       let x = dx;
       let y = dy;
       x = Math.max(0, Math.min(vw - size, x));
       y = Math.max(0, Math.min(vh - size, y));
-      if(!rafId){
-        rafId = requestAnimationFrame(()=>{
+      if (!rafId) {
+        rafId = requestAnimationFrame(() => {
           rafId = null;
           wrapper.style.left = `${x}px`;
           wrapper.style.top = `${y}px`;
