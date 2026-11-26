@@ -22,7 +22,7 @@ const AuditCardModule = {
   auditHistory: [],
   auditConfig: {
     floatBall: { enable: true, size: 48, color: "#7c68ee", avatarBase64: "", posX: null, posY: null },
-    dreamEngine: {
+        dreamEngine: {
       enableGrabChat: true,
       enableChaos: true,
       enableActiveSend: true,
@@ -30,6 +30,7 @@ const AuditCardModule = {
       baseProb: 0.05,
       emotionProb: 0.30,
       chaosProb: 0.02,
+      activeSendProb: 0.3, // 主动发送独立概率，默认0.3
       pendingMax: 20,
       applyCoolDownMs: 60000,
       activeSendCoolDownMs: 120000, // 主动发送冷却，默认2分钟
@@ -398,7 +399,7 @@ const AuditCardModule = {
     }
   },
 
-    runActiveSend() {
+      runActiveSend() {
     const cfg = this.auditConfig.dreamEngine;
     if (!cfg.enableActiveSend) {
       if(this.auditConfig.debug) console.log("[activeSend] 主动消息开关关闭");
@@ -411,13 +412,19 @@ const AuditCardModule = {
       if(this.auditConfig.debug) console.log(`[activeSend] ⏳冷却中，还剩${remain}秒`);
       return;
     }
-    // 主动发送这里没有独立概率，满足冷却就尝试抽取字卡发送
+    // 主动发送独立概率判定
+    const r = Math.random();
+    if(this.auditConfig.debug) console.log("[activeSend] 主动发送随机值：", r, "设定概率：", cfg.activeSendProb);
+    if(r >= cfg.activeSendProb){
+      if(this.auditConfig.debug) console.log("[activeSend] ❌未命中主动发送概率");
+      return;
+    }
     const card = this.drawRandomCard("auditReport");
     if(!card){
       if(this.auditConfig.debug) console.log("[activeSend] ❌无可用字卡，不发送");
       return;
     }
-    if(this.auditConfig.debug) console.log("[activeSend] ✅满足条件，发送字卡：", card.content);
+    if(this.auditConfig.debug) console.log("[activeSend] ✅命中概率，发送字卡：", card.content);
     const ok = this.sendCardToChat(card);
     if(ok){
       this.lastActiveSendTs = now; // 发送成功才更新冷却时间戳
