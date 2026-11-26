@@ -247,31 +247,7 @@ export const DesktopModule = {
     }
     
     this._lastRenderedWidth = realWidth;
-    // 【终极自愈】：每次渲染前，强制根据当前真实设备宽度，重算并矫正所有的 X 坐标
-    this.config.pages.forEach(page => {
-      const { marginLeft, gap } = this.getGridInfo(realWidth);
-      
-      const sorted = [...page.cards].sort((a,b)=>{
-        if (Math.abs(a.y - b.y) > 10) return a.y - b.y;
-        return a.x - b.x;
-      });
-      
-      let rowMap = {};
-      sorted.forEach(card => {
-        const rowKey = Math.round((card.y - 16) / (CARD_HEIGHT + V_GAP + LABEL_HEIGHT));
-        if (!rowMap[rowKey]) rowMap[rowKey] = [];
-        rowMap[rowKey].push(card);
-      });
-      Object.keys(rowMap).forEach(rowKey => {
-        const rowCards = rowMap[rowKey];
-        rowCards.forEach((card, index) => {
-          const col = index % 4; // 强制限制为 0~3 列
-          const rowOffset = Math.floor(index / 4); 
-          card.x = Math.round(marginLeft + col * (CARD_WIDTH + gap));
-          card.y = 16 + (Number(rowKey) + rowOffset) * (CARD_HEIGHT + V_GAP + LABEL_HEIGHT);
-        });
-      });
-    });
+   
     // 渲染前保存滚动位置
     const wrapBefore = document.getElementById('desktop-pages-wrap');
     let restoreScrollLeft = 0;
@@ -344,20 +320,24 @@ export const DesktopModule = {
           align-items:center;
         }
         .desktop-card {
-          width: ${CARD_WIDTH}px;
-          height: ${CARD_HEIGHT}px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius:18px;
-          background: var(--color-main);
-          border:1px solid color-mix(in srgb,var(--color-main) 30%,transparent);
-          cursor: pointer;
-          user-select: none;
-          box-sizing: border-box;
-          will-change: transform;
-          position:relative;
-        }
+  width: ${CARD_WIDTH}px;
+  height: ${CARD_HEIGHT}px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius:18px;
+  background: var(--color-main);
+  border:1px solid color-mix(in srgb,var(--color-main) 30%,transparent);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  box-sizing: border-box;
+  will-change: transform;
+  position:relative;
+}
+
         .desktop-card:active { transform: scale(0.94); }
         .desktop-card.dragging {
           z-index: 999;
@@ -853,13 +833,14 @@ font-weight:bold;z-index:10;white-space:nowrap;
     wrapEl.addEventListener('mouseup', clearTimer);
     wrapEl.addEventListener('mouseleave', clearTimer);
 
-    wrapEl.addEventListener('touchstart', (e) => {
+      wrapEl.addEventListener('touchstart', (e) => {
       if(["card-del-btn","card-icon-btn","card-move-btn"].some(cls=>e.target.classList.contains(cls))) return;
       const t = e.touches[0];
       startHold(t.clientX, t.clientY);
-    }, { passive:true });
-    wrapEl.addEventListener('touchend', clearTimer);
-    wrapEl.addEventListener('touchcancel', clearTimer);
+    }, { passive: false });
+    wrapEl.addEventListener('touchend', clearTimer, { passive: false });
+    wrapEl.addEventListener('touchcancel', clearTimer, { passive: false });
+
   },
   // 真正开始拖拽（长按触发后执行）
   startRealDrag(clientX, clientY, wrapEl, cardEl, cardData, pageIndex){
