@@ -332,10 +332,18 @@ export const DesktopModule = {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  -webkit-user-drag: none;
   touch-action: manipulation;
   box-sizing: border-box;
   will-change: transform;
   position:relative;
+}
+/* 重点：针对内部img自定义图标，屏蔽长按保存图片菜单 */
+.desktop-card .card-icon img{
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
 }
 
         .desktop-card:active { transform: scale(0.94); }
@@ -802,46 +810,63 @@ font-weight:bold;z-index:10;white-space:nowrap;
       }
     }
   },
-  /**
+    /**
    * 对标鸿蒙 DesktopGrid.ets：长按才触发拖拽，短按为点击
    */
   bindDragEvents(wrapEl, cardEl, cardData, pageIndex) {
     const self = this;
     let longPressTimer = null;
+    let touchEventCache = null;
     const LONG_PRESS_MS = 220; // 长按阈值，220ms长按触发拖拽
-
     function clearTimer(){
       if(longPressTimer){
         clearTimeout(longPressTimer);
         longPressTimer = null;
       }
+      touchEventCache = null;
     }
-
-    const startHold = (clientX, clientY) => {
+    const startHold = (evt) => {
       clearTimer();
+      touchEventCache = evt;
       // 长按定时器
       longPressTimer = setTimeout(()=>{
-        self.startRealDrag(clientX, clientY, wrapEl, cardEl, cardData, pageIndex);
+        // 真正触发长按的时候阻止系统长按菜单
+        if(touchEventCache && touchEventCache.preventDefault){
+          try { touchEventCache.preventDefault(); }catch(e){}
+        }
+        self.startRealDrag(evt.clientX, evt.clientY, wrapEl, cardEl, cardData, pageIndex);
       }, LONG_PRESS_MS);
     };
 
     wrapEl.addEventListener('mousedown', (e) => {
       // 如果点的是按钮，不触发长按
       if(["card-del-btn","card-icon-btn","card-move-btn"].some(cls=>e.target.classList.contains(cls))) return;
-      startHold(e.clientX, e.clientY);
+      startHold(e);
     });
     wrapEl.addEventListener('mouseup', clearTimer);
     wrapEl.addEventListener('mouseleave', clearTimer);
 
-      wrapEl.addEventListener('touchstart', (e) => {
+    wrapEl.addEventListener('touchstart', (e) => {
       if(["card-del-btn","card-icon-btn","card-move-btn"].some(cls=>e.target.classList.contains(cls))) return;
       const t = e.touches[0];
-      startHold(t.clientX, t.clientY);
-    }, { passive: false });
-    wrapEl.addEventListener('touchend', clearTimer, { passive: false });
-    wrapEl.addEventListener('touchcancel', clearTimer, { passive: false });
+      // 将touches信息挂载到event对象
+      e.clientX = t.clientX;
+      e.clientY = t.clientY;
+      startHold(e);
+    }, { passive:false });
 
+    wrapEl.addEventListener('touchend', clearTimer, { passive:false });
+    wrapEl.addEventListener('touchcancel', clearTimer, { passive:false });
+    wrapEl.addEventListener('touchmove', clearTimer, { passive:false });
+
+    // 阻止移动端长按弹出系统菜单（安卓长按、ios模拟长按菜单）
+    wrapEl.addEventListener('contextmenu', (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    });
   },
+
   // 真正开始拖拽（长按触发后执行）
   startRealDrag(clientX, clientY, wrapEl, cardEl, cardData, pageIndex){
     const self = this;
