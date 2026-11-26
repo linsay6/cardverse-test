@@ -418,7 +418,8 @@ const AuditCardModule = {
       return;
     }
     // 按照配置的scanIntervalSec秒数定时执行
-    const intervalMs = cfg.scanIntervalSec * 1000;
+        // 界面输入是【分钟】，转成毫秒
+    const intervalMs = cfg.scanIntervalSec * 60 * 1000;
     this.engineTimerId = setInterval(()=>{
       // 尝试从全局ChatModule拿聊天消息
       const chatMsgList = window.ChatModule?.messageList ?? [];
@@ -427,6 +428,7 @@ const AuditCardModule = {
       }
       this.engineTick(chatMsgList);
     }, intervalMs);
+
     if(this.auditConfig.debug) console.log(`[Audit引擎]定时器已启动，间隔${cfg.scanIntervalSec}秒`);
   },
 };
