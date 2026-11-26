@@ -338,8 +338,8 @@ const AuditCardModule = {
   // ========== 梦角引擎：使用DS的增强实现 ==========
     scanChatAndGenApply(chatMsgList) {
     const cfg = this.auditConfig.dreamEngine;
-    if (!cfg.enableGrabChat || this.engineRunning) {
-      if(this.auditConfig.debug) console.log("[scanChat] 跳过：抓取开关关闭 or 引擎忙");
+    if (!cfg.enableGrabChat) {
+      if(this.auditConfig.debug) console.log("[scanChat] 跳过：抓取聊天开关关闭");
       return;
     }
     const now = Date.now();
@@ -388,14 +388,28 @@ const AuditCardModule = {
     if (card) this.sendCardToChat(card);
   },
 
-  async engineTick(chatMsgList) {
+    async engineTick(chatMsgList) {
     if (this.engineRunning) return;
     this.engineRunning = true;
     try {
-      this.scanChatAndGenApply(chatMsgList);
-      this.runChaosOperate();
-      this.runActiveSend();
-    } finally { this.engineRunning = false; }
+      try {
+        this.scanChatAndGenApply(chatMsgList);
+      } catch (e) {
+        if(this.auditConfig.debug) console.error("[engineTick] scanChatAndGenApply异常", e);
+      }
+      try {
+        this.runChaosOperate();
+      } catch (e) {
+        if(this.auditConfig.debug) console.error("[engineTick] runChaosOperate异常", e);
+      }
+      try {
+        this.runActiveSend();
+      } catch (e) {
+        if(this.auditConfig.debug) console.error("[engineTick] runActiveSend异常", e);
+      }
+    } finally {
+      this.engineRunning = false;
+    }
   },
 
     init() {
