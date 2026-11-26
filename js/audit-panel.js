@@ -688,24 +688,32 @@ const AuditPanelModule = {
       listWrap.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--color-text-2);font-size:13px">暂无历史记录</div>`;
     } else {
       filtered.forEach(h => {
-        const meta = ACTION_META[h.action] || { label: h.action, color: "#888" };
-        const resultColor = h.auditResult === "agree" ? "var(--color-main)" : "#ff3b30";
-        const row = document.createElement("div");
-        row.style.cssText = `border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-top:10px;box-sizing:border-box;`;
-        row.innerHTML = `
-          <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-            <span style="padding:2px 8px;border-radius:999px;font-size:11px;color:#fff;background:${meta.color}">${meta.label}</span>
-            <span style="padding:2px 8px;border-radius:999px;font-size:11px;color:#fff;background:${resultColor}">${h.auditResult === "agree" ? "同意" : "驳回"}</span>
-            <span style="font-size:11px;color:var(--color-text-2);margin-left:auto">${h.applicant || "我"}</span>
-          </div>
-          <div style="font-size:13px;white-space:pre-wrap;word-break:break-all;">${h.cardText || "（无文本）"}</div>
-          <div style="font-size:11px;color:var(--color-text-2);margin-top:6px">
-            申请 ${new Date(h.applyTime).toLocaleString()} ｜ 完成 ${new Date(h.auditFinishTime).toLocaleString()}
-          </div>
-          ${h.auditRemark ? `<div style="font-size:11px;color:var(--color-text-2);margin-top:4px">备注：${h.auditRemark}</div>` : ""}
-        `;
-        listWrap.appendChild(row);
-      });
+  const meta = ACTION_META[h.action] || { label: h.action, color: "#888" };
+  const resultColor = h.auditResult === "agree" ? "var(--color-main)" : "#ff3b30";
+  const M = AuditCardModule;
+  // UI层动态替换申请人昵称，不修改原始存储历史数据
+  let showApplicant = h.applicant || "我";
+  if (h.applicant === "梦角") {
+    showApplicant = M.getContactNick();
+  } else if (h.applicant === "我") {
+    showApplicant = M.getMyNick();
+  }
+  const row = document.createElement("div");
+  row.style.cssText = `border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-top:10px;box-sizing:border-box;`;
+  row.innerHTML = `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+      <span style="padding:2px 8px;border-radius:999px;font-size:11px;color:#fff;background:${meta.color}">${meta.label}</span>
+      <span style="padding:2px 8px;border-radius:999px;font-size:11px;color:#fff;background:${resultColor}">${h.auditResult === "agree" ? "同意" : "驳回"}</span>
+      <span style="font-size:11px;color:var(--color-text-2);margin-left:auto">${showApplicant}</span>
+    </div>
+    <div style="font-size:13px;white-space:pre-wrap;word-break:break-all;">${h.cardText || "（无文本）"}</div>
+    <div style="font-size:11px;color:var(--color-text-2);margin-top:6px">
+      申请 ${new Date(h.applyTime).toLocaleString()} ｜ 完成 ${new Date(h.auditFinishTime).toLocaleString()}
+    </div>
+    ${h.auditRemark ? `<div style="font-size:11px;color:var(--color-text-2);margin-top:4px">备注：${h.auditRemark}</div>` : ""}
+  `;
+  listWrap.appendChild(row);
+});
     }
 
     body.innerHTML = "";
@@ -797,18 +805,24 @@ const AuditPanelModule = {
     `;
     const allCheck = document.createElement("label");
     allCheck.style.cssText = "display:flex;align-items:center;gap:4px;cursor:pointer;";
-    const allCheckInput = document.createElement("input");
-    allCheckInput.type = "checkbox";
-    const allCards = M.getAllAuditCards();
-    const filteredCards = kw
-      ? allCards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
-      : allCards;
-    allCheckInput.checked = filteredCards.length > 0 && filteredCards.every(c => this._selectedCards.has(c.id));
-    allCheckInput.onchange = () => {
-      if (allCheckInput.checked) filteredCards.forEach(c => this._selectedCards.add(c.id));
-      else this._selectedCards.clear();
-      this.renderCardLib(body);
-    };
+  // ==========修复全选逻辑 start==========
+const allCheckInput = document.createElement("input");
+allCheckInput.type = "checkbox";
+const allCards = M.getAllAuditCards();
+const filteredCards = kw
+  ? allCards.filter(c => c.content.toLowerCase().includes(kw.toLowerCase()))
+  : allCards;
+// bug修复：只判断当前过滤后的条目
+allCheckInput.checked = filteredCards.length > 0 && filteredCards.every(c => this._selectedCards.has(c.id));
+allCheckInput.onchange = () => {
+  if (allCheckInput.checked) {
+    filteredCards.forEach(c => this._selectedCards.add(c.id));
+  } else {
+    // 只清除当前过滤集合的选中，不清除其他未展示条目
+    filteredCards.forEach(c => this._selectedCards.delete(c.id));
+  }
+  this.renderCardLib(body);
+};
     allCheck.appendChild(allCheckInput);
     allCheck.appendChild(document.createTextNode("全选"));
 
@@ -889,73 +903,93 @@ const AuditPanelModule = {
           ${cat.isDisabled ? "opacity:0.6;" : ""}
         `;
 
-        const catHead = document.createElement("div");
-        catHead.style.cssText = `
-          padding:8px 10px;display:flex;align-items:center;gap:6px;
-          background:color-mix(in srgb, var(--color-main) 8%, transparent);
-          font-size:13px;font-weight:bold;color:var(--color-text);
-        `;
-        const expandBtn = document.createElement("span");
-        expandBtn.textContent = cat.expanded ? "▼" : "▶";
-        expandBtn.style.cssText = "cursor:pointer;font-size:11px;";
-        expandBtn.onclick = () => {
-          M.toggleCategoryExpand(cat.id);
-          this.renderCardLib(body);
-        };
+        // ==========修复全选逻辑 end==========
+// -------- catHead 分类头部（增加整组启用/禁用按钮）--------
+const catHead = document.createElement("div");
+catHead.style.cssText = `
+  padding:8px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  background:color-mix(in srgb, var(--color-main) 8%, transparent);
+  font-size:13px;font-weight:bold;color:var(--color-text);
+`;
+const expandBtn = document.createElement("div");
+expandBtn.textContent = cat.expanded ? "▼" : "▶";
+expandBtn.style.cssText = "cursor:pointer;font-size:11px;";
+expandBtn.onclick = () => {
+  M.toggleCategoryExpand(cat.id);
+  this.renderCardLib(body);
+};
+const catDisableCheck = document.createElement("input");
+catDisableCheck.type = "checkbox";
+catDisableCheck.checked = !cat.isDisabled;
+catDisableCheck.onchange = ()=>{
+  M.toggleCategoryDisable(cat.id, !catDisableCheck.checked);
+  this.renderCardLib(body);
+};
+const catName = document.createElement("span");
+catName.textContent = `${cat.name} (${cat.cards.length})`;
+catName.style.flex = "1";
 
-        const catDisableCheck = document.createElement("input");
-        catDisableCheck.type = "checkbox";
-        catDisableCheck.checked = !cat.isDisabled;
-        catDisableCheck.onchange = ()=>{
-          M.toggleCategoryDisable(cat.id, !catDisableCheck.checked);
-          this.renderCardLib(body);
-        };
+// ----新增整组启用/整组禁用按钮
+const groupEnableBtn = document.createElement("button");
+groupEnableBtn.textContent = "整组启用";
+groupEnableBtn.style = "padding:2px 5px;border:1px solid var(--color-main);border-radius:4px;background:transparent;color:var(--color-main);font-size:10px;cursor:pointer;";
+groupEnableBtn.onclick = ()=>{
+  cat.cards.forEach(card=>{
+    M.updateCard(cat.id, card.id, {isDisabled:false, disabledBy:null});
+  });
+  Toast.show(`已将【${cat.name}】全部字卡设置为启用`);
+  this.renderCardLib(body);
+};
 
-        const catName = document.createElement("span");
-        catName.textContent = `${cat.name} (${cat.cards.length})`;
-        catName.style.flex = "1";
+const groupDisableBtn = document.createElement("button");
+groupDisableBtn.textContent = "整组禁用";
+groupDisableBtn.style = "padding:2px 5px;border:1px solid #ff9500;border-radius:4px;background:transparent;color:#ff9500;font-size:10px;cursor:pointer;";
+groupDisableBtn.onclick = ()=>{
+  cat.cards.forEach(card=>{
+    M.updateCard(cat.id, card.id, {isDisabled:true, disabledBy: M.getMyNick()});
+  });
+  Toast.show(`已将【${cat.name}】全部字卡设置为禁用`);
+  this.renderCardLib(body);
+};
 
-        const upBtn = document.createElement("button");
-        upBtn.textContent = "↑";
-        upBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
-        upBtn.onclick = () => { M.moveCategorySort(cat.id, "up"); this.renderCardLib(body); };
-
-        const downBtn = document.createElement("button");
-        downBtn.textContent = "↓";
-        downBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
-        downBtn.onclick = () => { M.moveCategorySort(cat.id, "down"); this.renderCardLib(body); };
-
-        const renameBtn = document.createElement("button");
-        renameBtn.textContent = "重命名";
-        renameBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
-        renameBtn.onclick = () => {
-          const name = prompt("输入新名称", cat.name);
-          if (name) { M.renameCategory(cat.id, name.trim()); this.renderCardLib(body); }
-        };
-
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "删除";
-        delBtn.style = "padding:2px 6px;border:1px solid #ff3b30;border-radius:4px;background:transparent;color:#ff3b30;font-size:11px;cursor:pointer;";
-        delBtn.onclick = () => {
-          if (cat.cards.length > 0) {
-            this.showTransferModal(cat, categories, body);
-          } else {
-            if (confirm(`确定删除空分类「${cat.name}」？`)) {
-              M.deleteCategory(cat.id, null);
-              Toast.show("分类已删除");
-              this.renderCardLib(body);
-            }
-          }
-        };
-
-        catHead.appendChild(expandBtn);
-        catHead.appendChild(catDisableCheck);
-        catHead.appendChild(catName);
-        catHead.appendChild(upBtn);
-        catHead.appendChild(downBtn);
-        catHead.appendChild(renameBtn);
-        catHead.appendChild(delBtn);
-        catEl.appendChild(catHead);
+const upBtn = document.createElement("button");
+upBtn.textContent = "↑";
+upBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
+upBtn.onclick = () => { M.moveCategorySort(cat.id, "up"); this.renderCardLib(body); };
+const downBtn = document.createElement("button");
+downBtn.textContent = "↓";
+downBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
+downBtn.onclick = () => { M.moveCategorySort(cat.id, "down"); this.renderCardLib(body); };
+const renameBtn = document.createElement("button");
+renameBtn.textContent = "重命名";
+renameBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
+renameBtn.onclick = () => {
+  const name = prompt("输入新名称", cat.name);
+  if (name) { M.renameCategory(cat.id, name.trim()); this.renderCardLib(body); }
+};
+const delBtn = document.createElement("button");
+delBtn.textContent = "删除";
+delBtn.style = "padding:2px 6px;border:1px solid #ff3b30;border-radius:4px;background:transparent;color:#ff3b30;font-size:11px;cursor:pointer;";
+delBtn.onclick = () => {
+  if (cat.cards.length > 0) {
+    this.showTransferModal(cat, categories, body);
+  } else {
+    if (confirm(`确定删除空分类「${cat.name}」？`)) {
+      M.deleteCategory(cat.id, null);
+      Toast.show("分类已删除");
+      this.renderCardLib(body);
+    }
+  }
+};
+catHead.appendChild(expandBtn);
+catHead.appendChild(catDisableCheck);
+catHead.appendChild(catName);
+catHead.appendChild(groupEnableBtn);
+catHead.appendChild(groupDisableBtn);
+catHead.appendChild(upBtn);
+catHead.appendChild(downBtn);
+catHead.appendChild(renameBtn);
+catHead.appendChild(delBtn);
 
         if (cat.expanded) {
           const cardList = document.createElement("div");
