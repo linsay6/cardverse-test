@@ -55,13 +55,11 @@ const AuditPanelModule = {
     if (!cfg.enable && !forceShow) {
       return;
     }
-
-    // 外层wrapper：transform挂载在这里，角标放在wrapper，不再放在ball内部，解决overflow裁切
+    // 外层wrapper：transform挂载在这里，【移除pointer‑events:none，修复左侧拖拽被挡住】
     const wrapper = document.createElement("div");
     wrapper.style.cssText = `
       position:fixed;
       z-index:99999;
-      pointer-events:none;
     `;
     // 球体容器
     const ball = document.createElement("div");
@@ -77,12 +75,12 @@ const AuditPanelModule = {
       width:${cfg.size}px;height:${cfg.size}px;
       pointer-events:auto;
     `;
-    // ✅角标移到外层wrapper，向上悬浮在球体上方，不会被overflow:hidden裁切
+    // 角标：top从‑10px改为‑4px，往下移动一点；保持pointer‑events:none不拦截鼠标
     const badge = document.createElement("div");
     badge.className = "audit-badge";
     badge.style.cssText = `
       position:absolute;
-      top:-10px;
+      top:-4px;
       right:-6px;
       min-width:18px;
       height:18px;
@@ -100,18 +98,15 @@ const AuditPanelModule = {
     `;
     wrapper.appendChild(ball);
     wrapper.appendChild(badge);
-
     if (cfg.avatarBase64) {
       ball.innerHTML += `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     } else {
       ball.innerHTML += `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
     }
-
     document.body.appendChild(wrapper);
     this.floatBallEl = wrapper;
     this.ballInner = ball;
     this.badgeEl = badge;
-
     // 更新悬浮球角标函数
     this.updateBadge = ()=>{
       const count = AuditCardModule.pendingApply.length;
@@ -127,14 +122,12 @@ const AuditPanelModule = {
     EventBus.on("my‑audit‑data‑updated", ()=>{
       this.updateBadge();
     });
-
     // 读取保存的位置
     let currentTransformX = cfg.posX ?? 0;
     let currentTransformY = cfg.posY ?? 0;
     wrapper.style.transform = `translate3d(${currentTransformX}px, ${currentTransformY}px, 0)`;
-
     let rafId = null;
-    // ✅修复拖拽偏移bug：不使用getBoundingClientRect读取变换后的元素位置
+    // 修复拖拽偏移bug：不使用getBoundingClientRect读取变换后的元素位置
     let dragState = {
       dragging: false,
       moved: false,
@@ -143,7 +136,6 @@ const AuditPanelModule = {
       transformStartX:0,
       transformStartY:0
     };
-
     const startDrag = (clientX, clientY) => {
       dragState.dragging = true;
       dragState.moved = false;
@@ -158,17 +150,14 @@ const AuditPanelModule = {
       const dx = clientX - dragState.pointerStartX;
       const dy = clientY - dragState.pointerStartY;
       if(Math.hypot(dx, dy) > this._touchSlop) dragState.moved = true;
-
       const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
       const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       const size = parseFloat(getComputedStyle(ball).width);
-
       // 直接基于transform初始值做增量，消除坐标偏移
       let x = dragState.transformStartX + dx;
       let y = dragState.transformStartY + dy;
       x = Math.max(0, Math.min(vw - size, x));
       y = Math.max(0, Math.min(vh - size, y));
-
       if(!rafId) {
         rafId = requestAnimationFrame(() => {
           rafId = null;
@@ -191,7 +180,6 @@ const AuditPanelModule = {
       }
       dragState.dragging = false;
     };
-
     ball.addEventListener("mousedown", e => {
       e.preventDefault();
       startDrag(e.clientX, e.clientY);
@@ -204,7 +192,6 @@ const AuditPanelModule = {
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
     });
-
     ball.addEventListener("touchstart", e => {
       const t = e.touches[0];
       startDrag(t.clientX, t.clientY);
