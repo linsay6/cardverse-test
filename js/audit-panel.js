@@ -55,7 +55,7 @@ const AuditPanelModule = {
   },
 
   // ========== 悬浮球 ==========
-    initFloatBall() {
+      initFloatBall() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     // 销毁旧DOM
@@ -68,7 +68,6 @@ const AuditPanelModule = {
     if (!cfg.enable && !forceShow) {
       return;
     }
-
     // fixed定位，不用transform
     const wrapper = document.createElement("div");
     wrapper.style.cssText = `
@@ -110,24 +109,22 @@ const AuditPanelModule = {
     `;
     wrapper.appendChild(ball);
     wrapper.appendChild(badge);
-
     if (cfg.avatarBase64) {
       ball.innerHTML += `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     } else {
       ball.innerHTML += `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
     }
-
     document.body.appendChild(wrapper);
     this.floatBallEl = wrapper;
     this.ballInner = ball;
     this.badgeEl = badge;
-
     // 初始化角标
     this.updateBadge();
 
-    // fixed用left/top，不再使用transform
-    let currentX = cfg.posX ?? 50;
-    let currentY = cfg.posY ?? 80;
+    // =========修复问题2：??运算符坑：posX=0会被替换成默认值，只判断null/undefined========
+    let currentX = (cfg.posX === null || cfg.posX === undefined) ? 50 : cfg.posX;
+    let currentY = (cfg.posY === null || cfg.posY === undefined) ? 80 : cfg.posY;
+
     wrapper.style.left = `${currentX}px`;
     wrapper.style.top = `${currentY}px`;
 
@@ -154,10 +151,9 @@ const AuditPanelModule = {
       let x = clientX - dragState.offsetX;
       let y = clientY - dragState.offsetY;
 
-      // 如果报错，替换moveDrag里面这行
-if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) > this._touchSlop){
-  dragState.moved = true;
-}
+      if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) > this._touchSlop){
+        dragState.moved = true;
+      }
 
       // 视口边界，现在可以完全贴到x=0屏幕最左侧
       const vw = document.documentElement.clientWidth;
@@ -179,7 +175,10 @@ if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) 
 
     const endDrag = () => {
       if (!dragState.dragging) return;
-      if (dragState.moved) {
+      // =========修复问题1：不在click事件，endDrag里面处理打开弹窗；拖拽没有移动才打开========
+      if (!dragState.moved) {
+        this.open();
+      } else {
         AuditCardModule.auditConfig.floatBall.posX = currentX;
         AuditCardModule.auditConfig.floatBall.posY = currentY;
         AuditCardModule.saveToStorage();
@@ -187,16 +186,7 @@ if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) 
       dragState.dragging = false;
     };
 
-    // ✅独立click事件，区分拖拽/轻点打开弹窗
-    ball.addEventListener("click", (e)=>{
-      if(dragState.moved){
-        e.stopPropagation();
-        e.preventDefault();
-        return;
-      }
-      this.open();
-    });
-
+    // ✅移除ball.addEventListener("click")！彻底规避浏览器合成click事件导致拖拽后误触发弹窗
     ball.addEventListener("mousedown", e=>{
       e.preventDefault();
       startDrag(e.clientX, e.clientY);
@@ -231,7 +221,7 @@ if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) 
     }, {passive:true});
   },
 
-    updateFloatBallStyle() {
+      updateFloatBallStyle() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     if (!cfg.enable && !forceShow) {
@@ -252,7 +242,6 @@ if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) 
     ball.style.width = cfg.size + "px";
     ball.style.height = cfg.size + "px";
     ball.style.background = cfg.color || "#7c68ee";
-
     const oldImg = ball.querySelector("img");
     const oldSvg = ball.querySelector("svg");
     if(oldImg) oldImg.remove();
@@ -263,8 +252,8 @@ if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) 
     }else{
       ball.insertAdjacentHTML("beforeend",`<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`);
     }
-    // fixed用left/top，不操作transform
-    if(cfg.posX != null && cfg.posY != null && this.floatBallEl){
+    // 修复：posX=0 合法，只排除 null undefined
+    if ((cfg.posX !== null && cfg.posX !== undefined) && (cfg.posY !== null && cfg.posY !== undefined) && this.floatBallEl){
       this.floatBallEl.style.left = `${cfg.posX}px`;
       this.floatBallEl.style.top = `${cfg.posY}px`;
     }
