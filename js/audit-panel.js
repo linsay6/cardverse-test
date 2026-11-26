@@ -1478,9 +1478,21 @@ const AuditPanelModule = {
 
     // -------- 梦角引擎 --------
     body.appendChild(sectionTitle("梦角拟人引擎"));
-    body.appendChild(toggle("抓取聊天生成申请", engine.enableGrabChat, v => { engine.enableGrabChat = v; M.saveToStorage(); }));
-    body.appendChild(toggle("混沌随机变更", engine.enableChaos, v => { engine.enableChaos = v; M.saveToStorage(); }));
-    body.appendChild(toggle("主动发消息", engine.enableActiveSend, v => { engine.enableActiveSend = v; M.saveToStorage(); }));
+    body.appendChild(toggle("抓取聊天生成申请", engine.enableGrabChat, v => {
+      engine.enableGrabChat = v;
+      M.saveToStorage();
+      M.restartEngineTimer();
+    }));
+    body.appendChild(toggle("混沌随机变更", engine.enableChaos, v => {
+      engine.enableChaos = v;
+      M.saveToStorage();
+      M.restartEngineTimer();
+    }));
+    body.appendChild(toggle("主动发消息", engine.enableActiveSend, v => {
+      engine.enableActiveSend = v;
+      M.saveToStorage();
+      M.restartEngineTimer();
+    }));
 
     body.appendChild(sectionTitle("引擎参数"));
     body.appendChild(numberInputMinute("巡检周期(分)", engine.scanIntervalSec, v => { engine.scanIntervalSec = v; M.saveToStorage(); }));
