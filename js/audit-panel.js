@@ -42,7 +42,7 @@ const AuditPanelModule = {
   },
 
   // ========== 悬浮球 ==========
-  initFloatBall() {
+    initFloatBall() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     if (!cfg.enable && !forceShow) {
@@ -54,16 +54,17 @@ const AuditPanelModule = {
       this.updateFloatBallStyle();
       return;
     }
-
     const ball = document.createElement("div");
     ball.style.cssText = `
-      position:fixed;right:16px;bottom:80px;width:${cfg.size}px;height:${cfg.size}px;
-      border-radius:50%;background:${cfg.color || "#7c68ee"};
+      position:fixed;
+      border-radius:50%;
+      background:${cfg.color || "#7c68ee"};
       display:flex;align-items:center;justify-content:center;
       color:#fff;font-weight:bold;cursor:pointer;z-index:99999;
       transform:translate3d(0,0,0);will-change:transform;
       user-select:none;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.15);
       touch-action:none;
+      width:${cfg.size}px;height:${cfg.size}px;
     `;
     if (cfg.avatarBase64) {
       ball.innerHTML = `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
@@ -74,28 +75,32 @@ const AuditPanelModule = {
       ball.style.transform = `translate3d(${cfg.posX}px, ${cfg.posY}px, 0)`;
     }
 
-    let downX = 0, downY = 0;
     let rafId = null;
-    
+    let dragState = {
+      dragging: false,
+      moved: false,
+      startX:0, startY:0, ballOriginX:0, ballOriginY:0
+    };
+
     const startDrag = (clientX, clientY) => {
-      this._isDraggingBall = true;
-      this._dragMoved = false;
-      downX = clientX;
-      downY = clientY;
+      dragState.dragging = true;
+      dragState.moved = false;
+      dragState.startX = clientX;
+      dragState.startY = clientY;
       const rect = ball.getBoundingClientRect();
-      this._ballStartX = rect.left;
-      this._ballStartY = rect.top;
+      dragState.ballOriginX = rect.left;
+      dragState.ballOriginY = rect.top;
     };
     const moveDrag = (clientX, clientY) => {
-      if (!this._isDraggingBall) return;
-      const dx = clientX - downX;
-      const dy = clientY - downY;
-      if(Math.hypot(dx, dy) > this._touchSlop) this._dragMoved = true;
+      if (!dragState.dragging) return;
+      const dx = clientX - dragState.startX;
+      const dy = clientY - dragState.startY;
+      if(Math.hypot(dx, dy) > this._touchSlop) dragState.moved = true;
       const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
       const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       const size = parseFloat(getComputedStyle(ball).width);
-      let x = this._ballStartX + dx;
-      let y = this._ballStartY + dy;
+      let x = dragState.ballOriginX + dx;
+      let y = dragState.ballOriginY + dy;
       x = Math.max(0, Math.min(vw - size, x));
       y = Math.max(0, Math.min(vh - size, y));
       if(!rafId) {
@@ -106,8 +111,8 @@ const AuditPanelModule = {
       }
     };
     const endDrag = () => {
-      if (!this._isDraggingBall) return;
-      if (!this._dragMoved) {
+      if (!dragState.dragging) return;
+      if (!dragState.moved) {
         this.open();
       }else{
         const rect = ball.getBoundingClientRect();
@@ -115,32 +120,45 @@ const AuditPanelModule = {
         AuditCardModule.auditConfig.floatBall.posY = rect.top;
         AuditCardModule.saveToStorage();
       }
-      this._isDraggingBall = false;
+      dragState.dragging = false;
     };
 
-    ball.addEventListener("mousedown", e => startDrag(e.clientX, e.clientY));
-    ball.addEventListener("mousemove", e=>moveDrag(e.clientX,e.clientY));
-    ball.addEventListener("mouseup", endDrag);
-    ball.addEventListener("mouseleave", endDrag);
+    // 球内部只监听down，move/up放到document，解决鼠标移出悬浮球还在拖拽bug
+    ball.addEventListener("mousedown", e => {
+      e.preventDefault();
+      startDrag(e.clientX, e.clientY);
+      document.addEventListener("mousemove", moveDrag);
+      document.addEventListener("mouseup", ()=>{
+        endDrag();
+        document.removeEventListener("mousemove", moveDrag);
+      }, {once:true});
+    });
 
     ball.addEventListener("touchstart", e => {
       const t = e.touches[0];
       startDrag(t.clientX, t.clientY);
+      const touchMove = (te)=>{
+        if(!dragState.dragging) return;
+        if(te.cancelable) te.preventDefault();
+        const tt = te.touches[0];
+        moveDrag(tt.clientX, tt.clientY);
+      };
+      const touchEnd = ()=>{
+        endDrag();
+        document.removeEventListener("touchmove", touchMove);
+        document.removeEventListener("touchend", touchEnd);
+        document.removeEventListener("touchcancel", touchEnd);
+      };
+      document.addEventListener("touchmove", touchMove, {passive:false});
+      document.addEventListener("touchend", touchEnd, {once:true});
+      document.addEventListener("touchcancel", touchEnd, {once:true});
     }, { passive:true });
-    ball.addEventListener("touchmove", e=>{
-      if(!this._isDraggingBall) return;
-      if(e.cancelable) e.preventDefault();
-      const t = e.touches[0];
-      moveDrag(t.clientX, t.clientY);
-    }, { passive:false });
-    ball.addEventListener("touchend", endDrag);
-    ball.addEventListener("touchcancel", endDrag);
 
     document.body.appendChild(ball);
     this.floatBallEl = ball;
   },
 
-  updateFloatBallStyle() {
+    updateFloatBallStyle() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     if (!cfg.enable && !forceShow) {
@@ -152,13 +170,19 @@ const AuditPanelModule = {
       this.initFloatBall();
       return;
     }
+    // 全部热更新，不重建DOM
     this.floatBallEl.style.width = cfg.size + "px";
     this.floatBallEl.style.height = cfg.size + "px";
-    this.floatBallEl.style.background = cfg.color;
+    this.floatBallEl.style.background = cfg.color || "#7c68ee";
+    // 恢复图标/头像
     if(cfg.avatarBase64){
       this.floatBallEl.innerHTML = `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     }else{
       this.floatBallEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+    }
+    // 恢复拖拽保存的位置
+    if(cfg.posX != null && cfg.posY != null){
+      this.floatBallEl.style.transform = `translate3d(${cfg.posX}px, ${cfg.posY}px, 0)`;
     }
   },
 
@@ -1172,35 +1196,106 @@ const AuditPanelModule = {
     const uploadBtn = document.createElement("button");
     uploadBtn.textContent = "上传";
     uploadBtn.style = "padding:4px 8px;border:1px solid var(--color-main);border-radius:6px;background:transparent;color:var(--color-main);font-size:11px;cursor:pointer;";
-    uploadBtn.onclick = () => {
+        uploadBtn.onclick = () => {
       const fileInput = document.createElement("input");
       fileInput.type = "file";
       fileInput.accept = "image/*";
-      fileInput.onchange = (ev) => {
+      fileInput.onchange = async (ev) => {
         const file = ev.target.files[0];
-        if (!file) return;
+        if (!file) { fileInput.remove(); return; }
+        // ========== 圆形裁剪弹窗（复刻my‑new‑feature openCropper圆形模式） ==========
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = (e)=>{
           const img = new Image();
-          img.onload = () => {
-            const size = 128;
-            const canvas = document.createElement("canvas");
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext("2d");
-            ctx.beginPath();
-            ctx.arc(size/2, size/2, size/2, 0, Math.PI*2);
-            ctx.clip();
-            const minSide = Math.min(img.width, img.height);
-            const sx = (img.width - minSide)/2;
-            const sy = (img.height - minSide)/2;
-            ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
-            float.avatarBase64 = canvas.toDataURL("image/png");
-            M.saveToStorage();
-            Toast.show("头像已更新");
-            this.updateFloatBallStyle();
-            this.renderSettings(body);
+          img.onload = ()=>{
+            const CANVAS = 220;
+            const modal = document.createElement('div');
+            modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100003;`;
+            modal.innerHTML = `
+              <div style="background:#fff;border-radius:14px;padding:18px;width:340px;max-width:92vw;box-shadow:0 20px 40px rgba(0,0,0,.2);">
+                <div style="font-weight:600;font-size:14px;margin-bottom:14px;text-align:center;color:#111827;">裁剪悬浮球头像（圆形）</div>
+                <div style="position:relative;width:220px;height:220px;margin:0 auto 14px;background:#f3f4f6;overflow:hidden;">
+                  <canvas width="${CANVAS}" height="${CANVAS}" style="display:block;width:220px;height:220px;"></canvas>
+                  <div style="position:absolute;inset:0;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.35);border-radius:50%;"></div>
+                </div>
+                <div style="padding:0 10px;margin-bottom:14px;">
+                  <input type="range" min="1" max="3" step="0.01" value="1" style="width:100%;">
+                </div>
+                <div style="display:flex;gap:8px;justify-content:center;">
+                  <button class="cropper-cancel" style="padding:8px 14px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;">取消</button>
+                  <button class="cropper-confirm" style="padding:8px 14px;border-radius:8px;border:none;background:#3b82f6;color:#fff;cursor:pointer;">确认</button>
+                </div>
+              </div>
+            `;
+            document.body.appendChild(modal);
+            const canvasEl = modal.querySelector("canvas");
+            const ctx = canvasEl.getContext("2d");
+            const slider = modal.querySelector('input[type="range"]');
+            let zoom = 1;
+            let offsetX = 0, offsetY =0;
+            let dragging = false, dsx=0,dsy=0,dox=0,doy=0;
+
+            function draw(){
+              ctx.clearRect(0,0,CANVAS,CANVAS);
+              const minScale = Math.max(CANVAS/img.width, CANVAS/img.height);
+              const scale = minScale * zoom;
+              const drawW = img.width*scale;
+              const drawH = img.height*scale;
+              const dx = (CANVAS - drawW)/2 + offsetX;
+              const dy = (CANVAS - drawH)/2 + offsetY;
+              ctx.drawImage(img, dx, dy, drawW, drawH);
+            }
+            slider.oninput = ()=>{
+              zoom = Number(slider.value); draw();
+            };
+            const startDrag = (pe)=>{
+              const p = pe.touches ? pe.touches[0] : pe;
+              dragging = true;
+              dsx = p.clientX; dsy = p.clientY;
+              dox = offsetX; doy = offsetY;
+            };
+            const moveDrag = (pe)=>{
+              if(!dragging) return;
+              const p = pe.touches ? pe.touches[0] : pe;
+              offsetX = dox + (p.clientX - dsx);
+              offsetY = doy + (p.clientY - dsy);
+              draw();
+              if(pe.cancelable && pe.touches) pe.preventDefault();
+            };
+            const endDrag = ()=>{ dragging = false; };
+            canvasEl.addEventListener("mousedown", startDrag);
+            canvasEl.addEventListener("touchstart", startDrag, {passive:true});
+            document.addEventListener("mousemove", moveDrag);
+            document.addEventListener("touchmove", moveDrag, {passive:false});
+            document.addEventListener("mouseup", endDrag);
+            document.addEventListener("touchend", endDrag);
+            modal.querySelector(".cropper-cancel").onclick = ()=>{ modal.remove(); };
+            modal.querySelector(".cropper-confirm").onclick = ()=>{
+              const outSize = 192;
+              const outCanvas = document.createElement("canvas");
+              outCanvas.width = outSize; outCanvas.height = outSize;
+              const octx = outCanvas.getContext("2d");
+              octx.beginPath();
+              octx.arc(outSize/2, outSize/2, outSize/2, 0, Math.PI*2);
+              octx.clip();
+              const scaleOut = outSize / CANVAS;
+              const minScale = Math.max(CANVAS/img.width, CANVAS/img.height);
+              const scale = minScale * zoom;
+              const drawW = img.width*scale;
+              const drawH = img.height*scale;
+              const dx = (CANVAS - drawW)/2 + offsetX;
+              const dy = (CANVAS - drawH)/2 + offsetY;
+              octx.drawImage(img, dx*scaleOut, dy*scaleOut, drawW*scaleOut, drawH*scaleOut);
+              float.avatarBase64 = outCanvas.toDataURL("image/png");
+              M.saveToStorage();
+              Toast.show("头像已更新");
+              this.updateFloatBallStyle();
+              this.renderSettings(body);
+              modal.remove();
+            };
+            draw();
           };
+          img.onerror = ()=>{ Toast.show("图片读取失败","#b91c1c"); };
           img.src = e.target.result;
         };
         reader.readAsDataURL(file);
@@ -1208,6 +1303,7 @@ const AuditPanelModule = {
       };
       fileInput.click();
     };
+
     const resetAvatarBtn = document.createElement("button");
     resetAvatarBtn.textContent = "恢复默认";
     resetAvatarBtn.style = "padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);font-size:11px;cursor:pointer;";
