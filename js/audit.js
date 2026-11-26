@@ -38,6 +38,7 @@ const AuditCardModule = {
     debug: false
   },
   engineRunning: false,
+  engineTimerId: null, // 新增：引擎定时器ID
   emotionWords: ["喜欢", "爱", "想你", "开心"],
 
   // ========== 来自DS版本新增工具方法 ==========
@@ -382,10 +383,37 @@ const AuditCardModule = {
     } finally { this.engineRunning = false; }
   },
 
-  init() {
+    init() {
     this.loadFromStorage();
     console.log("AuditCardModule 数据层初始化完成");
-  }
+    this.restartEngineTimer(); // 初始化启动定时器
+  },
+
+  // 新增：重启/管理引擎定时器
+  restartEngineTimer() {
+    // 先清除旧定时器
+    if(this.engineTimerId !== null){
+      clearInterval(this.engineTimerId);
+      this.engineTimerId = null;
+    }
+    const cfg = this.auditConfig.dreamEngine;
+    // 如果全部引擎功能关闭，直接不启动定时器
+    if(!cfg.enableGrabChat && !cfg.enableChaos && !cfg.enableActiveSend){
+      if(this.auditConfig.debug) console.log("[Audit引擎]全部引擎开关关闭，停止定时器");
+      return;
+    }
+    // 按照配置的scanIntervalSec秒数定时执行
+    const intervalMs = cfg.scanIntervalSec * 1000;
+    this.engineTimerId = setInterval(()=>{
+      // 尝试从全局ChatModule拿聊天消息
+      const chatMsgList = window.ChatModule?.messageList ?? [];
+      if(this.auditConfig.debug){
+        console.log("[Audit引擎]定时tick触发", "消息条数:", chatMsgList.length);
+      }
+      this.engineTick(chatMsgList);
+    }, intervalMs);
+    if(this.auditConfig.debug) console.log(`[Audit引擎]定时器已启动，间隔${cfg.scanIntervalSec}秒`);
+  },
 };
 
 window.AuditCardModule = AuditCardModule;
