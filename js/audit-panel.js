@@ -121,10 +121,9 @@ const AuditPanelModule = {
     // 初始化角标
     this.updateBadge();
 
-    // =========修复问题2：??运算符坑：posX=0会被替换成默认值，只判断null/undefined========
+    // 读取配置，0是合法值，仅null/undefined用默认
     let currentX = (cfg.posX === null || cfg.posX === undefined) ? 50 : cfg.posX;
     let currentY = (cfg.posY === null || cfg.posY === undefined) ? 80 : cfg.posY;
-
     wrapper.style.left = `${currentX}px`;
     wrapper.style.top = `${currentY}px`;
 
@@ -132,14 +131,13 @@ const AuditPanelModule = {
     let dragState = {
       dragging: false,
       moved: false,
-      offsetX:0, // 鼠标按下距离球体左上角偏移
+      offsetX:0,
       offsetY:0
     };
 
     const startDrag = (clientX, clientY) => {
       dragState.dragging = true;
       dragState.moved = false;
-      // fixed元素getBoundingClientRect拿到的就是屏幕视口坐标，无transform干扰
       const rect = wrapper.getBoundingClientRect();
       dragState.offsetX = clientX - rect.left;
       dragState.offsetY = clientY - rect.top;
@@ -147,15 +145,12 @@ const AuditPanelModule = {
 
     const moveDrag = (clientX, clientY) => {
       if (!dragState.dragging) return;
-      // 鼠标位置 - 按下时球体内部偏移 = 球体左上角目标坐标
       let x = clientX - dragState.offsetX;
       let y = clientY - dragState.offsetY;
 
-      if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) > this._touchSlop){
+      if(Math.hypot(clientX‑dragState.offsetX‑x, clientY‑dragState.offsetY‑y) > this._touchSlop){
         dragState.moved = true;
       }
-
-      // 视口边界，现在可以完全贴到x=0屏幕最左侧
       const vw = document.documentElement.clientWidth;
       const vh = document.documentElement.clientHeight;
       const size = ball.offsetWidth;
@@ -169,24 +164,32 @@ const AuditPanelModule = {
           wrapper.style.top = `${y}px`;
           currentX = x;
           currentY = y;
+          // ✅【关键修复】每一帧拖拽移动同步更新内存cfg对象！！不等到endDrag才赋值
+          cfg.posX = currentX;
+          cfg.posY = currentY;
         });
       }
     };
 
     const endDrag = () => {
       if (!dragState.dragging) return;
-      // =========修复问题1：不在click事件，endDrag里面处理打开弹窗；拖拽没有移动才打开========
-      if (!dragState.moved) {
-        this.open();
-      } else {
-        AuditCardModule.auditConfig.floatBall.posX = currentX;
-        AuditCardModule.auditConfig.floatBall.posY = currentY;
+      // 拖拽结束，保存到localStorage
+      if (dragState.moved) {
         AuditCardModule.saveToStorage();
       }
       dragState.dragging = false;
     };
 
-    // ✅移除ball.addEventListener("click")！彻底规避浏览器合成click事件导致拖拽后误触发弹窗
+    // ✅恢复click监听；发生拖拽moved=true直接拦截事件，不会打开弹窗
+    ball.addEventListener("click", (e)=>{
+      if(dragState.moved){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+      }
+      this.open();
+    });
+
     ball.addEventListener("mousedown", e=>{
       e.preventDefault();
       startDrag(e.clientX, e.clientY);
