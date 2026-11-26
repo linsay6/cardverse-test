@@ -687,25 +687,34 @@ const AuditPanelModule = {
     if (filtered.length === 0) {
       listWrap.innerHTML = `<div style="text-align:center;padding:30px 0;color:var(--color-text-2);font-size:13px">暂无历史记录</div>`;
     } else {
-      filtered.forEach(h => {
-        const meta = ACTION_META[h.action] || { label: h.action, color: "#888" };
-        const resultColor = h.auditResult === "agree" ? "var(--color-main)" : "#ff3b30";
-        const row = document.createElement("div");
-        row.style.cssText = `border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-top:10px;box-sizing:border-box;`;
-        row.innerHTML = `
-          <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-            <span style="padding:2px 8px;border-radius:999px;font-size:11px;color:#fff;background:${meta.color}">${meta.label}</span>
-            <span style="padding:2px 8px;border-radius:999px;font-size:11px;color:#fff;background:${resultColor}">${h.auditResult === "agree" ? "同意" : "驳回"}</span>
-            <span style="font-size:11px;color:var(--color-text-2);margin-left:auto">${h.applicant || "我"}</span>
-          </div>
-          <div style="font-size:13px;white-space:pre-wrap;word-break:break-all;">${h.cardText || "（无文本）"}</div>
-          <div style="font-size:11px;color:var(--color-text-2);margin-top:6px">
-            申请 ${new Date(h.applyTime).toLocaleString()} ｜ 完成 ${new Date(h.auditFinishTime).toLocaleString()}
-          </div>
-          ${h.auditRemark ? `<div style="font-size:11px;color:var(--color-text-2);margin-top:4px">备注：${h.auditRemark}</div>` : ""}
-        `;
-        listWrap.appendChild(row);
-      });
+  filtered.forEach(h => {
+  const meta = ACTION_META[h.action] || { label: h.action, color: "#888" };
+  const resultColor = h.auditResult === "agree" ? "var(--color-main)" : "#ff3b30";
+  const M = AuditCardModule;
+  // UI层动态替换申请人昵称，不修改原始存储历史数据
+  let showApplicant = h.applicant || "我";
+  if (h.applicant === "梦角") {
+    showApplicant = M.getContactNick();
+  } else if (h.applicant === "我") {
+    showApplicant = M.getMyNick();
+  }
+  const row = document.createElement("div");
+  row.style.cssText = `border:1px solid var(--color-border);border-radius:12px;padding:10px;margin-top:10px;box-sizing:border-box;`;
+  row.innerHTML = `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+      <span style="padding:2px 8px;border-radius:999px;font-size:11px;color:#fff;background:${meta.color}">${meta.label}</span>
+      <span style="padding:2px 8px;border-radius:999px;font-size:11px;color:#fff;background:${resultColor}">${h.auditResult === "agree" ? "同意" : "驳回"}</span>
+      <span style="font-size:11px;color:var(--color-text-2);margin-left:auto">${showApplicant}</span>
+    </div>
+    <div style="font-size:13px;white-space:pre-wrap;word-break:break-all;">${h.cardText || "（无文本）"}</div>
+    <div style="font-size:11px;color:var(--color-text-2);margin-top:6px">
+      申请 ${new Date(h.applyTime).toLocaleString()} ｜ 完成 ${new Date(h.auditFinishTime).toLocaleString()}
+    </div>
+    ${h.auditRemark ? `<div style="font-size:11px;color:var(--color-text-2);margin-top:4px">备注：${h.auditRemark}</div>` : ""}
+  `;
+  listWrap.appendChild(row);
+});
+
     }
 
     body.innerHTML = "";
