@@ -925,16 +925,17 @@ allCheckInput.onchange = () => {
 
         // ==========修复全选逻辑 end==========
 // -------- catHead 分类头部（增加整组启用/禁用按钮）--------
+// -------- catHead 分类头部（增加整组启用/禁用按钮）--------
 const catHead = document.createElement("div");
 catHead.style.cssText = `
   padding:8px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
-  background:color‑mix(in srgb, var(--color‑main) 8%, transparent);
-  font‑size:13px;font‑weight:bold;color:var(--color‑text);
+  background:color-mix(in srgb, var(--color-main) 8%, transparent);
+  font-size:13px;font-weight:bold;color:var(--color-text);
 `;
 // 1. 展开折叠箭头 ▶ ▼
 const expandBtn = document.createElement("span");
 expandBtn.textContent = cat.expanded ? "▼" : "▶";
-expandBtn.style.cssText = "cursor:pointer;font‑size:11px;user‑select:none;";
+expandBtn.style.cssText = "cursor:pointer;font-size:11px;user-select:none;";
 expandBtn.onclick = () => {
   M.toggleCategoryExpand(cat.id);
   this.renderCardLib(body);
@@ -974,10 +975,10 @@ const catName = document.createElement("span");
 catName.textContent = `${cat.name} (${cat.cards.length})`;
 catName.style.flex = "1";
 
-// 5.整组启用、整组禁用
+// 5. 新增：整组启用、整组禁用按钮
 const groupEnableBtn = document.createElement("button");
 groupEnableBtn.textContent = "整组启用";
-groupEnableBtn.style = "padding:2px 5px;border:1px solid var(--color‑main);border‑radius:4px;background:transparent;color:var(--color‑main);font‑size:10px;cursor:pointer;";
+groupEnableBtn.style = "padding:2px 5px;border:1px solid var(--color-main);border-radius:4px;background:transparent;color:var(--color-main);font-size:10px;cursor:pointer;";
 groupEnableBtn.onclick = ()=>{
   cat.cards.forEach(card=>{
     M.updateCard(cat.id, card.id, {isDisabled:false, disabledBy:null});
@@ -988,7 +989,7 @@ groupEnableBtn.onclick = ()=>{
 
 const groupDisableBtn = document.createElement("button");
 groupDisableBtn.textContent = "整组禁用";
-groupDisableBtn.style = "padding:2px 5px;border:1px solid #ff9500;border‑radius:4px;background:transparent;color:#ff9500;font‑size:10px;cursor:pointer;";
+groupDisableBtn.style = "padding:2px 5px;border:1px solid #ff9500;border-radius:4px;background:transparent;color:#ff9500;font-size:10px;cursor:pointer;";
 groupDisableBtn.onclick = ()=>{
   cat.cards.forEach(card=>{
     M.updateCard(cat.id, card.id, {isDisabled:true, disabledBy: M.getMyNick()});
@@ -997,25 +998,25 @@ groupDisableBtn.onclick = ()=>{
   this.renderCardLib(body);
 };
 
-//6.上下移动、重命名、删除
+// 6. 上下移动、重命名、删除分类
 const upBtn = document.createElement("button");
 upBtn.textContent = "↑";
-upBtn.style = "padding:2px 6px;border:1px solid var(--color‑border);border‑radius:4px;background:var(--color‑bg);font‑size:11px;cursor:pointer;";
+upBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
 upBtn.onclick = () => { M.moveCategorySort(cat.id, "up"); this.renderCardLib(body); };
 const downBtn = document.createElement("button");
 downBtn.textContent = "↓";
-downBtn.style = "padding:2px 6px;border:1px solid var(--color‑border);border‑radius:4px;background:var(--color‑bg);font‑size:11px;cursor:pointer;";
+downBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
 downBtn.onclick = () => { M.moveCategorySort(cat.id, "down"); this.renderCardLib(body); };
 const renameBtn = document.createElement("button");
 renameBtn.textContent = "重命名";
-renameBtn.style = "padding:2px 6px;border:1px solid var(--color‑border);border‑radius:4px;background:var(--color‑bg);font‑size:11px;cursor:pointer;";
+renameBtn.style = "padding:2px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);font-size:11px;cursor:pointer;";
 renameBtn.onclick = () => {
   const name = prompt("输入新名称", cat.name);
   if (name) { M.renameCategory(cat.id, name.trim()); this.renderCardLib(body); }
 };
 const delBtn = document.createElement("button");
 delBtn.textContent = "删除";
-delBtn.style = "padding:2px 6px;border:1px solid #ff3b30;border‑radius:4px;background:transparent;color:#ff3b30;font‑size:11px;cursor:pointer;";
+delBtn.style = "padding:2px 6px;border:1px solid #ff3b30;border-radius:4px;background:transparent;color:#ff3b30;font-size:11px;cursor:pointer;";
 delBtn.onclick = () => {
   if (cat.cards.length > 0) {
     this.showTransferModal(cat, categories, body);
@@ -1028,6 +1029,7 @@ delBtn.onclick = () => {
   }
 };
 
+// DOM追加顺序：展开箭头 →整组勾选框 →分类总开关 →名称 →新增按钮 →操作按钮
 catHead.appendChild(expandBtn);
 catHead.appendChild(catSelectCheck);
 catHead.appendChild(catDisableCheck);
