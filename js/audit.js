@@ -32,13 +32,15 @@ const AuditCardModule = {
       chaosProb: 0.02,
       pendingMax: 20,
       applyCoolDownMs: 60000,
+      activeSendCoolDownMs: 120000, // 主动发送冷却，默认2分钟
       dreamNick: "梦角"
     },
     notification: { enable: true, permissionDenied: false },
     debug: false
   },
-  engineRunning: false,
+    engineRunning: false,
   engineTimerId: null, // 新增：引擎定时器ID
+  lastActiveSendTs: 0, // 记录上一次主动发消息时间戳，用于冷却
   emotionWords: ["喜欢", "爱", "想你", "开心"],
 
   // ========== 来自DS版本新增工具方法 ==========
@@ -363,29 +365,63 @@ const AuditCardModule = {
     }
   },
 
-  runChaosOperate() {
+    runChaosOperate() {
     const cfg = this.auditConfig.dreamEngine;
-    if (!cfg.enableChaos || Math.random() > cfg.chaosProb) return;
-    const ops = ["delete", "disable", "move"];
-    const action = ops[Math.floor(Math.random() * ops.length)];
-    const allCards = this.getAllAuditCards().filter(c => !c.isDisabled && !this.getAuditCategoryById(c.categoryId)?.isDisabled);
-    if (allCards.length === 0) return;
-
-    const card = allCards[Math.floor(Math.random() * allCards.length)];
-    const payload = { cardText: card.content, sourceCatId: card.categoryId };
-
-    if (action === "move") {
-      const otherCats = this.getAuditCategories().filter(c => c.id !== card.categoryId && !c.isDisabled);
-      if (otherCats.length === 0) return;
-      payload.targetCatId = otherCats[Math.floor(Math.random() * otherCats.length)].id;
+    if (!cfg.enableChaos) {
+      if(this.auditConfig.debug) console.log("[chaosOperate] 混沌开关关闭");
+      return;
     }
-    this.createPendingApply(action, payload, this.getContactNick());
+    const r = Math.random();
+    if(this.auditConfig.debug) console.log("[chaosOperate] 混沌随机值：", r, "设定概率：", cfg.chaosProb);
+    if (r < cfg.chaosProb) {
+      if(this.auditConfig.debug) console.log("[chaosOperate] ✅命中混沌概率，执行变更");
+      const ops = ["delete", "disable", "move"];
+      const action = ops[Math.floor(Math.random() * ops.length)];
+      const allCards = this.getAllAuditCards().filter(c => !c.isDisabled && !this.getAuditCategoryById(c.categoryId)?.isDisabled);
+      if (allCards.length === 0) {
+        if(this.auditConfig.debug) console.log("[chaosOperate] 没有可用字卡，跳过");
+        return;
+      }
+      const card = allCards[Math.floor(Math.random() * allCards.length)];
+      const payload = { cardText: card.content, sourceCatId: card.categoryId };
+      if (action === "move") {
+        const otherCats = this.getAuditCategories().filter(c => c.id !== card.categoryId && !c.isDisabled);
+        if (otherCats.length === 0) {
+          if(this.auditConfig.debug) console.log("[chaosOperate] 没有可迁移目标分类，跳过");
+          return;
+        }
+        payload.targetCatId = otherCats[Math.floor(Math.random() * otherCats.length)].id;
+      }
+      this.createPendingApply(action, payload, this.getContactNick());
+    }else{
+      if(this.auditConfig.debug) console.log("[chaosOperate] ❌未命中混沌概率");
+    }
   },
 
-  runActiveSend() {
-    if (!this.auditConfig.dreamEngine.enableActiveSend) return;
+    runActiveSend() {
+    const cfg = this.auditConfig.dreamEngine;
+    if (!cfg.enableActiveSend) {
+      if(this.auditConfig.debug) console.log("[activeSend] 主动消息开关关闭");
+      return;
+    }
+    const now = Date.now();
+    // 冷却校验
+    if(now - this.lastActiveSendTs < cfg.activeSendCoolDownMs){
+      const remain = Math.ceil((cfg.activeSendCoolDownMs - (now - this.lastActiveSendTs)) /1000);
+      if(this.auditConfig.debug) console.log(`[activeSend] ⏳冷却中，还剩${remain}秒`);
+      return;
+    }
+    // 主动发送这里没有独立概率，满足冷却就尝试抽取字卡发送
     const card = this.drawRandomCard("auditReport");
-    if (card) this.sendCardToChat(card);
+    if(!card){
+      if(this.auditConfig.debug) console.log("[activeSend] ❌无可用字卡，不发送");
+      return;
+    }
+    if(this.auditConfig.debug) console.log("[activeSend] ✅满足条件，发送字卡：", card.content);
+    const ok = this.sendCardToChat(card);
+    if(ok){
+      this.lastActiveSendTs = now; // 发送成功才更新冷却时间戳
+    }
   },
 
     async engineTick(chatMsgList) {
