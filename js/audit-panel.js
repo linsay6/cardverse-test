@@ -154,9 +154,10 @@ const AuditPanelModule = {
       let x = clientX - dragState.offsetX;
       let y = clientY - dragState.offsetY;
 
-      if(Math.hypot(clientX‑dragState.offsetX‑x, clientY‑dragState.offsetY‑y) > this._touchSlop){
-        dragState.moved = true;
-      }
+      // 如果报错，替换moveDrag里面这行
+if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) > this._touchSlop){
+  dragState.moved = true;
+}
 
       // 视口边界，现在可以完全贴到x=0屏幕最左侧
       const vw = document.documentElement.clientWidth;
