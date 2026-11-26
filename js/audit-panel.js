@@ -148,9 +148,9 @@ const AuditPanelModule = {
       let x = clientX - dragState.offsetX;
       let y = clientY - dragState.offsetY;
 
-      if(Math.hypot(clientX‑dragState.offsetX‑x, clientY‑dragState.offsetY‑y) > this._touchSlop){
-        dragState.moved = true;
-      }
+      if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) > this._touchSlop){
+  dragState.moved = true;
+}
       const vw = document.documentElement.clientWidth;
       const vh = document.documentElement.clientHeight;
       const size = ball.offsetWidth;
