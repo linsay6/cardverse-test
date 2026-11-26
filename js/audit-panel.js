@@ -45,23 +45,25 @@ const AuditPanelModule = {
       initFloatBall() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
-    if (!cfg.enable && !forceShow) {
-      if(this.floatBallEl) this.floatBallEl.remove();
-      this.floatBallEl = null;
-      return;
-    }
+    // 修复勾选启用不出现：强制销毁残留DOM，清空引用
     if(this.floatBallEl){
-      this.updateFloatBallStyle();
-      this.updateBadge();
+      if(this.floatBallEl.parentNode) this.floatBallEl.remove();
+      this.floatBallEl = null;
+      this.ballInner = null;
+      this.badgeEl = null;
+    }
+    if (!cfg.enable && !forceShow) {
       return;
     }
-    // 外层wrapper：transform挂载在这里，放置球体+角标
+
+    // 外层wrapper：transform挂载在这里，角标放在wrapper，不再放在ball内部，解决overflow裁切
     const wrapper = document.createElement("div");
     wrapper.style.cssText = `
       position:fixed;
       z-index:99999;
       pointer-events:none;
     `;
+    // 球体容器
     const ball = document.createElement("div");
     ball.style.cssText = `
       position:relative;
@@ -75,13 +77,13 @@ const AuditPanelModule = {
       width:${cfg.size}px;height:${cfg.size}px;
       pointer-events:auto;
     `;
-    // 红色待审角标DOM
+    // ✅角标移到外层wrapper，向上悬浮在球体上方，不会被overflow:hidden裁切
     const badge = document.createElement("div");
     badge.className = "audit-badge";
     badge.style.cssText = `
       position:absolute;
-      top:-4px;
-      right:-4px;
+      top:-10px;
+      right:-6px;
       min-width:18px;
       height:18px;
       padding:0 4px;
@@ -94,14 +96,17 @@ const AuditPanelModule = {
       align-items:center;
       justify-content:center;
       box-shadow:0 2px 4px rgba(0,0,0,0.2);
+      pointer-events:none;
     `;
-    ball.appendChild(badge);
+    wrapper.appendChild(ball);
+    wrapper.appendChild(badge);
+
     if (cfg.avatarBase64) {
       ball.innerHTML += `<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     } else {
       ball.innerHTML += `<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
     }
-    wrapper.appendChild(ball);
+
     document.body.appendChild(wrapper);
     this.floatBallEl = wrapper;
     this.ballInner = ball;
@@ -110,6 +115,7 @@ const AuditPanelModule = {
     // 更新悬浮球角标函数
     this.updateBadge = ()=>{
       const count = AuditCardModule.pendingApply.length;
+      if(!this.badgeEl) return;
       if(count <= 0){
         this.badgeEl.style.display = "none";
         return;
@@ -118,48 +124,58 @@ const AuditPanelModule = {
       this.badgeEl.innerText = count > 99 ? "99+" : String(count);
     };
     this.updateBadge();
-
-    // 监听待审队列变化自动刷新角标
     EventBus.on("my‑audit‑data‑updated", ()=>{
       this.updateBadge();
     });
 
-    if (cfg.posX != null && cfg.posY != null) {
-      wrapper.style.transform = `translate3d(${cfg.posX}px, ${cfg.posY}px, 0)`;
-    }
+    // 读取保存的位置
+    let currentTransformX = cfg.posX ?? 0;
+    let currentTransformY = cfg.posY ?? 0;
+    wrapper.style.transform = `translate3d(${currentTransformX}px, ${currentTransformY}px, 0)`;
 
     let rafId = null;
+    // ✅修复拖拽偏移bug：不使用getBoundingClientRect读取变换后的元素位置
     let dragState = {
       dragging: false,
       moved: false,
-      startX:0, startY:0, wrapperOriginX:0, wrapperOriginY:0
+      pointerStartX:0,
+      pointerStartY:0,
+      transformStartX:0,
+      transformStartY:0
     };
 
     const startDrag = (clientX, clientY) => {
       dragState.dragging = true;
       dragState.moved = false;
-      dragState.startX = clientX;
-      dragState.startY = clientY;
-      const rect = wrapper.getBoundingClientRect();
-      dragState.wrapperOriginX = rect.left;
-      dragState.wrapperOriginY = rect.top;
+      // 按下瞬间：记录鼠标视口坐标，记录当前transform偏移，不再读getBoundingClientRect
+      dragState.pointerStartX = clientX;
+      dragState.pointerStartY = clientY;
+      dragState.transformStartX = currentTransformX;
+      dragState.transformStartY = currentTransformY;
     };
     const moveDrag = (clientX, clientY) => {
       if (!dragState.dragging) return;
-      const dx = clientX - dragState.startX;
-      const dy = clientY - dragState.startY;
+      const dx = clientX - dragState.pointerStartX;
+      const dy = clientY - dragState.pointerStartY;
       if(Math.hypot(dx, dy) > this._touchSlop) dragState.moved = true;
+
       const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
       const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       const size = parseFloat(getComputedStyle(ball).width);
-      let x = dragState.wrapperOriginX + dx;
-      let y = dragState.wrapperOriginY + dy;
+
+      // 直接基于transform初始值做增量，消除坐标偏移
+      let x = dragState.transformStartX + dx;
+      let y = dragState.transformStartY + dy;
       x = Math.max(0, Math.min(vw - size, x));
       y = Math.max(0, Math.min(vh - size, y));
+
       if(!rafId) {
         rafId = requestAnimationFrame(() => {
           rafId = null;
           wrapper.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+          // 同步更新内存变量
+          currentTransformX = x;
+          currentTransformY = y;
         });
       }
     };
@@ -168,9 +184,9 @@ const AuditPanelModule = {
       if (!dragState.moved) {
         this.open();
       }else{
-        const rect = wrapper.getBoundingClientRect();
-        AuditCardModule.auditConfig.floatBall.posX = rect.left;
-        AuditCardModule.auditConfig.floatBall.posY = rect.top;
+        // 拖拽结束持久化位置
+        AuditCardModule.auditConfig.floatBall.posX = currentTransformX;
+        AuditCardModule.auditConfig.floatBall.posY = currentTransformY;
         AuditCardModule.saveToStorage();
       }
       dragState.dragging = false;
@@ -209,34 +225,41 @@ const AuditPanelModule = {
       document.addEventListener("touchcancel", touchEnd);
     }, { passive:true });
   },
-
-    updateFloatBallStyle() {
+  updateFloatBallStyle() {
     const cfg = AuditCardModule.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     if (!cfg.enable && !forceShow) {
-      if(this.floatBallEl) this.floatBallEl.remove();
+      if(this.floatBallEl){
+        if(this.floatBallEl.parentNode) this.floatBallEl.remove();
+      }
       this.floatBallEl = null;
+      this.ballInner = null;
+      this.badgeEl = null;
       return;
     }
+    // ✅当勾选启用悬浮球，但DOM实例被销毁，强制重新初始化
     if (!this.floatBallEl) {
       this.initFloatBall();
       return;
     }
     const ball = this.ballInner;
+    if(!ball) return;
     ball.style.width = cfg.size + "px";
     ball.style.height = cfg.size + "px";
     ball.style.background = cfg.color || "#7c68ee";
-    // 删除旧图片/svg，保留badge角标节点，不能直接innerHTML覆盖
+
+    // 删除旧图片/svg，角标现在在wrapper外层，不受innerHTML影响
     const oldImg = ball.querySelector("img");
     const oldSvg = ball.querySelector("svg");
     if(oldImg) oldImg.remove();
     if(oldSvg) oldSvg.remove();
+
     if(cfg.avatarBase64){
       ball.insertAdjacentHTML("beforeend",`<img src="${cfg.avatarBase64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`);
     }else{
       ball.insertAdjacentHTML("beforeend",`<svg xmlns="http://www.w3.org/2000/svg" width="${cfg.size*0.5}" height="${cfg.size*0.5}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`);
     }
-    // transform挂载外层wrapper
+    // 同步位置
     if(cfg.posX != null && cfg.posY != null){
       this.floatBallEl.style.transform = `translate3d(${cfg.posX}px, ${cfg.posY}px, 0)`;
     }
