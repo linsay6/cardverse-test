@@ -332,19 +332,30 @@ const AuditCardModule = {
   },
 
   // ========== 梦角引擎：使用DS的增强实现 ==========
-  scanChatAndGenApply(chatMsgList) {
+    scanChatAndGenApply(chatMsgList) {
     const cfg = this.auditConfig.dreamEngine;
-    if (!cfg.enableGrabChat || this.engineRunning) return;
+    if (!cfg.enableGrabChat || this.engineRunning) {
+      if(this.auditConfig.debug) console.log("[scanChat] 跳过：抓取开关关闭 or 引擎忙");
+      return;
+    }
     const now = Date.now();
     const userRecentMsg = chatMsgList.filter(m => m.role === "user" && (now - m.time) < 15 * 60 * 1000 && m.content.length >= 5 && m.content.length <= 35);
-    if (userRecentMsg.length === 0) return;
+    if(this.auditConfig.debug) console.log("[scanChat] 用户近期消息数量：", userRecentMsg.length);
+    if (userRecentMsg.length === 0){
+      if(this.auditConfig.debug) console.log("[scanChat] 没有符合条件用户消息");
+      return;
+    }
     const latestUserMsg = userRecentMsg[userRecentMsg.length - 1];
     let prob = cfg.baseProb;
     if (this.emotionWords.some(w => latestUserMsg.content.includes(w))) prob = cfg.emotionProb;
+    if(this.auditConfig.debug) console.log("[scanChat]最新消息：",latestUserMsg.content," 本次判定概率：",prob);
     if (Math.random() < prob) {
+      if(this.auditConfig.debug) console.log("[scanChat]✅命中概率，生成待审申请");
       const enabledCats = this.getAuditCategories().filter(c => !c.isDisabled);
       const targetCat = enabledCats.length > 0 ? enabledCats[Math.floor(Math.random() * enabledCats.length)] : this.getAuditCategories()[0];
       this.createPendingApply("add", { cardText: latestUserMsg.content, targetCatId: targetCat?.id }, this.getContactNick());
+    }else{
+      if(this.auditConfig.debug) console.log("[scanChat]❌未命中随机概率，不生成申请");
     }
   },
 
