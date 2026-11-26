@@ -714,7 +714,6 @@ const AuditPanelModule = {
   `;
   listWrap.appendChild(row);
 });
-
     }
 
     body.innerHTML = "";
