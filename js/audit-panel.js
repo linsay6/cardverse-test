@@ -149,8 +149,8 @@ const AuditPanelModule = {
       let y = clientY - dragState.offsetY;
 
       if(Math.hypot(clientX - dragState.offsetX - x, clientY - dragState.offsetY - y) > this._touchSlop){
-  dragState.moved = true;
-}
+        dragState.moved = true;
+      }
       const vw = document.documentElement.clientWidth;
       const vh = document.documentElement.clientHeight;
       const size = ball.offsetWidth;
@@ -164,7 +164,7 @@ const AuditPanelModule = {
           wrapper.style.top = `${y}px`;
           currentX = x;
           currentY = y;
-          // ✅【关键修复】每一帧拖拽移动同步更新内存cfg对象！！不等到endDrag才赋值
+          // 每一帧同步更新内存配置对象，开关悬浮球重建DOM位置不会丢失
           cfg.posX = currentX;
           cfg.posY = currentY;
         });
@@ -173,23 +173,16 @@ const AuditPanelModule = {
 
     const endDrag = () => {
       if (!dragState.dragging) return;
-      // 拖拽结束，保存到localStorage
-      if (dragState.moved) {
+      // =========【核心】抬起瞬间判断：没有发生拖拽位移就打开弹窗，拖拽过就不打开弹窗；彻底不使用click事件=========
+      if (!dragState.moved) {
+        this.open();
+      } else {
         AuditCardModule.saveToStorage();
       }
       dragState.dragging = false;
     };
 
-    // ✅恢复click监听；发生拖拽moved=true直接拦截事件，不会打开弹窗
-    ball.addEventListener("click", (e)=>{
-      if(dragState.moved){
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        return;
-      }
-      this.open();
-    });
-
+    // =========鼠标事件=========
     ball.addEventListener("mousedown", e=>{
       e.preventDefault();
       startDrag(e.clientX, e.clientY);
@@ -203,7 +196,9 @@ const AuditPanelModule = {
       document.addEventListener("mouseup", onMouseUp);
     });
 
+    // =========触屏事件【去掉passive:true，允许preventDefault阻止浏览器合成鼠标/click事件】=========
     ball.addEventListener("touchstart", e=>{
+      e.preventDefault(); // 关键！阻止浏览器自动生成mousedown/mouseup/click合成事件，从根源避免拖拽后弹窗
       const t = e.touches[0];
       startDrag(t.clientX, t.clientY);
       const touchMove = (te)=>{
@@ -221,7 +216,7 @@ const AuditPanelModule = {
       document.addEventListener("touchmove", touchMove, {passive:false});
       document.addEventListener("touchend", touchEnd);
       document.addEventListener("touchcancel", touchEnd);
-    }, {passive:true});
+    });
   },
 
       updateFloatBallStyle() {
