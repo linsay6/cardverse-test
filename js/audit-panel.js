@@ -1503,7 +1503,8 @@ const AuditPanelModule = {
     // 主动发送冷却：读取时毫秒转分钟，保存时分钟转毫秒
     body.appendChild(numberInputRaw("主动发送冷却(分)", engine.activeSendCoolDownMs / 60000, v => {engine.activeSendCoolDownMs = v * 60000;M.saveToStorage();}));
     body.appendChild(numberInputRaw("待审上限(条)", engine.pendingMax, v => { engine.pendingMax = v; M.saveToStorage(); }));
-    body.appendChild(numberInputMinute("冷却时间(分)", engine.applyCoolDownMs, v => { engine.applyCoolDownMs = v; M.saveToStorage(); }));
+    body.appendChild(numberInputRaw("冷却时间(分)", engine.applyCoolDownMs / 60000, v => {const val = Math.max(1, Number(v));engine.applyCoolDownMs = val * 60000;M.saveToStorage();}));
+
 
     // -------- 其他设置 --------
     body.appendChild(sectionTitle("通知与调试"));
