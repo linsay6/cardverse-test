@@ -203,8 +203,10 @@ export const CardEditorModule = {
           listWrap.appendChild(item);
         })
       }
-      wrap.appendChild(listWrap);
-    }else{
+    wrap.appendChild(listWrap);
+    }
+  }else{
+
         // ========= auditReport：完整复刻 audit‑panel.js renderCardLib UI，操作全部调用M模块api，自动双向同步 =========
         const categories = M.getAuditCategories();
         const kw = this._cardSearch || "";
