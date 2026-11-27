@@ -90,12 +90,20 @@ const AuditCardModule = {
   },
 
   // ========== 持久化加载，兼容旧存储 ==========
-  loadFromStorage() {
+    loadFromStorage() {
     const raw = localStorage.getItem("mochi_audit_v2");
     if (!raw) return;
     try {
       const data = JSON.parse(raw);
       this.cardGroups.custom.list = data?.customCards ?? [];
+      // 读取子分组，如果存储里面存在就覆盖，不存在就保留代码写死的默认模板
+      if(Array.isArray(data?.customSubgroups)){
+        this.cardGroups.custom.subgroups = data.customSubgroups;
+      }
+      if(Array.isArray(data?.systemSubgroups)){
+        this.cardGroups.system.subgroups = data.systemSubgroups;
+      }
+
       this.cardGroups.auditReport.categories = data?.auditReportCategories ?? [{ id: "default", name: "默认分类", sort: 0, isDisabled: false, expanded: true, cards: [] }];
 
       if (data?.auditReportCards && Array.isArray(data.auditReportCards) && data.auditReportCards.length > 0) {
@@ -108,9 +116,11 @@ const AuditCardModule = {
     } catch (e) { console.warn("audit读取本地存储失败", e); }
   },
 
-  saveToStorage() {
+    saveToStorage() {
     localStorage.setItem("mochi_audit_v2", JSON.stringify({
       customCards: this.cardGroups.custom.list,
+      customSubgroups: this.cardGroups.custom.subgroups,
+      systemSubgroups: this.cardGroups.system.subgroups,
       auditReportCategories: this.cardGroups.auditReport.categories,
       pendingApply: this.pendingApply,
       auditHistory: this.auditHistory,
@@ -587,8 +597,51 @@ const AuditCardModule = {
     }
   },
 
-    init() {
+      init() {
     this.loadFromStorage();
+
+    // =====运行时兜底，防止旧存储把 subgroups 冲成 undefined=====
+    if(!this.cardGroups.custom.subgroups || !Array.isArray(this.cardGroups.custom.subgroups)){
+      this.cardGroups.custom.subgroups = [
+        { subgroupId:"custom-global", name:"公用字卡", scope:"global", list:[] },
+        { subgroupId:"custom-contact", name:"专属字卡", scope:"contact", list:[] },
+        { subgroupId:"custom-fun-global", name:"其他互动功能字卡·公用", scope:"global", list:[] },
+        { subgroupId:"custom-fun-contact", name:"其他互动功能字卡·专属", scope:"contact", list:[] },
+        { subgroupId:"custom-trace", name:"寻踪日常·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-love-words", name:"今日情话·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-ask-open", name:"TA的询问·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-ask-choice", name:"TA的小问题·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-curious", name:"TA的好奇·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-complain", name:"TA的吐槽·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-check", name:"TA的查岗·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-invite", name:"TA的邀请·我的添加", scope:"contact", list:[] }
+      ];
+    }
+    if(!this.cardGroups.system.subgroups || !Array.isArray(this.cardGroups.system.subgroups)){
+      this.cardGroups.system.subgroups = [
+        { subgroupId:"sys-chat-default", name:"默认聊天字卡", scope:"global", list:[
+          { id: "sys-1", title: "温柔提示", content: "我一直在，慢慢来就好。", side: "bot", isDisabled: false },
+          { id: "sys-2", title: "简短回应", content: "我看到你的心意了。", side: "bot", isDisabled: false }
+        ]},
+        { subgroupId:"sys-chat-dict", name:"聊天默认字卡·词典", scope:"global", list:[] },
+        { subgroupId:"sys-fun", name:"其他互动功能字卡", scope:"global", list:[] },
+        { subgroupId:"sys-cross-check", name:"联系人跨桌面查岗", scope:"global", list:[] },
+        { subgroupId:"sys-emotion", name:"聊天情绪字卡", scope:"global", list:[] },
+        { subgroupId:"sys-ta-mood", name:"TA的心情", scope:"global", list:[] },
+        { subgroupId:"sys-connect", name:"聊天回应字卡", scope:"global", list:[] },
+        { subgroupId:"sys-trace", name:"寻踪日常字卡", scope:"global", list:[] },
+        { subgroupId:"sys-daily-love", name:"桌面今日情话", scope:"global", list:[] },
+        { subgroupId:"sys-location", name:"TA在身边位置卡", scope:"global", list:[] },
+        { subgroupId:"sys-ask-open", name:"TA的询问", scope:"global", list:[] },
+        { subgroupId:"sys-ask-choice", name:"TA的小问题", scope:"global", list:[] },
+        { subgroupId:"sys-curious", name:"TA的好奇", scope:"global", list:[] },
+        { subgroupId:"sys-complain", name:"TA的吐槽", scope:"global", list:[] },
+        { subgroupId:"sys-check", name:"TA的查岗", scope:"global", list:[] },
+        { subgroupId:"sys-invite", name:"TA的邀请", scope:"global", list:[] }
+      ];
+    }
+    // =====兜底结束=====
+
     console.log("AuditCardModule 数据层初始化完成");
     this.restartEngineTimer(); // 初始化启动定时器
   },
