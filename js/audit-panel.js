@@ -437,8 +437,9 @@ const AuditPanelModule = {
   },
 
   // ========== 悬浮球 ==========
-     initFloatBall() {
-   const cfg = this.M.auditConfig.floatBall;
+    initFloatBall() {
+    const M = AuditCardModule;
+    const cfg = M.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     // 销毁旧DOM
     if(this.floatBallEl){
@@ -532,7 +533,6 @@ const AuditPanelModule = {
       if (!dragState.dragging) return;
       let x = clientX - dragState.offsetX;
       let y = clientY - dragState.offsetY;
-      // 修复：全部英文减号
       const dist = Math.hypot( (clientX - dragState.offsetX) - x , (clientY - dragState.offsetY) - y );
       if( dist > this._touchSlop ){
         dragState.moved = true;
@@ -579,7 +579,6 @@ const AuditPanelModule = {
     });
     // =========触屏事件=========
     ball.addEventListener("touchstart", e=>{
-      // 不调用e.preventDefault()，部分移动端浏览器拒绝touchstart preventDefault，会报错；靠捕获click拦截合成事件
       const t = e.touches[0];
       startDrag(t.clientX, t.clientY);
       const touchMove = (te)=>{
