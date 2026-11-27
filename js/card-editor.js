@@ -32,7 +32,7 @@ export const CardEditorModule = {
       system: "系统预设字卡",
       auditReport: "审核报告字卡"
     };
-    let tabHtml = `<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">`;
+   let tabHtml = `<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;justify-content:center">`;
     tabKeys.forEach(k=>{
       const active = this.activeTab === k
         ? "background:var(--color-main);color:#fff"
