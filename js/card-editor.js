@@ -58,7 +58,7 @@ export const CardEditorModule = {
       auditReport: "审核报告字卡"
     };
     const contactId = window.GLOBAL_CONTEXT?.activeSessionId || Store.get("activeContactId");
-    let tabHtml = `<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;justify-content:center">`;
+    let tabHtml = `<div style="display:flex;gap:6px;margin-bottom:14px;justify-content:center;flex-shrink:0;">`;
     tabKeys.forEach(k=>{
       const active = this.activeTab === k
         ? "background:var(--color-main);color:#fff"
@@ -85,23 +85,41 @@ export const CardEditorModule = {
 
       // ---------------- 分支A：分组首页（卡片列表，点击进详情） ----------------
       if(!this.inSubgroupDetail){
-        // 外层滚动容器，隐藏滚动条
-        const scrollWrap = document.createElement("div");
-        scrollWrap.id = "editor-scroll-hide";
-        scrollWrap.style.cssText = `
-          overflow-y:auto;
-          scrollbar-width:none;
-          -ms-overflow-style:none;
-          flex:1;
-          min-height:0;
-        `;
-        const styleHide = document.createElement("style");
-        styleHide.textContent = `#editor-scroll-hide::-webkit-scrollbar{display:none !important;}`;
-        scrollWrap.appendChild(styleHide);
+     // 搜索框
+        const searchWrap = document.createElement("div");
+        searchWrap.style.cssText = "margin-bottom:12px;";
+        const searchInput = document.createElement("input");
+        searchInput.placeholder = "搜索当前分类下所有字卡标题/内容...";
+        searchInput.value = this._cardSearch || "";
+        searchInput.style.cssText = `width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text);font-size:13px;`;
+        searchInput.oninput = ()=>{
+            this._cardSearch = searchInput.value.trim();
+            this.render();
+        };
+        searchWrap.appendChild(searchInput);
+        wrap.appendChild(searchWrap);
 
-        // 返回提示不需要，这里渲染分组卡片
+        // 滚动容器，使用全局panel-scroll（css-theme已经写好隐藏滚动条）
+        const scrollWrap = document.createElement("div");
+        scrollWrap.className = "panel-scroll";
+        scrollWrap.style.cssText = `flex:1;min-height:0;`;
+
+        // 过滤：当前tab下，匹配搜索关键词的子分组卡片
+        const kw = (this._cardSearch || "").toLowerCase();
         group.subgroups.forEach(sg=>{
-          const sgCount = this.getSubgroupCardCount(this.activeTab, sg.subgroupId, contactId);
+          let sgCardList = M.getSubgroupCards(this.activeTab, sg.subgroupId, contactId);
+          // 关键词过滤
+          if(kw){
+            sgCardList = sgCardList.filter(card=>{
+              const t = (card.title || "").toLowerCase();
+              const c = (card.content || "").toLowerCase();
+              return t.includes(kw) || c.includes(kw);
+            })
+          }
+          const sgCount = sgCardList.length;
+          // 无搜索匹配，不渲染这个分组
+          if(kw && sgCount <= 0) return;
+
           const cardItem = document.createElement("div");
           cardItem.style.cssText = `
             border:1px solid var(--color-border);
@@ -185,6 +203,8 @@ export const CardEditorModule = {
 
       // 渲染子分组字卡列表
       const listWrap = document.createElement("div");
+      listWrap.className = "panel-scroll";
+      listWrap.style.cssText = "flex:1;min-height:0;";
       listWrap.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;color:var(--color-text)">${activeSg.name}（${sgCardList.length}条）</div>`;
       if(sgCardList.length === 0){
         listWrap.innerHTML += `<div style="color:var(--color-text-2);font-size:13px">暂无字卡</div>`;
@@ -575,9 +595,9 @@ export const CardEditorModule = {
         // 切顶层tab强制回到分组首页
         this.inSubgroupDetail = false;
         this.activeSubTab = null;
-        // 切换标签页时，重置auditReport的搜索和勾选状态
+        // 切换标签页时重置搜索
+        this._cardSearch = "";
         if(this.activeTab === "auditReport"){
-            this._cardSearch = "";
             this._selectedCards.clear();
         }
         this.render();
