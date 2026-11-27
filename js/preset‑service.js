@@ -1,13 +1,12 @@
-/** preset-service.js 【新建文件】
- * 原作者default‑cards.js核心逻辑适配层
- * 存储key全部带 preset_ 前缀，隔离用户现有业务存储
-*/
+/** preset-service.js
+ * 原作者default‑cards.js适配桥接层，存储key带preset_前缀隔离业务数据
+ */
 import { getRawPresetSource } from "./preset-data-bridge.js";
 
 const STORAGE_KEY_GROUP_OFF = "preset_dc_groups_off";
 const STORAGE_KEY_CARD_OFF_PREFIX = "preset_dc-off-";
 
-// 读取整组停用记录
+// 整组停用记录
 function getGroupOffRecord(){
     try{
         const s = localStorage.getItem(STORAGE_KEY_GROUP_OFF);
@@ -30,8 +29,8 @@ function setCardOff(catKey, cardUniqueId, off){
 }
 
 /**
- * 原作者分组格式 → 转换为 AuditCardModule 的 system.subgroups 数组格式
- * @returns {Array} subgroups数组，可合并进 M.cardGroups.system.subgroups
+ * 原作者分组格式 → AuditCardModule system.subgroups 格式
+ * @returns {Array} subgroups数组
  */
 export async function getAllConvertedPresetGroups(){
     const rawData = getRawPresetSource();
