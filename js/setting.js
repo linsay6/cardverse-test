@@ -51,7 +51,7 @@ export const SettingModule = {
     document.dispatchEvent(new CustomEvent("contact:change", { detail: id }));
     // 更新全局上下文会话ID，并广播session‑changed事件总线
     window.GLOBAL_CONTEXT.activeSessionId = id;
-    EventBus.emit("session‑changed", { sessionId: id });
+   EventBus.emit("session-changed", { sessionId: id });
   },
   /** 导出全部数据 */
   async exportAllData() {
