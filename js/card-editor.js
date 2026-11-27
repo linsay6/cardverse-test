@@ -31,7 +31,7 @@ export const CardEditorModule = {
     const list = M.getSubgroupCards(tabKey, sgId, contactId);
     return list.length;
   },
-  init(containerSelector) {
+  async init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
       console.error("字卡编辑容器找不到", containerSelector);
