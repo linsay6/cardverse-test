@@ -44,10 +44,10 @@ export const ThemeManager = {
     root.style.setProperty("--tab-active", this.currentTheme.colorMain);
     root.style.setProperty("--color-bg-card", this.currentTheme.colorBgCard);
     // 全局：占位提示文字、时间标签跟随次要文字颜色
-    let globalStyle = document.getElementById('global‑theme‑aux‑style');
+        let globalStyle = document.getElementById('global-theme-aux-style');
     if (!globalStyle) {
         globalStyle = document.createElement('style');
-        globalStyle.id = 'global‑theme‑aux‑style';
+        globalStyle.id = 'global-theme-aux-style';
         document.head.appendChild(globalStyle);
     }
     globalStyle.textContent = `
