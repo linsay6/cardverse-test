@@ -2,14 +2,50 @@ import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
 
 const AuditCardModule = {
-  cardGroups: {
-    custom: { name: "自定义字卡", list: [] },
+    cardGroups: {
+    custom: {
+      name: "自定义字卡",
+      subgroups: [
+        { subgroupId:"custom‑global", name:"公用字卡", scope:"global", list:[] },
+        { subgroupId:"custom‑contact", name:"专属字卡", scope:"contact", list:[] },
+        { subgroupId:"custom‑fun‑global", name:"其他互动功能字卡·公用", scope:"global", list:[] },
+        { subgroupId:"custom‑fun‑contact", name:"其他互动功能字卡·专属", scope:"contact", list:[] },
+        { subgroupId:"custom‑trace", name:"寻踪日常·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom‑love‑words", name:"今日情话·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom‑ask‑open", name:"TA的询问·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom‑ask‑choice", name:"TA的小问题·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom‑curious", name:"TA的好奇·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom‑complain", name:"TA的吐槽·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom‑check", name:"TA的查岗·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom‑invite", name:"TA的邀请·我的添加", scope:"contact", list:[] }
+      ],
+      // 兼容旧版本，旧list保留用于升级迁移
+      list: []
+    },
     system: {
       name: "系统预设字卡",
-      list: [
-        { id: 1, title: "温柔提示", content: "我一直在，慢慢来就好。", side: "bot", isDisabled: false },
-        { id: 2, title: "简短回应", content: "我看到你的心意了。", side: "bot", isDisabled: false }
-      ]
+      subgroups: [
+        { subgroupId:"sys‑chat‑default", name:"默认聊天字卡", scope:"global", list:[
+          { id: "sys‑1", title: "温柔提示", content: "我一直在，慢慢来就好。", side: "bot", isDisabled: false },
+          { id: "sys‑2", title: "简短回应", content: "我看到你的心意了。", side: "bot", isDisabled: false }
+        ]},
+        { subgroupId:"sys‑chat‑dict", name:"聊天默认字卡·词典", scope:"global", list:[] },
+        { subgroupId:"sys‑fun", name:"其他互动功能字卡", scope:"global", list:[] },
+        { subgroupId:"sys‑cross‑check", name:"联系人跨桌面查岗", scope:"global", list:[] },
+        { subgroupId:"sys‑emotion", name:"聊天情绪字卡", scope:"global", list:[] },
+        { subgroupId:"sys‑ta‑mood", name:"TA的心情", scope:"global", list:[] },
+        { subgroupId:"sys‑connect", name:"聊天回应字卡", scope:"global", list:[] },
+        { subgroupId:"sys‑trace", name:"寻踪日常字卡", scope:"global", list:[] },
+        { subgroupId:"sys‑daily‑love", name:"桌面今日情话", scope:"global", list:[] },
+        { subgroupId:"sys‑location", name:"TA在身边位置卡", scope:"global", list:[] },
+        { subgroupId:"sys‑ask‑open", name:"TA的询问", scope:"global", list:[] },
+        { subgroupId:"sys‑ask‑choice", name:"TA的小问题", scope:"global", list:[] },
+        { subgroupId:"sys‑curious", name:"TA的好奇", scope:"global", list:[] },
+        { subgroupId:"sys‑complain", name:"TA的吐槽", scope:"global", list:[] },
+        { subgroupId:"sys‑check", name:"TA的查岗", scope:"global", list:[] },
+        { subgroupId:"sys‑invite", name:"TA的邀请", scope:"global", list:[] }
+      ],
+      list: []
     },
     auditReport: {
       name: "审核报告字卡",
@@ -230,7 +266,7 @@ const AuditCardModule = {
     return this.cardGroups.auditReport.categories.reduce((sum, cat) => sum + cat.cards.length, 0);
   },
 
-  getEnabledCardList(groupKey) {
+    getEnabledCardList(groupKey, activeContactId=null) {
     const g = this.cardGroups[groupKey];
     if (!g) return [];
     if (groupKey === "auditReport") {
@@ -244,7 +280,102 @@ const AuditCardModule = {
       });
       return all;
     }
+    // 有子分组的情况 custom / system
+    if(g.subgroups){
+      let out = [];
+      g.subgroups.forEach(sg=>{
+        sg.list.forEach(card=>{
+          if(card.isDisabled) return;
+          if(sg.scope === "global"){
+            out.push(card);
+          }else if(sg.scope === "contact" && activeContactId && card.contactId === activeContactId){
+            out.push(card);
+          }
+        })
+      })
+      return out;
+    }
     return g.list.filter(item => !item.isDisabled);
+  },
+
+  // 获取指定子分组全部卡片
+  getSubgroupCards(groupKey, subgroupId, contactId=null){
+    const g = this.cardGroups[groupKey];
+    if(!g || !g.subgroups) return [];
+    const sg = g.subgroups.find(s=>s.subgroupId === subgroupId);
+    if(!sg) return [];
+    if(sg.scope === "global") return sg.list;
+    if(contactId){
+      return sg.list.filter(c=>c.contactId === contactId);
+    }
+    return [];
+  },
+
+  // 添加字卡到子分组，scope=contact时必须传入contactId
+  addCardToSubgroup(groupKey, subgroupId, cardItem, contactId=null){
+    const g = this.cardGroups[groupKey];
+    if(!g || !g.subgroups) return null;
+    const sg = g.subgroups.find(s=>s.subgroupId === subgroupId);
+    if(!sg) return null;
+    const newCard = {
+      id: Date.now() + Math.floor(Math.random()*1000),
+      title: cardItem.title || cardItem.content.slice(0,10),
+      content: cardItem.content,
+      side: cardItem.side ?? "bot",
+      isDisabled: !!cardItem.isDisabled,
+      disabledBy: cardItem.disabledBy || null,
+      ...(sg.scope === "contact" ? {contactId} : {})
+    };
+    sg.list.push(newCard);
+    this.saveToStorage();
+    return newCard;
+  },
+
+  // 删除子分组内卡片
+  deleteCardFromSubgroup(groupKey, subgroupId, cardId){
+    const g = this.cardGroups[groupKey];
+    if(!g || !g.subgroups) return;
+    const sg = g.subgroups.find(s=>s.subgroupId === subgroupId);
+    if(!sg) return;
+    const idx = sg.list.findIndex(c=>c.id === cardId);
+    if(idx >‑1) sg.list.splice(idx,1);
+    this.saveToStorage();
+  },
+
+  // 自定义字卡：全量导出（公用全部+当前联系人专属）
+  exportCustomCardJson(currentContactId){
+    const g = this.cardGroups.custom;
+    const out = { subgroups:[], _meta:{exportAt:new Date().toISOString(), contactId:currentContactId}};
+    g.subgroups.forEach(sg=>{
+      let items;
+      if(sg.scope === "global"){
+        items = [...sg.list];
+      }else{
+        items = sg.list.filter(c=>c.contactId === currentContactId);
+      }
+      out.subgroups.push({subgroupId:sg.subgroupId, name:sg.name, scope:sg.scope, list:items});
+    })
+    return out;
+  },
+
+  // 导入自定义字卡json
+  importCustomCardJson(jsonObj, targetContactId){
+    const g = this.cardGroups.custom;
+    if(!jsonObj || !Array.isArray(jsonObj.subgroups)) return false;
+    jsonObj.subgroups.forEach(importSg=>{
+      const localSg = g.subgroups.find(s=>s.subgroupId === importSg.subgroupId);
+      if(!localSg) return;
+      importSg.list.forEach(card=>{
+        const newId = Date.now()+Math.random()*1000;
+        const newCard = {...card, id:newId};
+        if(localSg.scope === "contact"){
+          newCard.contactId = targetContactId;
+        }
+        localSg.list.push(newCard);
+      })
+    })
+    this.saveToStorage();
+    return true;
   },
 
   drawRandomCard(groupKey = "auditReport") {
