@@ -28,14 +28,14 @@ const AuditPanelModule = {
   _touchSlop: 8,
 
     init() {
-    EventBus.on("open‑panel", (payload) => {
+     EventBus.on("open-panel", (payload) => {
       if (payload && payload.panel === "audit") this.open();
     });
     EventBus.on("themeChange", () => {
       if (this.panelEl) this.render(this.panelEl.firstElementChild);
       this.updateFloatBallStyle();
     });
-    EventBus.on("my‑audit‑data‑updated", () => {
+        EventBus.on("my-audit-data-updated", () => {
       if (this.panelEl) this.render(this.panelEl.firstElementChild);
       // 角标更新，只在这里注册一次，不在initFloatBall内部重复注册
       this.updateBadge?.();
