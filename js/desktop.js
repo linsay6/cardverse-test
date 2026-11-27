@@ -110,7 +110,7 @@ export const DesktopModule = {
     });
 
         // ========== 新增：待审角标自动更新 ==========
-    EventBus.on("my‑audit‑data‑updated", ()=>{
+     EventBus.on("my-audit-data-updated", ()=>{
       this.renderAllCards();
     });
   },
