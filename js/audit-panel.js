@@ -427,7 +427,7 @@ const AuditPanelModule = {
   // ✅提升为顶层正式方法，不再在initFloatBall内部动态定义
   updateBadge() {
     if(!this.badgeEl) return;
-    const count = AuditCardModule.pendingApply.length;
+    const count = this.M.pendingApply.length;
     if(count <= 0){
       this.badgeEl.style.display = "none";
       return;
@@ -438,7 +438,7 @@ const AuditPanelModule = {
 
   // ========== 悬浮球 ==========
      initFloatBall() {
-    const cfg = AuditCardModule.auditConfig.floatBall;
+   const cfg = this.M.auditConfig.floatBall;
     const forceShow = new URLSearchParams(location.search).get("show_audit") === "true";
     // 销毁旧DOM
     if(this.floatBallEl){
