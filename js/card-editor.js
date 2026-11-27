@@ -1,7 +1,7 @@
 import { EventBus } from './core/context.js';
 import { Toast } from './core/toast.js';
 import { Store } from './core/store.js';
-
+import { PresetService } from "./preset-service.js";
 export const CardEditorModule = {
   rootEl: null,
   activeTab: "custom",
@@ -40,9 +40,15 @@ export const CardEditorModule = {
     this.render();
     // 监听主题变更重渲染
     EventBus.on("themeChange", () => this.render());
-    // 监听audit数据变更，刷新列表
+       // 监听audit数据变更，刷新列表
     EventBus.on("my-audit-data-updated", () => this.render());
-  },
+    // =========【新增：页面打开自动刷新预设字卡】=========
+    try{
+        const M = window.AuditCardModule;
+        await M.refreshSystemPresetCards();
+    }catch(e){
+        console.warn("card‑editor初始化同步预设字卡异常",e);
+    }
 
   render() {
     if (!this.rootEl || !window.AuditCardModule) return;
@@ -541,12 +547,18 @@ export const CardEditorModule = {
                   editBtn.textContent = "编辑";
                   editBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
                   editBtn.onclick = () => {
-                    const newText = prompt("编辑字卡内容：", card.content);
-                    if (newText && newText.trim()) {
-                      M.updateCard(cat.id, card.id, { content: newText.trim() });
-                      this.render();
-                    }
-                  };
+    // =========【新增拦截：系统预设卡片禁止修改文字内容，只能开关启用禁用】=========
+    const isSystemGroup = this.activeTab === "system";
+    if(isSystemGroup){
+        Toast.show("系统预设字卡不可以编辑内容；只能启用/禁用该卡片");
+        return;
+    }
+    const newText = prompt("编辑字卡内容：", card.content);
+    if (newText && newText.trim()) {
+      M.updateCard(cat.id, card.id, { content: newText.trim() });
+      this.render();
+    }
+};
                   const toggleDisableBtn = document.createElement("button");
                   toggleDisableBtn.textContent = card.isDisabled ? "启用" : "禁用";
                   toggleDisableBtn.style.cssText = "padding:3px 6px;border:1px solid " + (card.isDisabled ? "var(--color-main)" : "#ff9500") + ";border-radius:4px;background:var(--color-bg);color:" + (card.isDisabled ? "var(--color-main)" : "#ff9500") + ";font-size:11px;cursor:pointer;";
