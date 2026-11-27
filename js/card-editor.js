@@ -43,12 +43,12 @@ export const CardEditorModule = {
        // 监听audit数据变更，刷新列表
     EventBus.on("my-audit-data-updated", () => this.render());
     // =========【新增：页面打开自动刷新预设字卡】=========
-    try{
-        const M = window.AuditCardModule;
-        await M.refreshSystemPresetCards();
-    }catch(e){
-        console.warn("card‑editor初始化同步预设字卡异常",e);
-    }
+    try {
+  const M = window.AuditCardModule;
+  await M.refreshSystemPresetCards();
+} catch (e) {
+  console.warn("card-editor初始化同步预设字卡异常", e);
+}
 
   render() {
     if (!this.rootEl || !window.AuditCardModule) return;
