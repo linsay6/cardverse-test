@@ -35,7 +35,7 @@ const TabManager = {
       };
     });
   },
-  switchTab(key) {
+    switchTab(key) {
     this.activeKey = key;
     // 隐藏所有面板
     this.tabs.forEach(tabItem => {
@@ -47,6 +47,14 @@ const TabManager = {
     if(activeTab){
       const el = document.querySelector(activeTab.selector);
       if(el) el.style.display = "block";
+    }
+    // ==========【新增：切换到字卡标签，刷新预设字卡】==========
+    if (key === "card") {
+      try {
+        AuditCardModule.refreshSystemPresetCards();
+      } catch (e) {
+        console.warn("切换字卡标签，同步预设字卡失败：", e);
+      }
     }
     // Tab按钮高亮
     document.querySelectorAll(".tab-btn").forEach(btn => {
