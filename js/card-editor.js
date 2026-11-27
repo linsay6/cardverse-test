@@ -3,7 +3,8 @@ import { Toast } from './core/toast.js';
 
 export const CardEditorModule = {
   rootEl: null,
-  activeTab: "custom", // 默认打开【自定义字卡】
+  activeTab: "custom", // 顶层tab: custom / system / auditReport
+  activeSubTab: null, // 新增：二级子tab subgroupId
   _cardSearch: "",
   _selectedCards: new Set(),
   init(containerSelector) {
@@ -44,52 +45,91 @@ export const CardEditorModule = {
 
         const M = window.AuditCardModule;
     // ========= 区分分支：custom / system 使用原有渲染；auditReport 使用完整分类渲染（和audit‑panel字卡库UI完全对齐） =========
-    if(this.activeTab !== "auditReport"){
-        const group = M.cardGroups[this.activeTab];
-        const list = group?.list || [];
-        const isSystemGroup = this.activeTab === "system";
-        if(!isSystemGroup){
-          const formDiv = document.createElement("div");
-          formDiv.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;";
-          formDiv.innerHTML = `
-            <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">新增字卡</div>
-            <div style="margin-bottom:8px;">
-              <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">标题</div>
-              <input id="in-card-title" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)" placeholder="标题">
+        if(this.activeTab !== "auditReport"){
+      const group = M.cardGroups[this.activeTab];
+      // 切换顶层tab，初始化二级子tab为第一个子分组
+      if(!this.activeSubTab || !group.subgroups.find(sg=>sg.subgroupId === this.activeSubTab)){
+        this.activeSubTab = group.subgroups[0].subgroupId;
+      }
+      const activeSg = group.subgroups.find(sg=>sg.subgroupId === this.activeSubTab);
+      const contactId = window.GLOBAL_CONTEXT?.activeSessionId || Store.get("activeContactId");
+      const sgCardList = M.getSubgroupCards(this.activeTab, this.activeSubTab, contactId);
+      const isSystemGroup = this.activeTab === "system";
+
+      // 渲染二级子标签栏
+      const subTabWrap = document.createElement("div");
+      subTabWrap.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px;";
+      group.subgroups.forEach(sg=>{
+        const btn = document.createElement("button");
+        btn.textContent = sg.name;
+        btn.style.cssText = this.activeSubTab === sg.subgroupId
+          ? "padding:4px 7px;border-radius:99px;border:none;background:var(--color-main);color:#fff;font-size:11px"
+          : "padding:4px 7px;border-radius:99px;border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-text);font-size:11px";
+        btn.onclick = ()=>{
+          this.activeSubTab = sg.subgroupId;
+          this.render();
+        };
+        subTabWrap.appendChild(btn);
+      })
+      wrap.appendChild(subTabWrap);
+
+      // system页面增加说明提示文本
+      if(isSystemGroup){
+        const sysTip = document.createElement("div");
+        sysTip.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:12px;color:var(--color-text-2);font-size:13px;";
+        sysTip.innerText = "说明：本站「系统预设字卡」均为自搓字卡（AI辅助设计），按分类/分组展示，可逐张开启或关闭；想一次停掉一组，用分组标题右侧的「整组停用」开关。当前状态：系统预设字卡已解锁，联系人回复与各功能可正常取用。";
+        wrap.appendChild(sysTip);
+      }
+
+      // custom页面：新增表单 + 导出导入按钮
+      if(!isSystemGroup){
+        const formDiv = document.createElement("div");
+        formDiv.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;";
+        formDiv.innerHTML = `
+          <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">新增字卡【${activeSg.name}】</div>
+          <div style="margin-bottom:8px;">
+            <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">标题</div>
+            <input id="in-card-title" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)" placeholder="标题">
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">内容</div>
+            <textarea id="in-card-content" rows="3" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text);resize:none" placeholder="字卡内容"></textarea>
+          </div>
+          <button id="btn-add-new" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">添加到当前子分组</button>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button id="btn-export-custom" style="flex:1;padding:7px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)">全量导出json</button>
+            <button id="btn-import-custom" style="flex:1;padding:7px;border:none;border-radius:var(--radius-btn);background:var(--color-main);color:#fff">导入json</button>
+          </div>
+        `;
+        wrap.appendChild(formDiv);
+      }else{
+        const tipDiv = document.createElement("div");
+        tipDiv.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:14px;color:var(--color-text-2);font-size:13px;";
+        tipDiv.innerText = "系统预设分组：仅可读，不可新增/删除";
+        wrap.appendChild(tipDiv);
+      }
+
+      // 渲染子分组字卡列表
+      const listWrap = document.createElement("div");
+      listWrap.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;color:var(--color-text)">${activeSg.name}（${sgCardList.length}条）</div>`;
+      if(sgCardList.length === 0){
+        listWrap.innerHTML += `<div style="color:var(--color-text-2);font-size:13px">暂无字卡</div>`;
+      }else{
+        sgCardList.forEach(card=>{
+          const item = document.createElement("div");
+          item.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:10px;margin-bottom:8px";
+          item.innerHTML = `
+            <div style="font-weight:bold;color:var(--color-main)">${card.title||"无标题"}</div>
+            <div style="font-size:13px;color:var(--color-text-2);margin:4px 0;white-space:pre-wrap">${card.content}</div>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button data-send-id="${card.id}" style="padding:3px 6px;font-size:12px;background:var(--color-main);color:#fff;border:none;border-radius:4px">发送</button>
+              ${!isSystemGroup ? `<button data-del-id="${card.id}" style="padding:3px 6px;font-size:12px;background:#e53935;color:#fff;border:none;border-radius:4px">删除</button>`:""}
             </div>
-            <div style="margin-bottom:10px;">
-              <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">内容</div>
-              <textarea id="in-card-content" rows="3" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text);resize:none" placeholder="字卡内容"></textarea>
-            </div>
-            <button id="btn-add-new" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">添加到当前分组</button>
           `;
-          wrap.appendChild(formDiv);
-        }else{
-          const tipDiv = document.createElement("div");
-          tipDiv.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:14px;color:var(--color-text-2);font-size:13px;";
-          tipDiv.innerText = "系统预设分组：仅可读，不可新增/删除";
-          wrap.appendChild(tipDiv);
-        }
-        const listWrap = document.createElement("div");
-        listWrap.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;color:var(--color-text)">${group.name}（${list.length}条）</div>`;
-        if(list.length === 0){
-          listWrap.innerHTML += `<div style="color:var(--color-text-2);font-size:13px">暂无字卡</div>`;
-        }else{
-          list.forEach(card=>{
-            const item = document.createElement("div");
-            item.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:10px;margin-bottom:8px";
-            item.innerHTML = `
-              <div style="font-weight:bold;color:var(--color-main)">${card.title||"无标题"}</div>
-              <div style="font-size:13px;color:var(--color-text-2);margin:4px 0;white-space:pre-wrap">${card.content}</div>
-              <div style="display:flex;gap:6px;margin-top:6px">
-                <button data-send-id="${card.id}" style="padding:3px 6px;font-size:12px;background:var(--color-main);color:#fff;border:none;border-radius:4px">发送</button>
-                ${!isSystemGroup ? `<button data-del-id="${card.id}" style="padding:3px 6px;font-size:12px;background:#e53935;color:#fff;border:none;border-radius:4px">删除</button>`:""}
-              </div>
-            `;
-            listWrap.appendChild(item);
-          })
-        }
-        wrap.appendChild(listWrap);
+          listWrap.appendChild(item);
+        })
+      }
+      wrap.appendChild(listWrap);
     }else{
         // ========= auditReport：完整复刻 audit‑panel.js renderCardLib UI，操作全部调用M模块api，自动双向同步 =========
         const categories = M.getAuditCategories();
@@ -466,49 +506,83 @@ export const CardEditorModule = {
     })
 
     // 【只在自定义/系统标签才执行下面表单按钮绑定，auditReport不走这里】
-    if(this.activeTab !== "auditReport"){
-        const group = window.AuditCardModule.cardGroups[this.activeTab];
-        const list = group?.list || [];
-        const isSystemGroup = this.activeTab === "system";
+        if(this.activeTab !== "auditReport"){
+      const M = window.AuditCardModule;
+      const group = M.cardGroups[this.activeTab];
+      const activeSg = group.subgroups.find(sg=>sg.subgroupId === this.activeSubTab);
+      const contactId = window.GLOBAL_CONTEXT?.activeSessionId || Store.get("activeContactId");
+      const sgCardList = M.getSubgroupCards(this.activeTab, this.activeSubTab, contactId);
+      const isSystemGroup = this.activeTab === "system";
 
-        // 新增按钮
-        if(!isSystemGroup){
-          const addBtn = document.getElementById("btn-add-new");
-          if(addBtn){
-            addBtn.onclick = ()=>{
-              const title = document.getElementById("in-card-title").value.trim();
-              const content = document.getElementById("in-card-content").value.trim();
-              if(!content){
-                Toast.show("内容不能为空");
-                return;
-              }
-              window.AuditCardModule.addCard(this.activeTab, {title, content, side:"bot"});
-              this.render();
-            }
-          }
-        }
-        // 发送按钮
-        wrap.querySelectorAll('[data-send-id]').forEach(btn=>{
-          btn.onclick = ()=>{
-            const cid = Number(btn.dataset.sendId);
-            const found = list.find(x=>x.id === cid);
-            if(found){
-              window.AuditCardModule.sendCardToChat(found);
-            }
-          }
-        })
-        // 删除按钮（非system分组）
-        wrap.querySelectorAll('[data-del-id]').forEach(btn=>{
-          btn.onclick = ()=>{
-            const cid = Number(btn.dataset.delId);
-            const idx = list.findIndex(x=>x.id === cid);
-            if(idx === -1) return;
-            list.splice(idx,1);
-            window.AuditCardModule.saveToStorage();
-            Toast.show("已删除");
+      if(!isSystemGroup){
+        const addBtn = document.getElementById("btn-add-new");
+        const expBtn = document.getElementById("btn-export-custom");
+        const impBtn = document.getElementById("btn-import-custom");
+        if(addBtn){
+          addBtn.onclick = ()=>{
+            const title = document.getElementById("in-card-title").value.trim();
+            const content = document.getElementById("in-card-content").value.trim();
+            if(!content){ Toast.show("内容不能为空"); return; }
+            M.addCardToSubgroup(this.activeTab, this.activeSubTab, {title, content, side:"bot"}, contactId);
             this.render();
           }
-        })
+        }
+        // 导出
+        if(expBtn){
+          expBtn.onclick = async ()=>{
+            const json = M.exportCustomCardJson(contactId);
+            const blob = new Blob([JSON.stringify(json,null,2)], {type:"application/json"});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `自定义字卡备份-${new Date().toLocaleDateString()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(a.href);
+            Toast.show("导出完成");
+          }
+        }
+        // 导入
+        if(impBtn){
+          impBtn.onclick = ()=>{
+            const input = document.createElement('input');
+            input.type="file";
+            input.accept=".json";
+            input.onchange = async (ev)=>{
+              const file = ev.target.files[0];
+              if(!file) return;
+              const txt = await file.text();
+              try{
+                const obj = JSON.parse(txt);
+                const ok = M.importCustomCardJson(obj, contactId);
+                if(ok){ Toast.show("导入完成"); this.render(); }
+                else { Toast.show("导入失败，文件格式错误"); }
+              }catch(e){ Toast.show("JSON解析失败"); }
+            }
+            input.click();
+          }
+        }
+      }
+
+      // 发送按钮
+      wrap.querySelectorAll('[data-send-id]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const cid = Number(btn.dataset.sendId);
+          const found = sgCardList.find(x=>x.id === cid);
+          if(found){
+            M.sendCardToChat(found);
+          }
+        }
+      })
+      // 删除按钮
+      wrap.querySelectorAll('[data-del-id]').forEach(btn=>{
+        btn.onclick = (e)=>{
+          const cid = Number(e.target.dataset.delId);
+          M.deleteCardFromSubgroup(this.activeTab, this.activeSubTab, cid);
+          Toast.show("已删除");
+          this.render();
+        }
+      })
     }
   }
 };
