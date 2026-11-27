@@ -4,9 +4,9 @@ import { Store } from './core/store.js';
 
 export const CardEditorModule = {
   rootEl: null,
-  activeTab: "custom", // 顶层tab: custom / system / auditReport
-  activeSubTab: null, // 二级子tab subgroupId
-  // 新增标记：是否进入子分组详情页
+  activeTab: "custom",
+  activeSubTab: null,
+  activeSg: null,   // ← 新增这一行
   inSubgroupDetail: false,
   _cardSearch: "",
   _selectedCards: new Set(),
@@ -156,27 +156,27 @@ export const CardEditorModule = {
         }
 
         // custom页面：新增表单 + 导出导入按钮
-        if(!isSystemGroup){
-          const formDiv = document.createElement("div");
-          formDiv.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;";
-          formDiv.innerHTML = `
-            <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">新增字卡【${activeSg.name}】</div>
-            <div style="margin-bottom:8px;">
-              <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">标题</div>
-              <input id="in-card-title" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)" placeholder="标题">
-            </div>
-            <div style="margin-bottom:10px;">
-              <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">内容</div>
-              <textarea id="in-card-content" rows="3" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text);resize:none" placeholder="字卡内容"></textarea>
-            </div>
-            <button id="btn-add-new" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">添加到当前子分组</button>
-            <div style="display:flex;gap:8px;margin-top:10px;">
-              <button id="btn-export-custom" style="flex:1;padding:7px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)">全量导出json</button>
-              <button id="btn-import-custom" style="flex:1;padding:7px;border:none;border-radius:var(--radius-btn);background:var(--color-main);color:#fff">导入json</button>
-            </div>
-          `;
-          wrap.appendChild(formDiv);
-        }else{
+       if(!isSystemGroup && activeSg){
+        const formDiv = document.createElement("div");
+        formDiv.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;";
+        formDiv.innerHTML = `
+          <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">新增字卡【${activeSg.name}】</div>
+          <div style="margin-bottom:8px;">
+            <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">标题</div>
+            <input id="in-card-title" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)" placeholder="标题">
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">内容</div>
+            <textarea id="in-card-content" rows="3" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text);resize:none" placeholder="字卡内容"></textarea>
+          </div>
+          <button id="btn-add-new" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">添加到当前子分组</button>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button id="btn-export-custom" style="flex:1;padding:7px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)">全量导出json</button>
+            <button id="btn-import-custom" style="flex:1;padding:7px;border:none;border-radius:var(--radius-btn);background:var(--color-main);color:#fff">导入json</button>
+          </div>
+        `;
+        wrap.appendChild(formDiv);
+      }else{
           const tipDiv = document.createElement("div");
           tipDiv.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:14px;color:var(--color-text-2);font-size:13px;";
           tipDiv.innerText = "系统预设分组：仅可读，不可新增/删除";
