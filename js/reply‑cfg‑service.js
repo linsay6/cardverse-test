@@ -1,6 +1,6 @@
-/** reply-cfg-service.js【新建文件】
- * 原作者reply‑settings配置读写；独立存储前缀 preset_reply_
-*/
+/** reply-cfg-service.js
+ * 原作者reply‑settings配置读写，独立存储前缀
+ */
 const PREFIX = "preset_reply_";
 export function getReplyCfg(key,defVal){
     const s = localStorage.getItem(PREFIX+key);
