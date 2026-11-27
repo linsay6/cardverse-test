@@ -9,6 +9,7 @@ const ACTION_META = {
   restore:  { label: "恢复", color: "#af52de" }
 };
 /**
+ /**
  * 【公共导出函数】审核报告字卡列表渲染
  * @param {HTMLElement} rootEl 目标容器DOM
  * @param {Object} M AuditCardModule 实例
@@ -16,7 +17,7 @@ const ACTION_META = {
  * @param {string} searchKeyword 搜索关键词
  * @param {Function} onStateChange 状态变更回调，返回{selectedCards,searchKeyword}
  */
-export function renderAuditCardLibContainer(rootEl, M, selectedCards, searchKeyword, onStateChange) {
+function renderAuditCardLibContainer(rootEl, M, selectedCards, searchKeyword, onStateChange) {
   const categories = M.getAuditCategories();
   const kw = searchKeyword || "";
 
