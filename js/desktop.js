@@ -1047,7 +1047,7 @@ font-weight:bold;z-index:10;white-space:nowrap;
       }
     } else if (meta.type === 'action') {
       // ✅不直接toast，向外广播open‑panel事件，业务模块自己监听弹出面板
-      EventBus.emit('open‑panel', { panel: meta.action });
+    EventBus.emit('open-panel', { panel: meta.action });
     }
   },
     deleteCard(pageIdx, cardId) {
