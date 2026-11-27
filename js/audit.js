@@ -317,14 +317,14 @@ const AuditCardModule = {
     if(!g || !g.subgroups) return null;
     const sg = g.subgroups.find(s=>s.subgroupId === subgroupId);
     if(!sg) return null;
-    const newCard = {
+        const newCard = {
       id: Date.now() + Math.floor(Math.random()*1000),
       title: cardItem.title || cardItem.content.slice(0,10),
       content: cardItem.content,
       side: cardItem.side ?? "bot",
       isDisabled: !!cardItem.isDisabled,
       disabledBy: cardItem.disabledBy || null,
-      ...(sg.scope === "contact" ? {contactId} : {})
+      ...((sg.scope === "contact") ? {contactId} : {})
     };
     sg.list.push(newCard);
     this.saveToStorage();
@@ -337,15 +337,15 @@ const AuditCardModule = {
     if(!g || !g.subgroups) return;
     const sg = g.subgroups.find(s=>s.subgroupId === subgroupId);
     if(!sg) return;
-    const idx = sg.list.findIndex(c=>c.id === cardId);
-    if(idx >‑1) sg.list.splice(idx,1);
+        const idx = sg.list.findIndex(c=>c.id === cardId);
+    if(idx > -1) sg.list.splice(idx,1);
     this.saveToStorage();
   },
 
   // 自定义字卡：全量导出（公用全部+当前联系人专属）
   exportCustomCardJson(currentContactId){
     const g = this.cardGroups.custom;
-    const out = { subgroups:[], _meta:{exportAt:new Date().toISOString(), contactId:currentContactId}};
+    out.subgroups.push({subgroupId:sg.subgroupId, name:sg.name, scope:sg.scope, list:items});
     g.subgroups.forEach(sg=>{
       let items;
       if(sg.scope === "global"){
