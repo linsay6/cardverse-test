@@ -79,7 +79,7 @@ const AuditCardModule = {
       auditHistory: this.auditHistory,
       auditConfig: this.auditConfig
     }));
-    EventBus.emit("my‑audit‑data‑updated", { pendingCount: this.pendingApply.length });
+    EventBus.emit("my-audit-data-updated", { pendingCount: this.pendingApply.length });
   },
 
   // ========== 分类操作API ==========
