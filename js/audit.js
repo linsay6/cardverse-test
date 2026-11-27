@@ -1,6 +1,6 @@
 import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
-import { PresetService } from "./preset-service.js";
+
 const AuditCardModule = {
         cardGroups: {
     custom: {
@@ -641,27 +641,7 @@ const AuditCardModule = {
       ];
     }
     // =====兜底结束=====
-// =========【新增桥接：同步系统预设字卡】=========
-    try{
-        // 从preset-service读取转换完成的预设分组
-        const freshSysGroups = await PresetService.getAllConvertedPresetGroups();
-        // 合并到this.cardGroups.system.subgroups，只追加不存在的subgroupId，不覆盖用户已修改的isDisabled状态
-        freshSysGroups.forEach(sg=>{
-            const exist = this.cardGroups.system.subgroups.find(x=>x.subgroupId === sg.subgroupId);
-            if(!exist){
-                this.cardGroups.system.subgroups.push(sg);
-            }else{
-                // 只新增缺失卡片，保留用户手动禁用状态
-                sg.list.forEach(card=>{
-                    const has = exist.list.find(c=>c.id === card.id);
-                    if(!has) exist.list.push(card);
-                })
-            }
-        })
-        this.saveToStorage();
-    }catch(e){
-        console.warn("初始化同步系统预设字卡异常",e);
-    }
+
     console.log("AuditCardModule 数据层初始化完成");
     this.restartEngineTimer(); // 初始化启动定时器
   },
@@ -694,38 +674,7 @@ const AuditCardModule = {
     if(this.auditConfig.debug) console.log(`[Audit引擎]定时器已启动，间隔${cfg.scanIntervalSec}秒`);
   },
 };
-  /** ========= 桥接PresetService对外API【新增，不改动原有业务】 ========= */
-  /**
-   * 刷新系统预设分组，合并入system.subgroups；保留用户禁用状态，不会覆盖自定义字卡
-   */
-  async refreshSystemPresetCards(){
-      const freshSysGroups = await PresetService.getAllConvertedPresetGroups();
-      freshSysGroups.forEach(sg=>{
-          const exist = this.cardGroups.system.subgroups.find(x=>x.subgroupId === sg.subgroupId);
-          if(!exist){
-              this.cardGroups.system.subgroups.push(sg);
-          }else{
-              sg.list.forEach(card=>{
-                  const has = exist.list.find(c=>c.id === card.id);
-                  if(!has) exist.list.push(card);
-              })
-          }
-      })
-      this.saveToStorage();
-  },
-  /**
-   * 同步单张预设卡片禁用状态到UI内存；真实开关存储由PresetService独立维护
-   */
-  syncPresetCardDisable(subgroupId, cardId, isDisabled){
-    const sg = this.cardGroups.system.subgroups.find(s=>s.subgroupId === subgroupId);
-    if(!sg) return;
-    const card = sg.list.find(c=>c.id === cardId);
-    if(card) card.isDisabled = isDisabled;
-    this.saveToStorage();
-  },
-  getRawPresetSource(){
-      return PresetService.getRawPresetSource();
-  },
+
 window.AuditCardModule = AuditCardModule;
 AuditCardModule.init();
 export { AuditCardModule };
