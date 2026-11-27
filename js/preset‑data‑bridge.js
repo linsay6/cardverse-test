@@ -1,9 +1,10 @@
- * 只读，不写localStorage；真实全量字卡内容粘贴进DEFAULT_CARD_DATA对象
-*/
+/** preset-data-bridge.js
+ * 原作者 default‑cards‑data.js，静态只读预设数据源
+ */
 export const DEFAULT_CARD_DATA = {
   "main":[
     ["生活碎片",["刚刚整理了一下东西","今天收拾了一下房间"]]
-    // >>>这里粘贴完整原作者main、kaomoji、emoji、touch、dict、fish、garden等全部分组数据
+    // 这里后续粘贴完整原作者全套预设字卡JSON
   ],
   "kaomoji":[],
   "emoji":[],
