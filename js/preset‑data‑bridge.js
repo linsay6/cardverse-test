@@ -1,5 +1,3 @@
-/** preset-data-bridge.js 【新建文件】
- * 对应原作者 default‑cards‑data.js，存放原始系统预设字卡JSON
  * 只读，不写localStorage；真实全量字卡内容粘贴进DEFAULT_CARD_DATA对象
 */
 export const DEFAULT_CARD_DATA = {
