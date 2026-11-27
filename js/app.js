@@ -35,8 +35,14 @@ const TabManager = {
       };
     });
   },
-    switchTab(key) {
-    this.activeKey = key;
+   async switchTab(key) {
+if (key === "card") {
+  try {
+    await AuditCardModule.refreshSystemPresetCards();
+  } catch (e) {
+    console.warn("切换字卡标签，同步预设字卡失败：", e);
+  }
+}
     // 隐藏所有面板
     this.tabs.forEach(tabItem => {
       const el = document.querySelector(tabItem.selector);
