@@ -1,6 +1,5 @@
 import { EventBus } from './core/context.js';
 import { Toast } from './core/toast.js';
-import { renderAuditCardLibContainer } from './audit-panel.js';
 
 export const CardEditorModule = {
   rootEl: null,
@@ -41,39 +40,15 @@ export const CardEditorModule = {
     tabHtml += `</div>`;
     wrap.innerHTML = tabHtml;
 
-        // 判断：审核报告字卡 走统一公共渲染，其他两个tab保留原来逻辑不变
-        let group, list, isSystemGroup;
-    if(this.activeTab === "auditReport"){
-      let localSelCards = new Set();
-      let localSearch = "";
-      const reRender = ()=>{
-        wrap.innerHTML = "";
-        renderAuditCardLibContainer(
-          wrap,
-          window.AuditCardModule,
-          localSelCards,
-          localSearch,
-          (state)=>{
-            localSelCards = state.selectedCards;
-            localSearch = state.searchKeyword;
-            this.render();
-          }
-        );
-      };
-      reRender();
-      // auditReport模式，置为安全默认，不会进入业务绑定
-      group = null;
-      list = [];
-      isSystemGroup = false;
-    }else{
-      group = window.AuditCardModule.cardGroups[this.activeTab];
-      list = group?.list || [];
-      isSystemGroup = this.activeTab === "system";
-      // 新增卡片表单（系统预设分组禁止新增）
-      if(!isSystemGroup){
-        const formDiv = document.createElement("div");
-        formDiv.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;";
-        formDiv.innerHTML = `
+    const group = window.AuditCardModule.cardGroups[this.activeTab];
+    const list = group?.list || [];
+    const isSystemGroup = this.activeTab === "system";
+
+    // 新增卡片表单（系统预设分组禁止新增）
+    if(!isSystemGroup){
+      const formDiv = document.createElement("div");
+      formDiv.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;";
+      formDiv.innerHTML = `
         <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">新增字卡</div>
         <div style="margin-bottom:8px;">
           <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">标题</div>
@@ -85,23 +60,24 @@ export const CardEditorModule = {
         </div>
         <button id="btn-add-new" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">添加到当前分组</button>
       `;
-        wrap.appendChild(formDiv);
-      }else{
-        const tipDiv = document.createElement("div");
-        tipDiv.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:14px;color:var(--color-text-2);font-size:13px;";
-        tipDiv.innerText = "系统预设分组：仅可读，不可新增/删除";
-        wrap.appendChild(tipDiv);
-      }
-      // 列表渲染
-      const listWrap = document.createElement("div");
-      listWrap.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;color:var(--color-text)">${group.name}（${list.length}条）</div>`;
-      if(list.length === 0){
-        listWrap.innerHTML += `<div style="color:var(--color-text-2);font-size:13px">暂无字卡</div>`;
-      }else{
-        list.forEach(card=>{
-          const item = document.createElement("div");
-          item.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:10px;margin-bottom:8px";
-          item.innerHTML = `
+      wrap.appendChild(formDiv);
+    }else{
+      const tipDiv = document.createElement("div");
+      tipDiv.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:14px;color:var(--color-text-2);font-size:13px;";
+      tipDiv.innerText = "系统预设分组：仅可读，不可新增/删除";
+      wrap.appendChild(tipDiv);
+    }
+
+    // 列表渲染
+    const listWrap = document.createElement("div");
+    listWrap.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;color:var(--color-text)">${group.name}（${list.length}条）</div>`;
+    if(list.length === 0){
+      listWrap.innerHTML += `<div style="color:var(--color-text-2);font-size:13px">暂无字卡</div>`;
+    }else{
+      list.forEach(card=>{
+        const item = document.createElement("div");
+        item.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:10px;margin-bottom:8px";
+        item.innerHTML = `
           <div style="font-weight:bold;color:var(--color-main)">${card.title||"无标题"}</div>
           <div style="font-size:13px;color:var(--color-text-2);margin:4px 0;white-space:pre-wrap">${card.content}</div>
           <div style="display:flex;gap:6px;margin-top:6px">
@@ -109,56 +85,56 @@ export const CardEditorModule = {
             ${!isSystemGroup ? `<button data-del-id="${card.id}" style="padding:3px 6px;font-size:12px;background:#e53935;color:#fff;border:none;border-radius:4px">删除</button>`:""}
           </div>
         `;
-          listWrap.appendChild(item);
-        })
-      }
-      wrap.appendChild(listWrap);
-
-      // ========= 【移入else内部：仅自定义/系统tab才绑定按钮事件】 =========
-      // 新增按钮
-      if(!isSystemGroup){
-        const addBtn = document.getElementById("btn-add-new");
-        if(addBtn){
-          addBtn.onclick = ()=>{
-            const title = document.getElementById("in-card-title").value.trim();
-            const content = document.getElementById("in-card-content").value.trim();
-            if(!content){
-              Toast.show("内容不能为空");
-              return;
-            }
-            window.AuditCardModule.addCard(this.activeTab, {title, content, side:"bot"});
-            this.render();
-          }
-        }
-      }
-      // 发送按钮
-      wrap.querySelectorAll('[data-send-id]').forEach(btn=>{
-        btn.onclick = ()=>{
-          const cid = Number(btn.dataset.sendId);
-          const found = list.find(x=>x.id === cid);
-          if(found){
-            window.AuditCardModule.sendCardToChat(found);
-          }
-        }
-      })
-      // 删除按钮（非system分组）
-      wrap.querySelectorAll('[data-del-id]').forEach(btn=>{
-        btn.onclick = ()=>{
-          const cid = Number(btn.dataset.delId);
-          const idx = list.findIndex(x=>x.id === cid);
-          if(idx === -1) return;
-          list.splice(idx,1);
-          window.AuditCardModule.saveToStorage();
-          Toast.show("已删除");
-          this.render();
-        }
+        listWrap.appendChild(item);
       })
     }
+    wrap.appendChild(listWrap);
     this.rootEl.appendChild(wrap);
-    // 绑定标签切换（标签切换任何tab都需要保留）
+
+    // 绑定标签切换
     wrap.querySelectorAll('[data-tab-key]').forEach(btn=>{
       btn.onclick = ()=>{
         this.activeTab = btn.dataset.tabKey;
+        this.render();
+      }
+    })
+
+    // 新增按钮
+    if(!isSystemGroup){
+      const addBtn = document.getElementById("btn-add-new");
+      if(addBtn){
+        addBtn.onclick = ()=>{
+          const title = document.getElementById("in-card-title").value.trim();
+          const content = document.getElementById("in-card-content").value.trim();
+          if(!content){
+            Toast.show("内容不能为空");
+            return;
+          }
+          window.AuditCardModule.addCard(this.activeTab, {title, content, side:"bot"});
+          this.render();
+        }
+      }
+    }
+
+    // 发送按钮
+    wrap.querySelectorAll('[data-send-id]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const cid = Number(btn.dataset.sendId);
+        const found = list.find(x=>x.id === cid);
+        if(found){
+          window.AuditCardModule.sendCardToChat(found);
+        }
+      }
+    })
+    // 删除按钮（非system分组）
+    wrap.querySelectorAll('[data-del-id]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const cid = Number(btn.dataset.delId);
+        const idx = list.findIndex(x=>x.id === cid);
+        if(idx === -1) return;
+        list.splice(idx,1);
+        window.AuditCardModule.saveToStorage();
+        Toast.show("已删除");
         this.render();
       }
     })
