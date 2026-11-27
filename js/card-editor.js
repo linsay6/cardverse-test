@@ -16,7 +16,7 @@ export const CardEditorModule = {
     // 监听主题变更重渲染
     EventBus.on("themeChange", () => this.render());
     // 监听audit数据变更，刷新列表
-    EventBus.on("my‑audit‑data‑updated", () => this.render());
+    EventBus.on("my-audit-data-updated", () => this.render());
   },
 
   render() {
