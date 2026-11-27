@@ -50,7 +50,7 @@ export const ThemeManager = {
         globalStyle.id = 'global-theme-aux-style';
         document.head.appendChild(globalStyle);
     }
-    globalStyle.textContent = `
+globalStyle.textContent = `
 ::placeholder {
   color: var(--color-text-2) !important;
   opacity: 1;
@@ -58,6 +58,13 @@ export const ThemeManager = {
 .time-label {
   color: var(--color-text-2) !important;
   font-size:11px;
+}
+.panel-scroll {
+  overflow: auto;
+  scrollbar-width: none;
+}
+.panel-scroll::-webkit-scrollbar {
+  display: none;
 }
 `;
     // 触发主题变更事件，通知所有模块刷新UI
