@@ -132,12 +132,22 @@ export const CardEditorModule = {
             cursor:pointer;
             background:var(--color-bg);
           `;
+                   // system分组才显示整组开关，custom不渲染
+          let groupSwitchHtml = "";
+          if(this.activeTab === "system"){
+            const groupOff = !!sg.isGroupDisabled;
+            groupSwitchHtml = `<button data-sg-toggle="${sg.subgroupId}" style="margin-left:8px;padding:2px 6px;font-size:10px;border-radius:4px;border:none;background:${groupOff ? "#ff9500" : "var(--color-main)"};color:#fff;cursor:pointer">${groupOff ? "整组启用":"整组停用"}</button>`;
+          }
+
           cardItem.innerHTML = `
-            <div>
-              <div style="font-weight:bold;color:var(--color-text)">${sg.name}</div>
-              <div style="font-size:12px;color:var(--color-text-2);margin-top:3px">
-                ${sg.scope === "global" ? "全局公用，所有联系人可用" : "仅当前联系人专属"}
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <div>
+                <div style="font-weight:bold;color:var(--color-text)">${sg.name}</div>
+                <div style="font-size:12px;color:var(--color-text-2);margin-top:3px">
+                  ${sg.scope === "global" ? "全局公用，所有联系人可用" : "仅当前联系人专属"}
+                </div>
               </div>
+              ${groupSwitchHtml}
             </div>
             <div style="padding:2px 8px;border-radius:99px;background:var(--color-main);color:#fff;font-size:11px">${sgCount}</div>
           `;
@@ -149,6 +159,20 @@ export const CardEditorModule = {
           scrollWrap.appendChild(cardItem);
         })
         wrap.appendChild(scrollWrap);
+        // 绑定system分组整组开关
+        if(this.activeTab === "system"){
+          scrollWrap.querySelectorAll('[data-sg-toggle]').forEach(btn=>{
+            btn.onclick = (e)=>{
+              e.stopPropagation(); // 阻止冒泡，不要触发进入分组详情
+              const sgId = btn.dataset.sgToggle;
+              const sgObj = group.subgroups.find(s=>s.subgroupId === sgId);
+              const newOff = !sgObj.isGroupDisabled;
+              M.setSubgroupGroupDisable(this.activeTab, sgId, newOff);
+              Toast.show(newOff ? "已整组停用":"已整组启用");
+              this.render();
+            }
+          })
+        }
       }
       // ---------------- 分支B：子分组详情页（原来的旧表单+字卡列表，保留全部旧逻辑） ----------------
       else {
@@ -212,11 +236,18 @@ export const CardEditorModule = {
         sgCardList.forEach(card=>{
           const item = document.createElement("div");
           item.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:10px;margin-bottom:8px";
+                   // system分组增加单张卡片启用/禁用按钮
+          let cardToggleBtn = "";
+          if(isSystemGroup){
+            const cardDisabled = !!card.isDisabled;
+            cardToggleBtn = `<button data-card-toggle="${card.id}" style="padding:3px 6px;font-size:12px;border:none;border-radius:4px;background:${cardDisabled ? "#ff9500":"var(--color-main)"};color:#fff">${cardDisabled?"启用":"禁用"}</button>`;
+          }
           item.innerHTML = `
             <div style="font-weight:bold;color:var(--color-main)">${card.title||"无标题"}</div>
             <div style="font-size:13px;color:var(--color-text-2);margin:4px 0;white-space:pre-wrap">${card.content}</div>
             <div style="display:flex;gap:6px;margin-top:6px">
               <button data-send-id="${card.id}" style="padding:3px 6px;font-size:12px;background:var(--color-main);color:#fff;border:none;border-radius:4px">发送</button>
+              ${cardToggleBtn}
               ${!isSystemGroup ? `<button data-del-id="${card.id}" style="padding:3px 6px;font-size:12px;background:#e53935;color:#fff;border:none;border-radius:4px">删除</button>`:""}
             </div>
           `;
@@ -663,7 +694,7 @@ export const CardEditorModule = {
         }
       }
 
-      // 发送按钮
+            // 发送按钮
       wrap.querySelectorAll('[data-send-id]').forEach(btn=>{
         btn.onclick = ()=>{
           const cid = Number(btn.dataset.sendId);
@@ -671,6 +702,17 @@ export const CardEditorModule = {
           if(found){
             M.sendCardToChat(found);
           }
+        }
+      })
+      // system单张字卡启用/禁用
+      wrap.querySelectorAll('[data-card-toggle]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const cid = Number(btn.dataset.cardToggle);
+          const found = sgCardList.find(x=>x.id === cid);
+          const newState = !found.isDisabled;
+          M.setSubgroupCardDisable(this.activeTab, this.activeSubTab, cid, newState);
+          Toast.show(newState ? "卡片已禁用":"卡片已启用");
+          this.render();
         }
       })
       // 删除按钮
