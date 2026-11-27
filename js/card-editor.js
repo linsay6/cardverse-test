@@ -5,9 +5,32 @@ import { Store } from './core/store.js';
 export const CardEditorModule = {
   rootEl: null,
   activeTab: "custom", // 顶层tab: custom / system / auditReport
-  activeSubTab: null, // 新增：二级子tab subgroupId
+  activeSubTab: null, // 二级子tab subgroupId
+  // 新增标记：是否进入子分组详情页
+  inSubgroupDetail: false,
   _cardSearch: "",
   _selectedCards: new Set(),
+  // 辅助：获取当前tab下所有子分组总卡片数
+  getTabTotalCardCount(tabKey, contactId) {
+    const M = window.AuditCardModule;
+    const group = M.cardGroups[tabKey];
+    if(!group || !group.subgroups) return 0;
+    let total = 0;
+    group.subgroups.forEach(sg=>{
+      if(sg.scope === "global"){
+        total += sg.list.length;
+      }else if(contactId){
+        total += sg.list.filter(c=>c.contactId === contactId).length;
+      }
+    })
+    return total;
+  },
+  // 辅助：获取单个子分组卡片数量
+  getSubgroupCardCount(tabKey, sgId, contactId) {
+    const M = window.AuditCardModule;
+    const list = M.getSubgroupCards(tabKey, sgId, contactId);
+    return list.length;
+  },
   init(containerSelector) {
     this.rootEl = document.querySelector(containerSelector);
     if (!this.rootEl) {
@@ -34,45 +57,161 @@ export const CardEditorModule = {
       system: "系统预设字卡",
       auditReport: "审核报告字卡"
     };
-   let tabHtml = `<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;justify-content:center">`;
+    const contactId = window.GLOBAL_CONTEXT?.activeSessionId || Store.get("activeContactId");
+    let tabHtml = `<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;justify-content:center">`;
     tabKeys.forEach(k=>{
       const active = this.activeTab === k
         ? "background:var(--color-main);color:#fff"
         : "background:var(--color-bg);color:var(--color-text);border:1px solid var(--color-border)";
-      tabHtml += `<button data-tab-key="${k}" style="padding:6px 10px;border-radius:99px;border:none;${active}">${tabNames[k]}</button>`;
+      let badge = "";
+      if(k === "custom" || k === "system"){
+        const count = this.getTabTotalCardCount(k, contactId);
+        badge = `<span style="margin-left:6px;padding:1px 6px;border-radius:99px;background:rgba(255,255,255,0.25);font-size:11px">${count}</span>`;
+      }else if(k === "auditReport"){
+        const count = window.AuditCardModule.getAuditCardCount();
+        badge = `<span style="margin-left:6px;padding:1px 6px;border-radius:99px;background:rgba(255,255,255,0.25);font-size:11px">${count}</span>`;
+      }
+      tabHtml += `<button data-tab-key="${k}" style="padding:6px 10px;border-radius:99px;border:none;${active};display:flex;align-items:center">${tabNames[k]}${badge}</button>`;
     })
     tabHtml += `</div>`;
     wrap.innerHTML = tabHtml;
 
         const M = window.AuditCardModule;
     // ========= 区分分支：custom / system 使用原有渲染；auditReport 使用完整分类渲染（和audit‑panel字卡库UI完全对齐） =========
-        if(this.activeTab !== "auditReport"){
+             if(this.activeTab !== "auditReport"){
       const group = M.cardGroups[this.activeTab];
-      // 切换顶层tab，初始化二级子tab为第一个子分组
-      if(!this.activeSubTab || !group.subgroups.find(sg=>sg.subgroupId === this.activeSubTab)){
-        this.activeSubTab = group.subgroups[0].subgroupId;
-      }
-      const activeSg = group.subgroups.find(sg=>sg.subgroupId === this.activeSubTab);
       const contactId = window.GLOBAL_CONTEXT?.activeSessionId || Store.get("activeContactId");
-      const sgCardList = M.getSubgroupCards(this.activeTab, this.activeSubTab, contactId);
       const isSystemGroup = this.activeTab === "system";
 
-      // 渲染二级子标签栏
-      const subTabWrap = document.createElement("div");
-      subTabWrap.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px;";
-      group.subgroups.forEach(sg=>{
-        const btn = document.createElement("button");
-        btn.textContent = sg.name;
-        btn.style.cssText = this.activeSubTab === sg.subgroupId
-          ? "padding:4px 7px;border-radius:99px;border:none;background:var(--color-main);color:#fff;font-size:11px"
-          : "padding:4px 7px;border-radius:99px;border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-text);font-size:11px";
-        btn.onclick = ()=>{
-          this.activeSubTab = sg.subgroupId;
+      // ---------------- 分支A：分组首页（卡片列表，点击进详情） ----------------
+      if(!this.inSubgroupDetail){
+        // 外层滚动容器，隐藏滚动条
+        const scrollWrap = document.createElement("div");
+        scrollWrap.id = "editor-scroll-hide";
+        scrollWrap.style.cssText = `
+          overflow-y:auto;
+          scrollbar-width:none;
+          -ms-overflow-style:none;
+          flex:1;
+          min-height:0;
+        `;
+        const styleHide = document.createElement("style");
+        styleHide.textContent = `#editor-scroll-hide::-webkit-scrollbar{display:none !important;}`;
+        scrollWrap.appendChild(styleHide);
+
+        // 返回提示不需要，这里渲染分组卡片
+        group.subgroups.forEach(sg=>{
+          const sgCount = this.getSubgroupCardCount(this.activeTab, sg.subgroupId, contactId);
+          const cardItem = document.createElement("div");
+          cardItem.style.cssText = `
+            border:1px solid var(--color-border);
+            border-radius:var(--radius-card);
+            padding:14px;
+            margin-bottom:10px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            cursor:pointer;
+            background:var(--color-bg);
+          `;
+          cardItem.innerHTML = `
+            <div>
+              <div style="font-weight:bold;color:var(--color-text)">${sg.name}</div>
+              <div style="font-size:12px;color:var(--color-text-2);margin-top:3px">
+                ${sg.scope === "global" ? "全局公用，所有联系人可用" : "仅当前联系人专属"}
+              </div>
+            </div>
+            <div style="padding:2px 8px;border-radius:99px;background:var(--color-main);color:#fff;font-size:11px">${sgCount}</div>
+          `;
+          cardItem.onclick = ()=>{
+            this.activeSubTab = sg.subgroupId;
+            this.inSubgroupDetail = true;
+            this.render();
+          };
+          scrollWrap.appendChild(cardItem);
+        })
+        wrap.appendChild(scrollWrap);
+      }
+      // ---------------- 分支B：子分组详情页（原来的旧表单+字卡列表，保留全部旧逻辑） ----------------
+      else {
+        const activeSg = group.subgroups.find(sg=>sg.subgroupId === this.activeSubTab);
+        const sgCardList = M.getSubgroupCards(this.activeTab, this.activeSubTab, contactId);
+
+        // 返回按钮
+        const backBtn = document.createElement("button");
+        backBtn.textContent = "← 返回分组列表";
+        backBtn.style.cssText = "margin-bottom:12px;padding:4px 8px;background:transparent;border:none;color:var(--color-main);cursor:pointer;text-align:left";
+        backBtn.onclick = ()=>{
+          this.inSubgroupDetail = false;
           this.render();
         };
-        subTabWrap.appendChild(btn);
-      })
-      wrap.appendChild(subTabWrap);
+        wrap.appendChild(backBtn);
+
+        // system页面增加说明提示文本
+        if(isSystemGroup){
+          const sysTip = document.createElement("div");
+          sysTip.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:12px;color:var(--color-text-2);font-size:13px;";
+          sysTip.innerText = "说明：本站「系统预设字卡」均为自搓字卡（AI辅助设计），按分类/分组展示，可逐张开启或关闭；想一次停掉一组，用分组标题右侧的「整组停用」开关。当前状态：系统预设字卡已解锁，联系人回复与各功能可正常取用。";
+          wrap.appendChild(sysTip);
+        }
+
+        // custom页面：新增表单 + 导出导入按钮
+        if(!isSystemGroup){
+          const formDiv = document.createElement("div");
+          formDiv.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;";
+          formDiv.innerHTML = `
+            <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">新增字卡【${activeSg.name}】</div>
+            <div style="margin-bottom:8px;">
+              <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">标题</div>
+              <input id="in-card-title" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)" placeholder="标题">
+            </div>
+            <div style="margin-bottom:10px;">
+              <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">内容</div>
+              <textarea id="in-card-content" rows="3" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text);resize:none" placeholder="字卡内容"></textarea>
+            </div>
+            <button id="btn-add-new" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">添加到当前子分组</button>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              <button id="btn-export-custom" style="flex:1;padding:7px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)">全量导出json</button>
+              <button id="btn-import-custom" style="flex:1;padding:7px;border:none;border-radius:var(--radius-btn);background:var(--color-main);color:#fff">导入json</button>
+            </div>
+          `;
+          wrap.appendChild(formDiv);
+        }else{
+          const tipDiv = document.createElement("div");
+          tipDiv.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:14px;color:var(--color-text-2);font-size:13px;";
+          tipDiv.innerText = "系统预设分组：仅可读，不可新增/删除";
+          wrap.appendChild(tipDiv);
+        }
+
+        // 渲染子分组字卡列表
+        const listWrap = document.createElement("div");
+        // 详情页滚动隐藏滚动条
+        listWrap.id = "editor-scroll-hide-detail";
+        listWrap.style.cssText = `overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;`;
+        const styleDetailHide = document.createElement("style");
+        styleDetailHide.textContent = `#editor-scroll-hide-detail::-webkit-scrollbar{display:none !important;}`;
+        listWrap.appendChild(styleDetailHide);
+
+        listWrap.innerHTML += `<div style="font-weight:bold;margin-bottom:8px;color:var(--color-text)">${activeSg.name}（${sgCardList.length}条）</div>`;
+        if(sgCardList.length === 0){
+          listWrap.innerHTML += `<div style="color:var(--color-text-2);font-size:13px">暂无字卡</div>`;
+        }else{
+          sgCardList.forEach(card=>{
+            const item = document.createElement("div");
+            item.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:10px;margin-bottom:8px";
+            item.innerHTML = `
+              <div style="font-weight:bold;color:var(--color-main)">${card.title||"无标题"}</div>
+              <div style="font-size:13px;color:var(--color-text-2);margin:4px 0;white-space:pre-wrap">${card.content}</div>
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <button data-send-id="${card.id}" style="padding:3px 6px;font-size:12px;background:var(--color-main);color:#fff;border:none;border-radius:4px">发送</button>
+                ${!isSystemGroup ? `<button data-del-id="${card.id}" style="padding:3px 6px;font-size:12px;background:#e53935;color:#fff;border:none;border-radius:4px">删除</button>`:""}
+              </div>
+            `;
+            listWrap.appendChild(item);
+          })
+        }
+        wrap.appendChild(listWrap);
+      }
 
       // system页面增加说明提示文本
       if(isSystemGroup){
@@ -493,10 +632,13 @@ export const CardEditorModule = {
     }
     this.rootEl.appendChild(wrap);
 
-       // 绑定标签切换
+    // 绑定标签切换
     wrap.querySelectorAll('[data-tab-key]').forEach(btn=>{
       btn.onclick = ()=>{
         this.activeTab = btn.dataset.tabKey;
+        // 切顶层tab强制回到分组首页
+        this.inSubgroupDetail = false;
+        this.activeSubTab = null;
         // 切换标签页时，重置auditReport的搜索和勾选状态
         if(this.activeTab === "auditReport"){
             this._cardSearch = "";
@@ -506,8 +648,8 @@ export const CardEditorModule = {
       }
     })
 
-    // 【只在自定义/系统标签才执行下面表单按钮绑定，auditReport不走这里】
-        if(this.activeTab !== "auditReport"){
+    // 【只在自定义/系统标签、并且进入了子分组详情页，才执行下面表单按钮绑定，auditReport不走这里】
+        if(this.activeTab !== "auditReport" && this.inSubgroupDetail){
       const M = window.AuditCardModule;
       const group = M.cardGroups[this.activeTab];
       const activeSg = group.subgroups.find(sg=>sg.subgroupId === this.activeSubTab);
