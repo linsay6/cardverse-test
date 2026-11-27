@@ -1,5 +1,6 @@
 import { EventBus } from './core/context.js';
 import { Toast } from './core/toast.js';
+import { Store } from './core/store.js';
 
 export const CardEditorModule = {
   rootEl: null,
