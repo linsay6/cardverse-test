@@ -452,52 +452,63 @@ export const CardEditorModule = {
     }
     this.rootEl.appendChild(wrap);
 
-    // 绑定标签切换
+       // 绑定标签切换
     wrap.querySelectorAll('[data-tab-key]').forEach(btn=>{
       btn.onclick = ()=>{
         this.activeTab = btn.dataset.tabKey;
+        // 切换标签页时，重置auditReport的搜索和勾选状态
+        if(this.activeTab === "auditReport"){
+            this._cardSearch = "";
+            this._selectedCards.clear();
+        }
         this.render();
       }
     })
 
-    // 新增按钮
-    if(!isSystemGroup){
-      const addBtn = document.getElementById("btn-add-new");
-      if(addBtn){
-        addBtn.onclick = ()=>{
-          const title = document.getElementById("in-card-title").value.trim();
-          const content = document.getElementById("in-card-content").value.trim();
-          if(!content){
-            Toast.show("内容不能为空");
-            return;
+    // 【只在自定义/系统标签才执行下面表单按钮绑定，auditReport不走这里】
+    if(this.activeTab !== "auditReport"){
+        const group = window.AuditCardModule.cardGroups[this.activeTab];
+        const list = group?.list || [];
+        const isSystemGroup = this.activeTab === "system";
+
+        // 新增按钮
+        if(!isSystemGroup){
+          const addBtn = document.getElementById("btn-add-new");
+          if(addBtn){
+            addBtn.onclick = ()=>{
+              const title = document.getElementById("in-card-title").value.trim();
+              const content = document.getElementById("in-card-content").value.trim();
+              if(!content){
+                Toast.show("内容不能为空");
+                return;
+              }
+              window.AuditCardModule.addCard(this.activeTab, {title, content, side:"bot"});
+              this.render();
+            }
           }
-          window.AuditCardModule.addCard(this.activeTab, {title, content, side:"bot"});
-          this.render();
         }
-      }
+        // 发送按钮
+        wrap.querySelectorAll('[data-send-id]').forEach(btn=>{
+          btn.onclick = ()=>{
+            const cid = Number(btn.dataset.sendId);
+            const found = list.find(x=>x.id === cid);
+            if(found){
+              window.AuditCardModule.sendCardToChat(found);
+            }
+          }
+        })
+        // 删除按钮（非system分组）
+        wrap.querySelectorAll('[data-del-id]').forEach(btn=>{
+          btn.onclick = ()=>{
+            const cid = Number(btn.dataset.delId);
+            const idx = list.findIndex(x=>x.id === cid);
+            if(idx === -1) return;
+            list.splice(idx,1);
+            window.AuditCardModule.saveToStorage();
+            Toast.show("已删除");
+            this.render();
+          }
+        })
     }
-
-    // 发送按钮
-    wrap.querySelectorAll('[data-send-id]').forEach(btn=>{
-      btn.onclick = ()=>{
-        const cid = Number(btn.dataset.sendId);
-        const found = list.find(x=>x.id === cid);
-        if(found){
-          window.AuditCardModule.sendCardToChat(found);
-        }
-      }
-    })
-    // 删除按钮（非system分组）
-    wrap.querySelectorAll('[data-del-id]').forEach(btn=>{
-      btn.onclick = ()=>{
-        const cid = Number(btn.dataset.delId);
-        const idx = list.findIndex(x=>x.id === cid);
-        if(idx === -1) return;
-        list.splice(idx,1);
-        window.AuditCardModule.saveToStorage();
-        Toast.show("已删除");
-        this.render();
-      }
-    })
   }
 };
