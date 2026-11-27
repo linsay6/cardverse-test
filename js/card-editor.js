@@ -42,6 +42,7 @@ export const CardEditorModule = {
     wrap.innerHTML = tabHtml;
 
         // 判断：审核报告字卡 走统一公共渲染，其他两个tab保留原来逻辑不变
+        let group, list, isSystemGroup;
     if(this.activeTab === "auditReport"){
       let localSelCards = new Set();
       let localSearch = "";
@@ -60,11 +61,14 @@ export const CardEditorModule = {
         );
       };
       reRender();
+      // auditReport模式，置为安全默认，不会进入业务绑定
+      group = null;
+      list = [];
+      isSystemGroup = false;
     }else{
-      const group = window.AuditCardModule.cardGroups[this.activeTab];
-      const list = group?.list || [];
-      const isSystemGroup = this.activeTab === "system";
-
+      group = window.AuditCardModule.cardGroups[this.activeTab];
+      list = group?.list || [];
+      isSystemGroup = this.activeTab === "system";
       // 新增卡片表单（系统预设分组禁止新增）
       if(!isSystemGroup){
         const formDiv = document.createElement("div");
@@ -88,7 +92,6 @@ export const CardEditorModule = {
         tipDiv.innerText = "系统预设分组：仅可读，不可新增/删除";
         wrap.appendChild(tipDiv);
       }
-
       // 列表渲染
       const listWrap = document.createElement("div");
       listWrap.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;color:var(--color-text)">${group.name}（${list.length}条）</div>`;
@@ -110,53 +113,52 @@ export const CardEditorModule = {
         })
       }
       wrap.appendChild(listWrap);
+
+      // ========= 【移入else内部：仅自定义/系统tab才绑定按钮事件】 =========
+      // 新增按钮
+      if(!isSystemGroup){
+        const addBtn = document.getElementById("btn-add-new");
+        if(addBtn){
+          addBtn.onclick = ()=>{
+            const title = document.getElementById("in-card-title").value.trim();
+            const content = document.getElementById("in-card-content").value.trim();
+            if(!content){
+              Toast.show("内容不能为空");
+              return;
+            }
+            window.AuditCardModule.addCard(this.activeTab, {title, content, side:"bot"});
+            this.render();
+          }
+        }
+      }
+      // 发送按钮
+      wrap.querySelectorAll('[data-send-id]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const cid = Number(btn.dataset.sendId);
+          const found = list.find(x=>x.id === cid);
+          if(found){
+            window.AuditCardModule.sendCardToChat(found);
+          }
+        }
+      })
+      // 删除按钮（非system分组）
+      wrap.querySelectorAll('[data-del-id]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const cid = Number(btn.dataset.delId);
+          const idx = list.findIndex(x=>x.id === cid);
+          if(idx === -1) return;
+          list.splice(idx,1);
+          window.AuditCardModule.saveToStorage();
+          Toast.show("已删除");
+          this.render();
+        }
+      })
     }
     this.rootEl.appendChild(wrap);
-
-    // 绑定标签切换
+    // 绑定标签切换（标签切换任何tab都需要保留）
     wrap.querySelectorAll('[data-tab-key]').forEach(btn=>{
       btn.onclick = ()=>{
         this.activeTab = btn.dataset.tabKey;
-        this.render();
-      }
-    })
-
-    // 新增按钮
-    if(!isSystemGroup){
-      const addBtn = document.getElementById("btn-add-new");
-      if(addBtn){
-        addBtn.onclick = ()=>{
-          const title = document.getElementById("in-card-title").value.trim();
-          const content = document.getElementById("in-card-content").value.trim();
-          if(!content){
-            Toast.show("内容不能为空");
-            return;
-          }
-          window.AuditCardModule.addCard(this.activeTab, {title, content, side:"bot"});
-          this.render();
-        }
-      }
-    }
-
-    // 发送按钮
-    wrap.querySelectorAll('[data-send-id]').forEach(btn=>{
-      btn.onclick = ()=>{
-        const cid = Number(btn.dataset.sendId);
-        const found = list.find(x=>x.id === cid);
-        if(found){
-          window.AuditCardModule.sendCardToChat(found);
-        }
-      }
-    })
-    // 删除按钮（非system分组）
-    wrap.querySelectorAll('[data-del-id]').forEach(btn=>{
-      btn.onclick = ()=>{
-        const cid = Number(btn.dataset.delId);
-        const idx = list.findIndex(x=>x.id === cid);
-        if(idx === -1) return;
-        list.splice(idx,1);
-        window.AuditCardModule.saveToStorage();
-        Toast.show("已删除");
         this.render();
       }
     })
