@@ -2,22 +2,22 @@ import { Toast } from './core/toast.js';
 import { EventBus } from './core/context.js';
 
 const AuditCardModule = {
-    cardGroups: {
+        cardGroups: {
     custom: {
       name: "自定义字卡",
       subgroups: [
-        { subgroupId:"custom‑global", name:"公用字卡", scope:"global", list:[] },
-        { subgroupId:"custom‑contact", name:"专属字卡", scope:"contact", list:[] },
-        { subgroupId:"custom‑fun‑global", name:"其他互动功能字卡·公用", scope:"global", list:[] },
-        { subgroupId:"custom‑fun‑contact", name:"其他互动功能字卡·专属", scope:"contact", list:[] },
-        { subgroupId:"custom‑trace", name:"寻踪日常·我的添加", scope:"contact", list:[] },
-        { subgroupId:"custom‑love‑words", name:"今日情话·我的添加", scope:"contact", list:[] },
-        { subgroupId:"custom‑ask‑open", name:"TA的询问·我的添加", scope:"contact", list:[] },
-        { subgroupId:"custom‑ask‑choice", name:"TA的小问题·我的添加", scope:"contact", list:[] },
-        { subgroupId:"custom‑curious", name:"TA的好奇·我的添加", scope:"contact", list:[] },
-        { subgroupId:"custom‑complain", name:"TA的吐槽·我的添加", scope:"contact", list:[] },
-        { subgroupId:"custom‑check", name:"TA的查岗·我的添加", scope:"contact", list:[] },
-        { subgroupId:"custom‑invite", name:"TA的邀请·我的添加", scope:"contact", list:[] }
+        { subgroupId:"custom-global", name:"公用字卡", scope:"global", list:[] },
+        { subgroupId:"custom-contact", name:"专属字卡", scope:"contact", list:[] },
+        { subgroupId:"custom-fun-global", name:"其他互动功能字卡·公用", scope:"global", list:[] },
+        { subgroupId:"custom-fun-contact", name:"其他互动功能字卡·专属", scope:"contact", list:[] },
+        { subgroupId:"custom-trace", name:"寻踪日常·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-love-words", name:"今日情话·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-ask-open", name:"TA的询问·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-ask-choice", name:"TA的小问题·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-curious", name:"TA的好奇·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-complain", name:"TA的吐槽·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-check", name:"TA的查岗·我的添加", scope:"contact", list:[] },
+        { subgroupId:"custom-invite", name:"TA的邀请·我的添加", scope:"contact", list:[] }
       ],
       // 兼容旧版本，旧list保留用于升级迁移
       list: []
@@ -25,28 +25,29 @@ const AuditCardModule = {
     system: {
       name: "系统预设字卡",
       subgroups: [
-        { subgroupId:"sys‑chat‑default", name:"默认聊天字卡", scope:"global", list:[
-          { id: "sys‑1", title: "温柔提示", content: "我一直在，慢慢来就好。", side: "bot", isDisabled: false },
-          { id: "sys‑2", title: "简短回应", content: "我看到你的心意了。", side: "bot", isDisabled: false }
+        { subgroupId:"sys-chat-default", name:"默认聊天字卡", scope:"global", list:[
+          { id: "sys-1", title: "温柔提示", content: "我一直在，慢慢来就好。", side: "bot", isDisabled: false },
+          { id: "sys-2", title: "简短回应", content: "我看到你的心意了。", side: "bot", isDisabled: false }
         ]},
-        { subgroupId:"sys‑chat‑dict", name:"聊天默认字卡·词典", scope:"global", list:[] },
-        { subgroupId:"sys‑fun", name:"其他互动功能字卡", scope:"global", list:[] },
-        { subgroupId:"sys‑cross‑check", name:"联系人跨桌面查岗", scope:"global", list:[] },
-        { subgroupId:"sys‑emotion", name:"聊天情绪字卡", scope:"global", list:[] },
-        { subgroupId:"sys‑ta‑mood", name:"TA的心情", scope:"global", list:[] },
-        { subgroupId:"sys‑connect", name:"聊天回应字卡", scope:"global", list:[] },
-        { subgroupId:"sys‑trace", name:"寻踪日常字卡", scope:"global", list:[] },
-        { subgroupId:"sys‑daily‑love", name:"桌面今日情话", scope:"global", list:[] },
-        { subgroupId:"sys‑location", name:"TA在身边位置卡", scope:"global", list:[] },
-        { subgroupId:"sys‑ask‑open", name:"TA的询问", scope:"global", list:[] },
-        { subgroupId:"sys‑ask‑choice", name:"TA的小问题", scope:"global", list:[] },
-        { subgroupId:"sys‑curious", name:"TA的好奇", scope:"global", list:[] },
-        { subgroupId:"sys‑complain", name:"TA的吐槽", scope:"global", list:[] },
-        { subgroupId:"sys‑check", name:"TA的查岗", scope:"global", list:[] },
-        { subgroupId:"sys‑invite", name:"TA的邀请", scope:"global", list:[] }
+        { subgroupId:"sys-chat-dict", name:"聊天默认字卡·词典", scope:"global", list:[] },
+        { subgroupId:"sys-fun", name:"其他互动功能字卡", scope:"global", list:[] },
+        { subgroupId:"sys-cross-check", name:"联系人跨桌面查岗", scope:"global", list:[] },
+        { subgroupId:"sys-emotion", name:"聊天情绪字卡", scope:"global", list:[] },
+        { subgroupId:"sys-ta-mood", name:"TA的心情", scope:"global", list:[] },
+        { subgroupId:"sys-connect", name:"聊天回应字卡", scope:"global", list:[] },
+        { subgroupId:"sys-trace", name:"寻踪日常字卡", scope:"global", list:[] },
+        { subgroupId:"sys-daily-love", name:"桌面今日情话", scope:"global", list:[] },
+        { subgroupId:"sys-location", name:"TA在身边位置卡", scope:"global", list:[] },
+        { subgroupId:"sys-ask-open", name:"TA的询问", scope:"global", list:[] },
+        { subgroupId:"sys-ask-choice", name:"TA的小问题", scope:"global", list:[] },
+        { subgroupId:"sys-curious", name:"TA的好奇", scope:"global", list:[] },
+        { subgroupId:"sys-complain", name:"TA的吐槽", scope:"global", list:[] },
+        { subgroupId:"sys-check", name:"TA的查岗", scope:"global", list:[] },
+        { subgroupId:"sys-invite", name:"TA的邀请", scope:"global", list:[] }
       ],
       list: []
     },
+
     auditReport: {
       name: "审核报告字卡",
       categories: [
@@ -343,9 +344,9 @@ const AuditCardModule = {
   },
 
   // 自定义字卡：全量导出（公用全部+当前联系人专属）
-  exportCustomCardJson(currentContactId){
+    exportCustomCardJson(currentContactId){
     const g = this.cardGroups.custom;
-    out.subgroups.push({subgroupId:sg.subgroupId, name:sg.name, scope:sg.scope, list:items});
+    const out = { subgroups:[], _meta:{exportAt:new Date().toISOString(), contactId:currentContactId}};
     g.subgroups.forEach(sg=>{
       let items;
       if(sg.scope === "global"){
