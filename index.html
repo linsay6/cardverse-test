@@ -101,11 +101,11 @@
     </div>
   </div>
 
-<!-- 1.【最先加载】预设字卡全局数据，普通脚本，生成window.PRESET_RAW_CARD_DATA全局变量，注意文件名的破折号符号和仓库文件名完全一致！ -->
-<script src="./js/preset‑card‑data.js"></script>
-<!-- 2. audit.js内部含有import语法，必须加上 type="module"！！！ -->
+<!-- 全局普通脚本，输出window.PRESET_RAW_CARD_DATA，必须放在模块脚本前面执行 -->
+<script src="./js/preset-card-data.js"></script>
+<!-- audit.js含有import/export，标记type="module" -->
 <script type="module" src="./js/audit.js"></script>
-<!-- 3. app.js本身就是module保持不变 -->
+<!-- app.js保留原有module不变 -->
 <script type="module" src="./js/app.js"></script>
 </body>
 </html>
