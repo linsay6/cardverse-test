@@ -121,6 +121,7 @@ export const CardEditorModule = {
           if(kw && sgCount <= 0) return;
 
           const cardItem = document.createElement("div");
+          const isGroupOff = !!sg.isGroupDisabled;
           cardItem.style.cssText = `
             border:1px solid var(--color-border);
             border-radius:var(--radius-card);
@@ -131,6 +132,7 @@ export const CardEditorModule = {
             justify-content:space-between;
             cursor:pointer;
             background:var(--color-bg);
+            ${isGroupOff ? "opacity:0.6;" : ""}
           `;
                    // system分组才显示整组开关，custom不渲染
           let groupSwitchHtml = "";
@@ -234,8 +236,10 @@ export const CardEditorModule = {
         listWrap.innerHTML += `<div style="color:var(--color-text-2);font-size:13px">暂无字卡</div>`;
       }else{
         sgCardList.forEach(card=>{
-          const item = document.createElement("div");
-          item.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:10px;margin-bottom:8px";
+         const item = document.createElement("div");
+          const groupDisabled = !!activeSg.isGroupDisabled;
+          const cardDisabled = !!card.isDisabled;
+          item.style.cssText = `border:1px solid var(--color-border);border-radius:var(--radius-card);padding:10px;margin-bottom:8px;${(groupDisabled || cardDisabled) ? "opacity:0.6;" : ""}`;
                    // system分组增加单张卡片启用/禁用按钮
           let cardToggleBtn = "";
           if(isSystemGroup){
