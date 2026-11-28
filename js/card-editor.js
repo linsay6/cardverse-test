@@ -10,6 +10,25 @@ export const CardEditorModule = {
   inSubgroupDetail: false,
   _cardSearch: "",
   _selectedCards: new Set(),
+  // === 模块元配置，对应需求JSON，不要修改subgroupId，desc可改 ===
+  moduleMeta: [
+    { subgroupId:"custom-global", name:"公用字卡", type:"A", desc:"公用字卡，全部联系人可用。" },
+    { subgroupId:"custom-contact", name:"专属字卡", type:"A", desc:"专属字卡，仅当前激活联系人可用。" },
+    { subgroupId:"custom-fun-global", name:"其他互动功能字卡·公用", type:"A", desc:"其他互动功能相关字卡，添加后全部联系人都可以使用。" },
+    { subgroupId:"custom-fun-contact", name:"其他互动功能字卡·专属", type:"A", desc:"其他互动功能字卡·专属，仅当前联系人可用。" },
+    { subgroupId:"custom-trace", name:"寻踪日常·我的添加", type:"B", desc:"寻踪日常相关字卡，添加后全部联系人都可以使用。" },
+    { subgroupId:"custom-love-words", name:"今日情话·我的添加", type:"C", desc:"今日情话相关字卡，添加后全部联系人都可以使用。" },
+    { subgroupId:"custom-ask-open", name:"TA的询问·我的添加", type:"D", desc:"TA的询问相关字卡，添加后全部联系人都可以使用。" },
+    { subgroupId:"custom-ask-choice", name:"TA的小问题·我的添加", type:"E", desc:"TA的小问题相关字卡，添加后全部联系人都可以使用。" },
+    { subgroupId:"custom-curious", name:"TA的好奇·我的添加", type:"A", desc:"TA的好奇相关字卡，添加后全部联系人都可以使用。" },
+    { subgroupId:"custom-complain", name:"TA的吐槽·我的添加", type:"A", desc:"TA的吐槽相关字卡，添加后全部联系人都可以使用。" },
+    { subgroupId:"custom-check", name:"TA的查岗·我的添加", type:"A", desc:"TA的查岗相关字卡，添加后全部联系人都可以使用。" },
+    { subgroupId:"custom-invite", name:"TA的邀请·我的添加", type:"A", desc:"TA的邀请相关字卡，添加后全部联系人都可以使用。" }
+  ],
+  // 根据subgroupId获取模块元信息
+  getModuleMeta(sgId){
+    return this.moduleMeta.find(m=>m.subgroupId === sgId) ?? {type:"A",desc:""};
+  },
   // 辅助：获取当前tab下所有子分组总卡片数
   getTabTotalCardCount(tabKey, contactId) {
     const M = window.AuditCardModule;
@@ -185,11 +204,11 @@ export const CardEditorModule = {
           })
         }
       }
-      // ---------------- 分支B：子分组详情页（原来的旧表单+字卡列表，保留全部旧逻辑） ----------------
+           // ---------------- 分支B：子分组详情页（支持A/B/C/D/E多类型模块） ----------------
       else {
         const activeSg = group.subgroups.find(sg=>sg.subgroupId === this.activeSubTab);
         const sgCardList = M.getSubgroupCards(this.activeTab, this.activeSubTab, contactId);
-
+        const meta = this.getModuleMeta(activeSg.subgroupId);
         // 返回按钮
         const backBtn = document.createElement("button");
         backBtn.textContent = "← 返回分组列表";
@@ -200,75 +219,86 @@ export const CardEditorModule = {
         };
         wrap.appendChild(backBtn);
 
-      // system页面增加说明提示文本
-      if(isSystemGroup){
-        const sysTip = document.createElement("div");
-        sysTip.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:12px;color:var(--color-text-2);font-size:13px;";
-        sysTip.innerText = "说明：本站「系统预设字卡」均为自搓字卡（AI辅助设计），按分类/分组展示，可逐张开启或关闭；想一次停掉一组，用分组标题右侧的「整组停用」开关。当前状态：系统预设字卡已解锁，联系人回复与各功能可正常取用。";
-        wrap.appendChild(sysTip);
-      }
+        // system页面增加说明提示文本
+        if(isSystemGroup){
+          const sysTip = document.createElement("div");
+          sysTip.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:12px;color:var(--color-text-2);font-size:13px;";
+          sysTip.innerText = "说明：本站「系统预设字卡」均为自搓字卡（AI辅助设计），按分类/分组展示，可逐张开启或关闭；想一次停掉一组，用分组标题右侧的「整组停用」开关。当前状态：系统预设字卡已解锁，联系人回复与各功能可正常取用。";
+          wrap.appendChild(sysTip);
+        }else{
+          // custom：权限+分组描述提示框
+          const tipDiv = document.createElement("div");
+          tipDiv.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:12px;color:var(--color-text-2);font-size:13px;";
+          const scopeText = activeSg.scope === "global" ? "🔹权限：全局公用，所有联系人可用" : "🔹权限：仅当前联系人专属";
+          tipDiv.innerText = meta.desc ? `${scopeText}\n${meta.desc}` : scopeText;
+          wrap.appendChild(tipDiv);
 
-      // custom页面：新增表单 + 导出导入按钮
-      if(!isSystemGroup){
-        const formDiv = document.createElement("div");
-        formDiv.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;";
-        formDiv.innerHTML = `
-          <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">新增字卡【${activeSg.name}】</div>
-          <div style="margin-bottom:8px;">
-            <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">标题</div>
-            <input id="in-card-title" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)" placeholder="标题">
-          </div>
-          <div style="margin-bottom:10px;">
-            <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">内容</div>
-            <textarea id="in-card-content" rows="3" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text);resize:none" placeholder="字卡内容"></textarea>
-          </div>
-          <button id="btn-add-new" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">添加到当前子分组</button>
-          <div style="display:flex;gap:8px;margin-top:10px;">
-            <button id="btn-export-custom" style="flex:1;padding:7px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)">全量导出json</button>
-            <button id="btn-import-custom" style="flex:1;padding:7px;border:none;border-radius:var(--radius-btn);background:var(--color-main);color:#fff">导入json</button>
-          </div>
-        `;
-        wrap.appendChild(formDiv);
-      }else{
-        const tipDiv = document.createElement("div");
-        tipDiv.style.cssText = "border:1px dashed var(--color-border);border-radius:var(--radius-card);padding:12px;margin-bottom:14px;color:var(--color-text-2);font-size:13px;";
-        tipDiv.innerText = "系统预设分组：仅可读，不可新增/删除";
-        wrap.appendChild(tipDiv);
-      }
-
-      // 渲染子分组字卡列表
-      const listWrap = document.createElement("div");
-      listWrap.className = "panel-scroll";
-      listWrap.style.cssText = "flex:1;min-height:0;";
-      listWrap.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;color:var(--color-text)">${activeSg.name}（${sgCardList.length}条）</div>`;
-      if(sgCardList.length === 0){
-        listWrap.innerHTML += `<div style="color:var(--color-text-2);font-size:13px">暂无字卡</div>`;
-      }else{
-        sgCardList.forEach(card=>{
-         const item = document.createElement("div");
-          const groupDisabled = !!activeSg.isGroupDisabled;
-          const cardDisabled = !!card.isDisabled;
-          item.style.cssText = `border:1px solid var(--color-border);border-radius:var(--radius-card);padding:10px;margin-bottom:8px;${(groupDisabled || cardDisabled) ? "opacity:0.6;" : ""}`;
-                   // system分组增加单张卡片启用/禁用按钮
-          let cardToggleBtn = "";
-          if(isSystemGroup){
-            const cardDisabled = !!card.isDisabled;
-            cardToggleBtn = `<button data-card-toggle="${card.id}" style="padding:3px 6px;font-size:12px;border:none;border-radius:4px;background:${cardDisabled ? "#ff9500":"var(--color-main)"};color:#fff">${cardDisabled?"启用":"禁用"}</button>`;
+          // ========== 根据模块type分支渲染 ==========
+          if(meta.type === "A"){
+            // A型纯字卡列表：原有表单、导入导出逻辑完整保留
+            const formDiv = document.createElement("div");
+            formDiv.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;";
+            formDiv.innerHTML = `
+              <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">新增字卡【${activeSg.name}】</div>
+              <div style="margin-bottom:8px;">
+                <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">标题</div>
+                <input id="in-card-title" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)" placeholder="标题">
+              </div>
+              <div style="margin-bottom:10px;">
+                <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">内容</div>
+                <textarea id="in-card-content" rows="3" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text);resize:none" placeholder="字卡内容"></textarea>
+              </div>
+              <button id="btn-add-new" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">添加到当前子分组</button>
+              <div style="display:flex;gap:8px;margin-top:10px;">
+                <button id="btn-export-custom" style="flex:1;padding:7px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)">全量导出json</button>
+                <button id="btn-import-custom" style="flex:1;padding:7px;border:none;border-radius:var(--radius-btn);background:var(--color-main);color:#fff">导入json</button>
+              </div>
+            `;
+            wrap.appendChild(formDiv);
+          }else if(["B","C","D","E"].includes(meta.type)){
+            // B寻踪日常 / C今日情话 / D TA询问 / E TA小问题：【占位提示，后续在这里替换为完整UI DOM】
+            const placeHolderBox = document.createElement("div");
+            placeHolderBox.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;background:color-mix(in srgb, var(--color-main) 6%, transparent);";
+            placeHolderBox.innerHTML = `
+              <div style="font-weight:bold;color:var(--color-text);margin-bottom:6px;">模块【${meta.name}】type=${meta.type}</div>
+              <div style="font-size:12px;color:var(--color-text-2);">此模块UI待开发，下方为原始字卡列表，可发送、删除卡片。后续将在此位置渲染开关、概率滑块、Tab、批量录入表单。</div>
+            `;
+            wrap.appendChild(placeHolderBox);
           }
-          item.innerHTML = `
-            <div style="font-weight:bold;color:var(--color-main)">${card.title||"无标题"}</div>
-            <div style="font-size:13px;color:var(--color-text-2);margin:4px 0;white-space:pre-wrap">${card.content}</div>
-            <div style="display:flex;gap:6px;margin-top:6px">
-              <button data-send-id="${card.id}" style="padding:3px 6px;font-size:12px;background:var(--color-main);color:#fff;border:none;border-radius:4px">发送</button>
-              ${cardToggleBtn}
-              ${!isSystemGroup ? `<button data-del-id="${card.id}" style="padding:3px 6px;font-size:12px;background:#e53935;color:#fff;border:none;border-radius:4px">删除</button>`:""}
-            </div>
-          `;
-          listWrap.appendChild(item);
-        })
+        }
+
+        // ========== 通用字卡列表渲染，A/B/C/D/E全部共用这一份列表渲染 ==========
+        const listWrap = document.createElement("div");
+        listWrap.className = "panel-scroll";
+        listWrap.style.cssText = "flex:1;min-height:0;";
+        listWrap.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;color:var(--color-text)">${activeSg.name}（${sgCardList.length}条）</div>`;
+        if(sgCardList.length === 0){
+          listWrap.innerHTML += `<div style="color:var(--color-text-2);font-size:13px">暂无字卡</div>`;
+        }else{
+          sgCardList.forEach(card=>{
+            const item = document.createElement("div");
+            const groupDisabled = !!activeSg.isGroupDisabled;
+            const cardDisabled = !!card.isDisabled;
+            item.style.cssText = `border:1px solid var(--color-border);border-radius:var(--radius-card);padding:10px;margin-bottom:8px;${(groupDisabled || cardDisabled) ? "opacity:0.6;" : ""}`;
+            let cardToggleBtn = "";
+            if(isSystemGroup){
+              const cardDisabled = !!card.isDisabled;
+              cardToggleBtn = `<button data-card-toggle="${card.id}" style="padding:3px 6px;font-size:12px;border:none;border-radius:4px;background:${cardDisabled ? "#ff9500":"var(--color-main)"};color:#fff">${cardDisabled?"启用":"禁用"}</button>`;
+            }
+            item.innerHTML = `
+              <div style="font-weight:bold;color:var(--color-main)">${card.title||"无标题"}</div>
+              <div style="font-size:13px;color:var(--color-text-2);margin:4px 0;white-space:pre-wrap">${card.content}</div>
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <button data-send-id="${card.id}" style="padding:3px 6px;font-size:12px;background:var(--color-main);color:#fff;border:none;border-radius:4px">发送</button>
+                ${cardToggleBtn}
+                ${!isSystemGroup ? `<button data-del-id="${card.id}" style="padding:3px 6px;font-size:12px;background:#e53935;color:#fff;border:none;border-radius:4px">删除</button>`:""}
+              </div>
+            `;
+            listWrap.appendChild(item);
+          })
+        }
+        wrap.appendChild(listWrap);
       }
-    wrap.appendChild(listWrap);
-    }
   }else{
 
         // ========= auditReport：完整复刻 audit‑panel.js renderCardLib UI，操作全部调用M模块api，自动双向同步 =========
