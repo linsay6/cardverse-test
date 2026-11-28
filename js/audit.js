@@ -89,33 +89,39 @@ system: {
   },
 
   // ========== 持久化加载，兼容旧存储 ==========
-    loadFromStorage() {
+      loadFromStorage() {
     const raw = localStorage.getItem("mochi_audit_v2");
-    if (!raw) return;
-    try {
-      const data = JSON.parse(raw);
-      this.cardGroups.custom.list = data?.customCards ?? [];
-      // 读取子分组，如果存储里面存在就覆盖，不存在就保留代码写死的默认模板
-      if(Array.isArray(data?.customSubgroups)){
-        this.cardGroups.custom.subgroups = data.customSubgroups;
-      }
-      if(Array.isArray(data?.systemSubgroups)){
-        this.cardGroups.system.subgroups = data.systemSubgroups;
-      }
+    let data = null;
+    if (raw) {
+      try {
+        data = JSON.parse(raw);
+        this.cardGroups.custom.list = data?.customCards ?? [];
+        // 读取是否已经导入原作者预设字卡标记
+        this.hasImportOriginPresetCards = !!data?.hasImportOriginPresetCards;
 
-      this.cardGroups.auditReport.categories = data?.auditReportCategories ?? [{ id: "default", name: "默认分类", sort: 0, isDisabled: false, expanded: true, cards: [] }];
+        if(Array.isArray(data?.customSubgroups)){
+          this.cardGroups.custom.subgroups = data.customSubgroups;
+        }
+        if(Array.isArray(data?.systemSubgroups)){
+          this.cardGroups.system.subgroups = data.systemSubgroups;
+        }
 
-      if (data?.auditReportCards && Array.isArray(data.auditReportCards) && data.auditReportCards.length > 0) {
-        const defaultCat = this.cardGroups.auditReport.categories.find(c => c.id === "default");
-        if (defaultCat && defaultCat.cards.length === 0) defaultCat.cards = data.auditReportCards;
-      }
-      this.pendingApply = data?.pendingApply ?? [];
-      this.auditHistory = data?.auditHistory ?? [];
-      this.auditConfig = { ...this.auditConfig, ...(data?.auditConfig ?? {}) };
-    } catch (e) { console.warn("audit读取本地存储失败", e); }
+        this.cardGroups.auditReport.categories = data?.auditReportCategories ?? [{ id: "default", name: "默认分类", sort: 0, isDisabled: false, expanded: true, cards: [] }];
+
+        if (data?.auditReportCards && Array.isArray(data.auditReportCards) && data.auditReportCards.length > 0) {
+          const defaultCat = this.cardGroups.auditReport.categories.find(c => c.id === "default");
+          if (defaultCat && defaultCat.cards.length === 0) defaultCat.cards = data.auditReportCards;
+        }
+        this.pendingApply = data?.pendingApply ?? [];
+        this.auditHistory = data?.auditHistory ?? [];
+        this.auditConfig = { ...this.auditConfig, ...(data?.auditConfig ?? {}) };
+      } catch (e) { console.warn("audit读取本地存储失败", e); }
+    }else{
+      // 本地存储为空，标记为未导入
+      this.hasImportOriginPresetCards = false;
+    }
   },
-
-    saveToStorage() {
+      saveToStorage() {
     localStorage.setItem("mochi_audit_v2", JSON.stringify({
       customCards: this.cardGroups.custom.list,
       customSubgroups: this.cardGroups.custom.subgroups,
@@ -123,9 +129,10 @@ system: {
       auditReportCategories: this.cardGroups.auditReport.categories,
       pendingApply: this.pendingApply,
       auditHistory: this.auditHistory,
-      auditConfig: this.auditConfig
+      auditConfig: this.auditConfig,
+      hasImportOriginPresetCards: this.hasImportOriginPresetCards
     }));
-    EventBus.emit("my-audit-data-updated", { pendingCount: this.pendingApply.length });
+    EventBus.emit("my‑audit‑data‑updated", { pendingCount: this.pendingApply.length });
   },
 
   // ========== 分类操作API ==========
@@ -276,7 +283,7 @@ system: {
     return this.cardGroups.auditReport.categories.reduce((sum, cat) => sum + cat.cards.length, 0);
   },
 
-      getEnabledCardList(groupKey, activeContactId=null) {
+   getEnabledCardList(groupKey, activeContactId=null) {
     const g = this.cardGroups[groupKey];
     if (!g) return [];
     if (groupKey === "auditReport") {
@@ -294,7 +301,7 @@ system: {
     if(g.subgroups){
       let out = [];
       g.subgroups.forEach(sg=>{
-        // ✅新增：整组被禁用，直接跳过该分组全部卡片
+        // ✅整组被禁用，直接跳过该分组全部卡片
         if(sg.isGroupDisabled === true) return;
         sg.list.forEach(card=>{
           if(card.isDisabled) return;
@@ -309,7 +316,35 @@ system: {
     }
     return g.list.filter(item => !item.isDisabled);
   },
-
+   // 转换外部全局 PRESET_RAW_CARD_DATA 为 system.subgroups 子分组数组
+  _convertOriginPresetCards(rawData){
+    const outSubgroups = [];
+    let sgIdSeq = 0;
+    Object.keys(rawData).forEach(topKey=>{
+      const groupList = rawData[topKey];
+      if(!Array.isArray(groupList)) return;
+      groupList.forEach(([groupName,cardTexts])=>{
+        if(!Array.isArray(cardTexts)) return;
+        const list = cardTexts.map((txt,idx)=>{
+          return {
+            id:`sys‑import‑${sgIdSeq}_${idx}`,
+            title: txt.length>12 ? txt.slice(0,12):txt,
+            content:txt,
+            side:"bot",
+            isDisabled:false
+          }
+        });
+        outSubgroups.push({
+          subgroupId:`sys‑import‑${topKey}_${sgIdSeq++}`,
+          name:`【${topKey}】${groupName}`,
+          scope:"global",
+          isGroupDisabled:false,
+          list
+        })
+      })
+    })
+    return outSubgroups;
+  },
   // 获取指定子分组全部卡片
   getSubgroupCards(groupKey, subgroupId, contactId=null){
     const g = this.cardGroups[groupKey];
@@ -353,7 +388,7 @@ system: {
     if(idx > -1) sg.list.splice(idx,1);
     this.saveToStorage();
   },
-  // 设置子分组整组启用/禁用
+ // 设置子分组整组启用/禁用
   setSubgroupGroupDisable(groupKey, subgroupId, isDisable) {
     const g = this.cardGroups[groupKey];
     if(!g || !g.subgroups) return;
@@ -374,8 +409,8 @@ system: {
     card.isDisabled = !!isDisable;
     this.saveToStorage();
   },
-
-  // 自定义字卡：全量导出（公用全部+当前联系人专属）
+     
+   // 自定义字卡：全量导出（公用全部+当前联系人专属）
     exportCustomCardJson(currentContactId){
     const g = this.cardGroups.custom;
     const out = { subgroups:[], _meta:{exportAt:new Date().toISOString(), contactId:currentContactId}};
@@ -671,10 +706,19 @@ system: {
     this.cardGroups.system.subgroups.forEach(sg=>{
       if(sg.isGroupDisabled === undefined) sg.isGroupDisabled = false;
     });
-    // =====兜底结束=====
+     // =====兜底结束=====
+    // 页面初始化，仅第一次执行导入内置预设字卡
+    if(!this.hasImportOriginPresetCards && window.PRESET_RAW_CARD_DATA){
+      console.log("首次启动：导入外部预设字卡数据");
+      const importSgs = this._convertOriginPresetCards(window.PRESET_RAW_CARD_DATA);
+      this.cardGroups.system.subgroups = this.cardGroups.system.subgroups.concat(importSgs);
+      this.hasImportOriginPresetCards = true;
+      this.saveToStorage();
+    }
 
     console.log("AuditCardModule 数据层初始化完成");
-    this.restartEngineTimer(); // 初始化启动定时器
+    this.restartEngineTimer();
+
   },
 
   // 新增：重启/管理引擎定时器
