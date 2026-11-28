@@ -100,10 +100,19 @@ export const CardEditorModule = {
         wrap.appendChild(searchWrap);
 
         // 滚动容器，使用全局panel-scroll（css-theme已经写好隐藏滚动条）
-        const scrollWrap = document.createElement("div");
+       const scrollWrap = document.createElement("div");
         scrollWrap.className = "panel-scroll";
-        scrollWrap.style.cssText = `flex:1;min-height:0;`;
-
+        scrollWrap.style.cssText = `
+          flex:1;
+          min-height:0;
+          overflow-y:auto;
+          scrollbar-width:none;
+          -ms-overflow-style:none;
+        `;
+        // webkit内核隐藏滚动条
+        const stylePanelScroll = document.createElement('style');
+        stylePanelScroll.textContent = `.panel-scroll::-webkit-scrollbar { display:none !important; }`;
+        scrollWrap.appendChild(stylePanelScroll);
         // 过滤：当前tab下，匹配搜索关键词的子分组卡片
         const kw = (this._cardSearch || "").toLowerCase();
         group.subgroups.forEach(sg=>{
