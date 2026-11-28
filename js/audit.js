@@ -3,21 +3,21 @@ import { EventBus } from './core/context.js';
 
 const AuditCardModule = {
         cardGroups: {
-    custom: {
+        custom: {
   name: "自定义字卡",
   subgroups: [
     { subgroupId:"custom-global", name:"公用字卡", scope:"global", isGroupDisabled:false, list:[] },
     { subgroupId:"custom-contact", name:"专属字卡", scope:"contact", isGroupDisabled:false, list:[] },
     { subgroupId:"custom-fun-global", name:"其他互动功能字卡·公用", scope:"global", isGroupDisabled:false, list:[] },
-    { subgroupId:"custom-fun-contact", name:"其他互动功能字卡·专属", scope:"contact", isGroupDisabled:false, list:[] },
-    { subgroupId:"custom-trace", name:"寻踪日常·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-    { subgroupId:"custom-love-words", name:"今日情话·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-    { subgroupId:"custom-ask-open", name:"TA的询问·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-    { subgroupId:"custom-ask-choice", name:"TA的小问题·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-    { subgroupId:"custom-curious", name:"TA的好奇·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-    { subgroupId:"custom-complain", name:"TA的吐槽·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-    { subgroupId:"custom-check", name:"TA的查岗·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-    { subgroupId:"custom-invite", name:"TA的邀请·我的添加", scope:"contact", isGroupDisabled:false, list:[] }
+    { subgroupId:"custom-fun-contact", name:"其他互动功能字卡·专属", scope:"global", isGroupDisabled:false, list:[] },
+    { subgroupId:"custom-trace", name:"寻踪日常·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+    { subgroupId:"custom-love-words", name:"今日情话·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+    { subgroupId:"custom-ask-open", name:"TA的询问·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+    { subgroupId:"custom-ask-choice", name:"TA的小问题·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+    { subgroupId:"custom-curious", name:"TA的好奇·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+    { subgroupId:"custom-complain", name:"TA的吐槽·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+    { subgroupId:"custom-check", name:"TA的查岗·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+    { subgroupId:"custom-invite", name:"TA的邀请·我的添加", scope:"global", isGroupDisabled:false, list:[] }
   ],
   list: []
 },
@@ -659,19 +659,19 @@ system: {
 
     // =====运行时兜底，防止旧存储把 subgroups 冲成 undefined=====
         if(!this.cardGroups.custom.subgroups || !Array.isArray(this.cardGroups.custom.subgroups)){
-      this.cardGroups.custom.subgroups = [
+       this.cardGroups.custom.subgroups = [
         { subgroupId:"custom-global", name:"公用字卡", scope:"global", isGroupDisabled:false, list:[] },
         { subgroupId:"custom-contact", name:"专属字卡", scope:"contact", isGroupDisabled:false, list:[] },
         { subgroupId:"custom-fun-global", name:"其他互动功能字卡·公用", scope:"global", isGroupDisabled:false, list:[] },
-        { subgroupId:"custom-fun-contact", name:"其他互动功能字卡·专属", scope:"contact", isGroupDisabled:false, list:[] },
-        { subgroupId:"custom-trace", name:"寻踪日常·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-        { subgroupId:"custom-love-words", name:"今日情话·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-        { subgroupId:"custom-ask-open", name:"TA的询问·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-        { subgroupId:"custom-ask-choice", name:"TA的小问题·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-        { subgroupId:"custom-curious", name:"TA的好奇·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-        { subgroupId:"custom-complain", name:"TA的吐槽·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-        { subgroupId:"custom-check", name:"TA的查岗·我的添加", scope:"contact", isGroupDisabled:false, list:[] },
-        { subgroupId:"custom-invite", name:"TA的邀请·我的添加", scope:"contact", isGroupDisabled:false, list:[] }
+        { subgroupId:"custom-fun-contact", name:"其他互动功能字卡·专属", scope:"global", isGroupDisabled:false, list:[] },
+        { subgroupId:"custom-trace", name:"寻踪日常·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+        { subgroupId:"custom-love-words", name:"今日情话·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+        { subgroupId:"custom-ask-open", name:"TA的询问·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+        { subgroupId:"custom-ask-choice", name:"TA的小问题·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+        { subgroupId:"custom-curious", name:"TA的好奇·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+        { subgroupId:"custom-complain", name:"TA的吐槽·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+        { subgroupId:"custom-check", name:"TA的查岗·我的添加", scope:"global", isGroupDisabled:false, list:[] },
+        { subgroupId:"custom-invite", name:"TA的邀请·我的添加", scope:"global", isGroupDisabled:false, list:[] }
       ];
     }
     // 兜底遍历，老数据没有isGroupDisabled自动补false
