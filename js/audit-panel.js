@@ -875,16 +875,94 @@ const AuditPanelModule = {
     moveWrap.appendChild(moveSel);
     moveWrap.appendChild(moveBtn);
 
-    const newCatBtn = document.createElement("button");
-    newCatBtn.textContent = "+ 新建分类";
-    newCatBtn.style = "padding:5px 8px;border:none;border-radius:6px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;margin-left:auto;";
-    newCatBtn.onclick = () => {
-      const name = prompt("输入分类名称");
-      if (!name) return;
-      M.addCategory(name.trim());
-      Toast.show("分类已创建");
-      this.renderCardLib(body);
-    };
+        const manageCatBtn = document.createElement("button");
+        manageCatBtn.textContent = "管理分组";
+        manageCatBtn.style = "padding:5px 8px;border:none;border-radius:6px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;margin-left:auto;";
+        manageCatBtn.onclick = () => {
+          const cats = M.getAuditCategories();
+          const mask = document.createElement("div");
+          mask.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100002;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;";
+          const modal = document.createElement("div");
+          modal.style.cssText = "width:100%;max-width:400px;max-height:75vh;background:var(--color-bg);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;";
+          const modalHead = document.createElement("div");
+          modalHead.style.cssText = "padding:12px 14px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;";
+          modalHead.innerHTML = `<span style="font-weight:bold;color:var(--color-text)">分组管理</span><span style="cursor:pointer;font-size:18px;color:var(--color-text‑2)">×</span>`;
+          const closeModal = ()=>mask.remove();
+          modalHead.querySelector("span:last‑child").onclick = closeModal;
+          const modalBody = document.createElement("div");
+          modalBody.style.cssText = "padding:12px;flex:1;overflow‑y:auto;min‑height:0;";
+          // 新增分组行
+          const addRow = document.createElement("div");
+          addRow.style.cssText = "display:flex;gap:6px;margin‑bottom:12px;";
+          const catNameInput = document.createElement("input");
+          catNameInput.placeholder="输入新分组名称";
+          catNameInput.style.cssText="flex:1;padding:7px;border:1px solid var(--color-border);border‑radius:6px;background:var(--color‑bg);color:var(--color‑text);font‑size:12px;";
+          const addBtn = document.createElement("button");
+          addBtn.textContent="新增";
+          addBtn.style.cssText="padding:7px 10px;border:none;border‑radius:6px;background:var(--color‑main);color:#fff;font‑size:12px;";
+          addBtn.onclick=()=>{
+            const n = catNameInput.value.trim();
+            if(!n){Toast.show("请输入分组名称");return;}
+            M.addCategory(n);
+            Toast.show("分组已创建");
+            catNameInput.value="";
+            mask.remove();
+            this.renderCardLib(body);
+          };
+          addRow.appendChild(catNameInput);
+          addRow.appendChild(addBtn);
+          modalBody.appendChild(addRow);
+          // 现有分组列表
+          cats.forEach(cat=>{
+            const item = document.createElement("div");
+            item.style.cssText="border:1px solid var(--color‑border);border‑radius:8px;padding:9px;margin‑bottom:8px;";
+            item.innerHTML=`<div style="font‑size:12px;font‑weight:bold;margin‑bottom:6px;color:var(--color‑text)">${cat.name}</div>`;
+            const btnWrap=document.createElement("div");
+            btnWrap.style.cssText="display:flex;gap:5px;flex‑wrap:wrap;";
+            const upBtn=document.createElement("button");
+            upBtn.textContent="↑";
+            upBtn.style.cssText="padding:4px 6px;font‑size:11px;border:1px solid var(--color‑border);border‑radius:4px;background:var(--color‑bg);";
+            upBtn.onclick=()=>{M.moveCategorySort(cat.id,"up");mask.remove();this.renderCardLib(body);};
+            const downBtn=document.createElement("button");
+            downBtn.textContent="↓";
+            downBtn.style.cssText="padding:4px 6px;font‑size:11px;border:1px solid var(--color‑border);border‑radius:4px;background:var(--color‑bg);";
+            downBtn.onclick=()=>{M.moveCategorySort(cat.id,"down");mask.remove();this.renderCardLib(body);};
+            const renameBtn=document.createElement("button");
+            renameBtn.textContent="重命名";
+            renameBtn.style.cssText="padding:4px 6px;font‑size:11px;border:1px solid var(--color‑border);border‑radius:4px;background:var(--color‑bg);";
+            renameBtn.onclick=()=>{
+              const newName=prompt("修改分组名称",cat.name);
+              if(newName?.trim()){M.renameCategory(cat.id,newName.trim());mask.remove();this.renderCardLib(body);}
+            };
+            const delBtn=document.createElement("button");
+            delBtn.textContent="删除";
+            delBtn.style.cssText="padding:4px 6px;font‑size:11px;border:none;border‑radius:4px;background:#ff3b30;color:#fff;";
+            delBtn.onclick=()=>{
+              if(cat.cards.length>0){
+                const targetCatId=prompt(`分组【${cat.name}】存在字卡，请输入迁移目标分组ID\n可选ID：${cats.filter(x=>x.id!==cat.id).map(i=>i.id).join(",")}`,"");
+                if(!targetCatId)return;
+                if(!M.deleteCategory(cat.id,targetCatId))return;
+              }else{
+                if(!confirm(`确定删除空分组「${cat.name}」？`))return;
+                if(!M.deleteCategory(cat.id,null))return;
+              }
+              Toast.show("分组已删除");
+              mask.remove();
+              this.renderCardLib(body);
+            };
+            btnWrap.appendChild(upBtn);
+            btnWrap.appendChild(downBtn);
+            btnWrap.appendChild(renameBtn);
+            btnWrap.appendChild(delBtn);
+            item.appendChild(btnWrap);
+            modalBody.appendChild(item);
+          });
+          mask.onclick=(e)=>{if(e.target===mask) closeModal();};
+          modal.appendChild(modalHead);
+          modal.appendChild(modalBody);
+          mask.appendChild(modal);
+          document.body.appendChild(mask);
+        };
 
     batchBar.appendChild(allCheck);
     batchBar.appendChild(dedupBtn);
@@ -956,21 +1034,21 @@ const AuditPanelModule = {
         catName.style.flex = "1";
 
         //=====【整组状态切换按钮：自动切换整组禁用 / 整组启用】=====
-        const groupToggleBtn = document.createElement("button");
-        const allCardDisabled = cat.cards.length > 0 && cat.cards.every(c => c.isDisabled);
-        if(allCardDisabled){
-          groupToggleBtn.textContent = "整组启用";
-          groupToggleBtn.style = "padding:2px 5px;border:1px solid var(--color-main);border-radius:4px;background:var(--color-bg);color:var(--color-main);font-size:10px;cursor:pointer;";
-          groupToggleBtn.onclick = ()=>{
-            cat.cards.forEach(card=>{
-              M.updateCard(cat.id, card.id, {isDisabled:false, disabledBy:null});
-            });
-            Toast.show(`已将「${cat.name}」全部字卡设置为启用`);
-            this.renderCardLib(body);
-          };
-        }else{
-          groupToggleBtn.textContent = "整组禁用";
-          groupToggleBtn.style = "padding:2px 5px;border:1px solid #ff9500;border-radius:4px;background:var(--color-bg);color:#ff9500;font-size:10px;cursor:pointer;";
+                    const groupToggleBtn = document.createElement("button");
+            const allCardDisabled = cat.cards.length > 0 && cat.cards.every(c => c.isDisabled);
+            if(allCardDisabled){
+              groupToggleBtn.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3‑7 10‑7 10 7‑10 7‑10‑7z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+              groupToggleBtn.style = "padding:3px;border:1px solid var(--color-main);border-radius:4px;background:var(--color-bg);color:var(--color-main);cursor:pointer;display:flex;align-items:center;justify-content:center;width:24px;height:24px;";
+              groupToggleBtn.onclick = ()=>{
+                cat.cards.forEach(card=>{
+                  M.updateCard(cat.id, card.id, {isDisabled:false, disabledBy:null});
+                });
+                Toast.show(`已将「${cat.name}」全部字卡设置为启用`);
+                this.renderCardLib(body);
+              };
+            }else{
+              groupToggleBtn.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c‑7 0‑11‑8‑11‑8a18.45 18.45 0 0 1 5.06‑5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1‑2.16 3.19m‑6.72‑1.07a3 3 0 1 1‑4.24‑4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+              groupToggleBtn.style = "padding:3px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;width:24px;height:24px;";
           groupToggleBtn.onclick = ()=>{
             const myNick = M.getMyNick();
             cat.cards.forEach(card=>{
@@ -1080,28 +1158,30 @@ const AuditPanelModule = {
               // ========= 这里完整保留全部4个按钮：发送、编辑、启用/禁用、删除 =========
               const ops = document.createElement("div");
               ops.style.cssText = "display:flex;gap:4px;flex-wrap:wrap;";
-
-              const sendBtn = document.createElement("button");
-              sendBtn.textContent = "发送";
-              sendBtn.style.cssText = "padding:3px 6px;border:none;border-radius:4px;background:var(--color-main);color:#fff;font-size:11px;cursor:pointer;";
-              sendBtn.onclick = () => {
-                if (M.sendCardToChat(card)) Toast.show("已发送到聊天");
-              };
-
-              const editBtn = document.createElement("button");
-              editBtn.textContent = "编辑";
-              editBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
-              editBtn.onclick = () => {
-                const newText = prompt("编辑字卡内容：", card.content);
-                if (newText && newText.trim()) {
-                  M.updateCard(cat.id, card.id, { content: newText.trim() });
-                  this.renderCardLib(body);
-                }
-              };
-
-              const toggleDisableBtn = document.createElement("button");
-              toggleDisableBtn.textContent = card.isDisabled ? "启用" : "禁用";
-              toggleDisableBtn.style.cssText = "padding:3px 6px;border:1px solid " + (card.isDisabled ? "var(--color-main)" : "#ff9500") + ";border-radius:4px;background:var(--color-bg);color:" + (card.isDisabled ? "var(--color-main)" : "#ff9500") + ";font-size:11px;cursor:pointer;";
+                  const sendBtn = document.createElement("button");
+                  sendBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v‑2l‑8‑5V3.5c0‑.83‑.67‑1.5‑1.5‑1.5S10 2.67 10 3.5V9l‑8 5v2l8‑2.5V19l‑2 1.5V22l3.5‑1 3.5 1v‑1.5L13 19v‑5.5l8 2.5z"></path></svg>`;
+                  sendBtn.style.cssText = "padding:4px;border:none;border-radius:4px;background:var(--color-main);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;width:26px;height:26px;";
+                  sendBtn.onclick = () => {
+                    if (M.sendCardToChat(card)) Toast.show("已发送到聊天");
+                  };
+                  const editBtn = document.createElement("button");
+                  editBtn.textContent = "编辑";
+                  editBtn.style.cssText = "padding:3px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);color:var(--color-text);font-size:11px;cursor:pointer;";
+                  editBtn.onclick = () => {
+                    const newText = prompt("编辑字卡内容：", card.content);
+                    if (newText && newText.trim()) {
+                      M.updateCard(cat.id, card.id, { content: newText.trim() });
+                      this.renderCardLib(body);
+                    }
+                  };
+                  const toggleDisableBtn = document.createElement("button");
+                  if(card.isDisabled){
+                    toggleDisableBtn.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c‑7 0‑11‑8‑11‑8a18.45 18.45 0 0 1 5.06‑5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1‑2.16 3.19m‑6.72‑1.07a3 3 0 1 1‑4.24‑4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+                  }else{
+                    toggleDisableBtn.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3‑7 10‑7 10 7‑10 7‑10‑7z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+                  }
+                  toggleDisableBtn.style.cssText = "padding:4px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;width:26px;height:26px;";
+            
               toggleDisableBtn.onclick = () => {
                 if (card.isDisabled) {
                   M.updateCard(cat.id, card.id, { isDisabled: false, disabledBy: null });
