@@ -78,8 +78,8 @@ system: {
     engineRunning: false,
   engineTimerId: null, // 新增：引擎定时器ID
   lastActiveSendTs: 0, // 记录上一次主动发消息时间戳，用于冷却
-  emotionWords: ["喜欢", "爱", "想你", "开心"],
-
+    emotionWords: ["喜欢", "爱", "想你", "开心"],
+  hasImportOriginPresetCards: false,
   // ========== 来自DS版本新增工具方法 ==========
   getContactNick() {
     return window.ChatModule?.activeContactInfo?.name || this.auditConfig.dreamEngine.dreamNick || "梦角";
@@ -711,11 +711,12 @@ system: {
     if(!this.hasImportOriginPresetCards && window.PRESET_RAW_CARD_DATA){
       console.log("首次启动：导入外部预设字卡数据");
       const importSgs = this._convertOriginPresetCards(window.PRESET_RAW_CARD_DATA);
+      // 清理之前导入的预设分组，避免多次导入重复叠加
+      this.cardGroups.system.subgroups = this.cardGroups.system.subgroups.filter(sg=> !sg.subgroupId.startsWith("sys‑import‑"));
       this.cardGroups.system.subgroups = this.cardGroups.system.subgroups.concat(importSgs);
       this.hasImportOriginPresetCards = true;
       this.saveToStorage();
     }
-
     console.log("AuditCardModule 数据层初始化完成");
     this.restartEngineTimer();
 
@@ -735,8 +736,8 @@ system: {
       return;
     }
     // 按照配置的scanIntervalSec秒数定时执行
-        // 界面输入是【分钟】，转成毫秒
-    const intervalMs = cfg.scanIntervalSec * 60 * 1000;
+       // 按照配置的scanIntervalSec【秒】转成毫秒
+    const intervalMs = cfg.scanIntervalSec * 1000;
     this.engineTimerId = setInterval(()=>{
       // 尝试从全局ChatModule拿聊天消息
       const chatMsgList = window.ChatModule?.messageList ?? [];
