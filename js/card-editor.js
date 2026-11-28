@@ -234,28 +234,102 @@ export const CardEditorModule = {
           wrap.appendChild(tipDiv);
 
           // ========== 根据模块type分支渲染 ==========
-          if(meta.type === "A"){
-            // A型纯字卡列表：原有表单、导入导出逻辑完整保留
-            const formDiv = document.createElement("div");
-            formDiv.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;";
-            formDiv.innerHTML = `
-              <div style="font-weight:bold;margin-bottom:10px;color:var(--color-text)">新增字卡【${activeSg.name}】</div>
-              <div style="margin-bottom:8px;">
-                <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">标题</div>
-                <input id="in-card-title" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)" placeholder="标题">
-              </div>
-              <div style="margin-bottom:10px;">
-                <div style="font-size:13px;color:var(--color-text-2);margin-bottom:4px;">内容</div>
-                <textarea id="in-card-content" rows="3" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text);resize:none" placeholder="字卡内容"></textarea>
-              </div>
-              <button id="btn-add-new" style="width:100%;padding:8px;background:var(--color-main);color:#fff;border:none;border-radius:var(--radius-btn)">添加到当前子分组</button>
-              <div style="display:flex;gap:8px;margin-top:10px;">
-                <button id="btn-export-custom" style="flex:1;padding:7px;border:1px solid var(--color-border);border-radius:var(--radius-btn);background:var(--color-bg);color:var(--color-text)">全量导出json</button>
-                <button id="btn-import-custom" style="flex:1;padding:7px;border:none;border-radius:var(--radius-btn);background:var(--color-main);color:#fff">导入json</button>
-              </div>
-            `;
-            wrap.appendChild(formDiv);
-          }else if(["B","C","D","E"].includes(meta.type)){
+     if(meta.type === "A"){
+    // ========= 新版A型：对标图2模板页面 =========
+    const pageWrap = document.createElement("div");
+    pageWrap.style.cssText = "margin-bottom:14px;";
+
+    // 子分类Tab
+    const tabContainer = document.createElement("div");
+    tabContainer.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;";
+    const typeTabs = [
+        {key:"main", label:"主字卡"},
+        {key:"text", label:"颜文字"},
+        {key:"emoji", label:"emoji"},
+        {key:"sticker", label:"表情包"},
+        {key:"image", label:"图片"},
+        {key:"tap", label:"拍一拍"},
+        {key:"voice", label:"语音"},
+        {key:"sentence", label:"梦角自由造句"}
+    ];
+    // 这里你后续可以加变量 this.cardSubType = this.cardSubType || "main"
+    if(!this.cardSubType) this.cardSubType = "main";
+    typeTabs.forEach(t=>{
+        const tabBtn = document.createElement("button");
+        const isActive = this.cardSubType === t.key;
+        tabBtn.textContent = `${t.label} (0)`;
+        tabBtn.style.cssText = `padding:8px 12px;border-radius:999px;border:none;${isActive ? "background:#000;color:#fff" : "background:var(--color-bg);border:1px solid var(--color-border);color:var(--color-text)"}`;
+        tabBtn.onclick = ()=>{
+            this.cardSubType = t.key;
+            this.render();
+        };
+        tabContainer.appendChild(tabBtn);
+    })
+
+    // 功能按钮行 管理分组 / 批量导入
+    const btnRow1 = document.createElement("div");
+    btnRow1.style.cssText = "display:flex;gap:10px;margin-bottom:12px;";
+    const btnGroupManage = document.createElement("button");
+    btnGroupManage.textContent = "⚙ 管理分组";
+    btnGroupManage.style.cssText = "flex:1;padding:9px;border:1px solid var(--color-border);border-radius:var(--radius-card);background:var(--color-bg);";
+    const btnBatchImport = document.createElement("button");
+    btnBatchImport.textContent = "⤓ 批量导入";
+    btnBatchImport.style.cssText = "flex:1;padding:9px;border:1px solid var(--color-border);border-radius:var(--radius-card);background:var(--color-bg);";
+    btnRow1.appendChild(btnGroupManage);
+    btnRow1.appendChild(btnBatchImport);
+
+    // 第二排操作按钮：管理字卡、去重、导出、导入、清除全部
+    const btnRow2 = document.createElement("div");
+    btnRow2.style.cssText = "display:grid;grid-template-columns: repeat(5, 1fr);gap:8px;margin-bottom:14px;";
+    const btns2 = [
+        {label:"管理字卡"},
+        {label:"去重"},
+        {label:"导出数据"},
+        {label:"导入数据"},
+        {label:"清除全部", danger:true}
+    ];
+    btns2.forEach(b=>{
+        const btn = document.createElement("button");
+        btn.textContent = b.label;
+        btn.style.cssText = `padding:8px;border:none;border-radius:var(--radius-card);${b.danger ? "background:#ff4444;color:#fff" : "background:var(--color-bg);border:1px solid var(--color-border);color:var(--color-text)"}`;
+        if(b.label === "清除全部"){
+            btn.onclick = async ()=>{
+                if(confirm("确定清空当前分组所有字卡？不可恢复！")){
+                    // 调用清空逻辑
+                    const M = window.AuditCardModule;
+                    await M.clearSubgroupCards(this.activeTab, this.activeSubTab);
+                    this.render();
+                }
+            }
+        }
+        btnRow2.appendChild(btn);
+    })
+
+    // 搜索框
+    const searchBoxWrap = document.createElement("div");
+    searchBoxWrap.style.cssText = "margin-bottom:14px;";
+    const searchInput = document.createElement("input");
+    searchInput.placeholder = "🔍 搜索字卡";
+    searchInput.value = this._cardSearch || "";
+    searchInput.style.cssText = "width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--color-border);border-radius:999px;background:var(--color-bg);";
+    searchInput.oninput = (e)=>{
+        this._cardSearch = e.target.value;
+        this.render();
+    }
+    searchBoxWrap.appendChild(searchInput);
+
+    // 底部批量导入主按钮
+    const bottomBatchBtn = document.createElement("button");
+    bottomBatchBtn.textContent = "批量导入字卡";
+    bottomBatchBtn.style.cssText = "width:100%;padding:10px;background:#000;color:#fff;border:none;border-radius:var(--radius-card);";
+
+    pageWrap.appendChild(tabContainer);
+    pageWrap.appendChild(btnRow1);
+    pageWrap.appendChild(btnRow2);
+    pageWrap.appendChild(searchBoxWrap);
+    pageWrap.appendChild(bottomBatchBtn);
+    wrap.appendChild(pageWrap);
+}else if(["B","C","D","E"].includes(meta.type)){
             // B寻踪日常 / C今日情话 / D TA询问 / E TA小问题：【占位提示，后续在这里替换为完整UI DOM】
             const placeHolderBox = document.createElement("div");
             placeHolderBox.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius-card);padding:14px;margin-bottom:14px;background:color-mix(in srgb, var(--color-main) 6%, transparent);";
